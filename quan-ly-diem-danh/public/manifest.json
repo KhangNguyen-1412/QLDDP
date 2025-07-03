@@ -1,6 +1,6 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "short_name": "Quản Lý Phòng A309",
+  "name": "Ứng dụng Quản Lý Phòng A309",
   "icons": [
     {
       "src": "favicon.ico",
