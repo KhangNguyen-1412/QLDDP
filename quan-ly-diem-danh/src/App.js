@@ -11,13 +11,13 @@ import { getFirestore, doc, setDoc, collection, onSnapshot, query, addDoc, serve
 
 // Firebase Config - Moved outside the component to be a constant
 const firebaseConfig = {
-  apiKey: "AIzaSyBMx17aRieYRxF2DiUfVzC7iJPXOJwNiy0",
-  authDomain: "qlddv2.firebaseapp.com",
-  projectId: "qlddv2",
-  storageBucket: "qlddv2.firebasestorage.app",
-  messagingSenderId: "946810652108",
-  appId: "1:946810652108:web:a4b75fe67c41ba132c0969",
-  measurementId: "G-0G06LXY4D8"
+  apiKey: "AIzaSyBUSFIJ9WPHnknLHlHY9bg15NZkMdgC7yA",
+  authDomain: "qldd-c9d90.firebaseapp.com",
+  projectId: "qldd-c9d90",
+  storageBucket: "qldd-c9d90.firebasestorage.app",
+  messagingSenderId: "847915576150",
+  appId: "1:847915576150:web:96a0be2e39886133a544f7",
+  measurementId: "G-7T6D9Y2EJH"
 };
 
 // currentAppId should consistently be the projectId - Moved outside the component
@@ -839,7 +839,7 @@ function App() {
 
     const daysPresentPerResident = {};
     let totalDaysAcrossAllResidentsLocal = 0;
-    const individualCalculatedCostsLocal = {}; // Sẽ lưu { residentId: { cost: X, isPaid: false } }
+    const individualCalculatedCostsLocal = {}; // Sẽ lưu { residentId: { cost: X, isPaid: false, daysPresent: Z } }
 
     try {
       // Lấy các bản ghi điểm danh hàng ngày trong khoảng thời gian đã chọn
@@ -879,20 +879,22 @@ function App() {
         costPerDayLocal = totalCost / totalDaysAcrossAllResidentsLocal;
         setCostPerDayPerPerson(costPerDayLocal);
         residents.forEach(resident => {
-          const rawCost = (daysPresentPerResident[resident.id] || 0) * costPerDayLocal;
+          const days = daysPresentPerResident[resident.id] || 0; // Lấy số ngày có mặt
+          const rawCost = days * costPerDayLocal;
           const roundedCost = Math.round(rawCost / 1000) * 1000;
 
-          // Lưu chi phí và trạng thái đã thanh toán ban đầu (false)
+          // Lưu chi phí, trạng thái đã thanh toán và SỐ NGÀY CÓ MẶT
           individualCalculatedCostsLocal[resident.id] = {
             cost: roundedCost,
-            isPaid: false // Mặc định là chưa thanh toán
+            isPaid: false,
+            daysPresent: days // LƯU SỐ NGÀY CÓ MẶT VÀO ĐÂY
           };
           totalRoundedIndividualCosts += roundedCost;
         });
       } else {
         setCostPerDayPerPerson(0);
         residents.forEach(resident => {
-          individualCalculatedCostsLocal[resident.id] = { cost: 0, isPaid: false };
+          individualCalculatedCostsLocal[resident.id] = { cost: 0, isPaid: false, daysPresent: 0 }; // Mặc định daysPresent
         });
       }
       setIndividualCosts(individualCalculatedCostsLocal);
@@ -908,7 +910,7 @@ function App() {
         periodEnd: endDate,
         totalCalculatedDaysAllResidents: totalDaysAcrossAllResidentsLocal,
         costPerDayPerPerson: costPerDayLocal,
-        individualCosts: individualCalculatedCostsLocal, // Lưu dưới dạng map các đối tượng {cost, isPaid}
+        individualCosts: individualCalculatedCostsLocal, // Lưu dưới dạng map các đối tượng {cost, isPaid, daysPresent}
         remainingFund: fundLocal,
         calculatedBy: userId,
         calculatedDate: serverTimestamp(),
@@ -928,7 +930,7 @@ function App() {
     setAuthError('');
     setBillingError('');
     if (!db || !userId || userRole !== 'admin') { // Chỉ admin mới có thể tạo nhắc nhở
-      console.error("Vui lòng đăng nhập hoặc bạn không có quyền để tạo nhắc nhở.");
+      console.error("Hệ thống chưa sẵn sàng hoặc bạn không có quyền.");
       setGeneratedReminder("Bạn không có quyền để tạo nhắc nhở.");
       return;
     }
@@ -939,7 +941,6 @@ function App() {
     }
     // Đảm bảo rằng totalCost đã được tính toán và individualCosts có sẵn
     if (totalCost === 0 || totalCalculatedDaysAllResidents === 0 || Object.keys(individualCosts).length === 0) {
-      console.error("Vui lòng tính toán chi phí điện nước và ngày có mặt trước.");
       setGeneratedReminder("Vui lòng tính toán chi phí điện nước và ngày có mặt trước.");
       return;
     }
@@ -1024,7 +1025,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
     }
 
     const cleaningTasksCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/cleaningTasks`);
-    const assignedResident = residents.find(res => res.name === selectedResidentForCleaning);
+    const assignedResident = residents.find(res => res.id === selectedResidentForCleaning);
 
     try {
       await addDoc(cleaningTasksCollectionRef, {
@@ -2103,7 +2104,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                     Kỳ tính: <span className="font-bold">{myLatestCost.periodStart} đến {myLatestCost.periodEnd}</span>
                   </p>
                   <p className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                    Số ngày có mặt của bạn: <span className="font-bold">{myLatestCost.individualCosts[loggedInResidentProfile.id]?.daysPresent || calculatedDaysPresent[loggedInResidentProfile.id] || 0} ngày</span>
+                    Số ngày có mặt của bạn: <span className="font-bold">{myLatestCost.individualCosts[loggedInResidentProfile.id]?.daysPresent || 0} ngày</span>
                   </p>
                   <p className="text-xl font-bold border-t pt-3 mt-3 border-orange-300 dark:border-gray-600">
                     Số tiền bạn cần đóng: <span className="text-orange-800 dark:text-orange-200">
@@ -2165,7 +2166,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
           );
         case 'shoeRackManagement':
           return (
-            <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg mt-8 max-w-5xl mx-auto">
+            <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
               <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">Thông tin kệ giày</h2>
               {Object.keys(shoeRackAssignments).length === 0 ? (
                 <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có kệ giày nào được gán.</p>
@@ -2199,9 +2200,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
           return (
             <div className="text-center p-8 bg-gray-100 dark:bg-gray-700 rounded-xl shadow-inner">
               <p className="text-xl text-gray-700 dark:text-gray-300 font-semibold mb-4">
-                Bạn đã đăng nhập với vai trò thành viên.
-              </p>
-              <p className="text-md text-gray-600 dark:text-gray-400">
                 Vui lòng chọn một mục từ thanh điều hướng.
               </p>
             </div>
