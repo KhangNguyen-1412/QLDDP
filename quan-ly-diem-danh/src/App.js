@@ -11,13 +11,13 @@ import { getFirestore, doc, setDoc, collection, onSnapshot, query, addDoc, serve
 
 // Firebase Config - Moved outside the component to be a constant
 const firebaseConfig = {
-  apiKey: "AIzaSyBUSFIJ9WPHnknLHlHY9bg15NZkMdgC7yA",
-  authDomain: "qldd-c9d90.firebaseapp.com",
-  projectId: "qldd-c9d90",
-  storageBucket: "qldd-c9d90.firebasestorage.app",
-  messagingSenderId: "847915576150",
-  appId: "1:847915576150:web:96a0be2e39886133a544f7",
-  measurementId: "G-7T6D9Y2EJH"
+  apiKey: "AIzaSyBMx17aRieYRxF2DiUfVzC7iJPXOJwNiy0",
+  authDomain: "qlddv2.firebaseapp.com",
+  projectId: "qlddv2",
+  storageBucket: "qlddv2.firebasestorage.app",
+  messagingSenderId: "946810652108",
+  appId: "1:946810652108:web:a4b75fe67c41ba132c0969",
+  measurementId: "G-0G06LXY4D8"
 };
 
 // currentAppId should consistently be the projectId - Moved outside the component
