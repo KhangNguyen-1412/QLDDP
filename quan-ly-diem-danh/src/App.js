@@ -1025,7 +1025,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
     }
 
     const cleaningTasksCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/cleaningTasks`);
-    const assignedResident = residents.find(res => res.id === selectedResidentForCleaning);
+    const assignedResident = residents.find(res => res.name === selectedResidentForCleaning);
 
     try {
       await addDoc(cleaningTasksCollectionRef, {
@@ -2090,6 +2090,16 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
           const myLatestCost = loggedInResidentProfile && costSharingHistory.length > 0
             ? costSharingHistory.find(bill => bill.individualCosts && bill.individualCosts[loggedInResidentProfile.id])
             : null;
+
+          // DEBUG LOGS
+          console.log("DEBUG MemberCostSummary: loggedInResidentProfile:", loggedInResidentProfile);
+          console.log("DEBUG MemberCostSummary: costSharingHistory:", costSharingHistory);
+          console.log("DEBUG MemberCostSummary: myLatestCost:", myLatestCost);
+          if (myLatestCost && loggedInResidentProfile) {
+            console.log("DEBUG MemberCostSummary: myLatestCost.individualCosts for my ID:", myLatestCost.individualCosts[loggedInResidentProfile.id]);
+            console.log("DEBUG MemberCostSummary: myLatestCost.individualCosts[loggedInResidentProfile.id]?.daysPresent:", myLatestCost.individualCosts[loggedInResidentProfile.id]?.daysPresent);
+          }
+
 
           return (
             <div className="p-6 bg-orange-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
