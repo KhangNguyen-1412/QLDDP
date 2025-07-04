@@ -259,6 +259,19 @@ function App() {
       return;
     }
     try {
+      // Kiểm tra xem tên đầy đủ đã được liên kết với một cư dân khác chưa
+      const residentsCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/residents`);
+      const qResidentByName = query(residentsCollectionRef, where("name", "==", fullName.trim()));
+      const residentSnapByNameCheck = await getDocs(qResidentByName);
+
+      if (!residentSnapByNameCheck.empty) {
+        const matchedResidentCheck = residentSnapByNameCheck.docs[0];
+        if (matchedResidentCheck.data().linkedUserId) {
+          setAuthError(`Họ tên "${fullName.trim()}" đã được liên kết với một tài khoản khác. Vui lòng sử dụng họ tên khác hoặc liên hệ quản trị viên.`);
+          return;
+        }
+      }
+
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       console.log("Đăng ký thành công!");
 
@@ -270,22 +283,12 @@ function App() {
         createdAt: serverTimestamp()
       });
 
-      // Cố gắng liên kết với một cư dân hiện có theo tên
-      const residentsCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/residents`);
-      const qResidentByName = query(residentsCollectionRef, where("name", "==", fullName.trim()));
-      const residentSnapByName = await getDocs(qResidentByName);
-
-      if (!residentSnapByName.empty) {
-        const matchedResident = residentSnapByName.docs[0];
-        // Chỉ cập nhật linkedUserId trong tài liệu người dùng nếu cư dân chưa được liên kết với người dùng khác
-        // hoặc đã được liên kết với chính người dùng này (trường hợp đăng ký lại với cùng tên)
-        if (!matchedResident.data().linkedUserId || matchedResident.data().linkedUserId === userCredential.user.uid) {
-          // Cập nhật tài liệu người dùng để lưu linkedResidentId
-          await updateDoc(doc(db, `artifacts/${currentAppId}/public/data/users`, userCredential.user.uid), { linkedResidentId: matchedResident.id });
-          console.log(`Đã liên kết cư dân "${fullName.trim()}" với người dùng mới đăng ký.`);
-        } else {
-          console.log(`Cư dân "${fullName.trim()}" đã được liên kết với một người dùng khác.`);
-        }
+      // Cố gắng liên kết với một cư dân hiện có theo tên (lần nữa, sau khi đã kiểm tra)
+      // Lần này chỉ để cập nhật linkedUserId trong tài liệu cư dân nếu nó chưa được liên kết
+      if (!residentSnapByNameCheck.empty) { // Nếu tìm thấy cư dân trùng tên
+        const matchedResident = residentSnapByNameCheck.docs[0];
+        await updateDoc(doc(residentsCollectionRef, matchedResident.id), { linkedUserId: userCredential.user.uid });
+        console.log(`Đã liên kết cư dân "${fullName.trim()}" với người dùng mới đăng ký.`);
       } else {
         console.log(`Không tìm thấy cư dân có tên "${fullName.trim()}". Admin có thể cần thêm/liên kết thủ công.`);
       }
@@ -434,7 +437,7 @@ function App() {
 
     const meterReadingsDocRef = doc(db, `artifacts/${currentAppId}/public/data/meterReadings`, 'currentReadings');
 
-    const unsubscribe = onSnapshot(meterReadingsDocRef, (docSnap) => {
+    const unsubscribe = onSnapshot(meterReadRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
         setLastElectricityReading(data.electricity || 0);
@@ -839,7 +842,7 @@ function App() {
 
     const daysPresentPerResident = {};
     let totalDaysAcrossAllResidentsLocal = 0;
-    const individualCalculatedCostsLocal = {}; // Sẽ lưu { residentId: { cost: X, isPaid: false } }
+    const individualCalculatedCostsLocal = {}; // Sẽ lưu { residentId: { cost: X, isPaid: false, daysPresent: Z } }
 
     try {
       // Lấy các bản ghi điểm danh hàng ngày trong khoảng thời gian đã chọn
@@ -879,20 +882,22 @@ function App() {
         costPerDayLocal = totalCost / totalDaysAcrossAllResidentsLocal;
         setCostPerDayPerPerson(costPerDayLocal);
         residents.forEach(resident => {
-          const rawCost = (daysPresentPerResident[resident.id] || 0) * costPerDayLocal;
+          const days = daysPresentPerResident[resident.id] || 0; // Lấy số ngày có mặt
+          const rawCost = days * costPerDayLocal;
           const roundedCost = Math.round(rawCost / 1000) * 1000;
 
-          // Lưu chi phí và trạng thái đã thanh toán ban đầu (false)
+          // Lưu chi phí, trạng thái đã thanh toán và SỐ NGÀY CÓ MẶT
           individualCalculatedCostsLocal[resident.id] = {
             cost: roundedCost,
-            isPaid: false // Mặc định là chưa thanh toán
+            isPaid: false,
+            daysPresent: days // LƯU SỐ NGÀY CÓ MẶT VÀO ĐÂY
           };
           totalRoundedIndividualCosts += roundedCost;
         });
       } else {
         setCostPerDayPerPerson(0);
         residents.forEach(resident => {
-          individualCalculatedCostsLocal[resident.id] = { cost: 0, isPaid: false };
+          individualCalculatedCostsLocal[resident.id] = { cost: 0, isPaid: false, daysPresent: 0 }; // Mặc định daysPresent
         });
       }
       setIndividualCosts(individualCalculatedCostsLocal);
@@ -908,7 +913,7 @@ function App() {
         periodEnd: endDate,
         totalCalculatedDaysAllResidents: totalDaysAcrossAllResidentsLocal,
         costPerDayPerPerson: costPerDayLocal,
-        individualCosts: individualCalculatedCostsLocal, // Lưu dưới dạng map các đối tượng {cost, isPaid}
+        individualCosts: individualCalculatedCostsLocal, // Lưu dưới dạng map các đối tượng {cost, isPaid, daysPresent}
         remainingFund: fundLocal,
         calculatedBy: userId,
         calculatedDate: serverTimestamp(),
@@ -939,7 +944,6 @@ function App() {
     }
     // Đảm bảo rằng totalCost đã được tính toán và individualCosts có sẵn
     if (totalCost === 0 || totalCalculatedDaysAllResidents === 0 || Object.keys(individualCosts).length === 0) {
-      console.error("Vui lòng tính toán chi phí điện nước và ngày có mặt trước.");
       setGeneratedReminder("Vui lòng tính toán chi phí điện nước và ngày có mặt trước.");
       return;
     }
@@ -1024,7 +1028,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
     }
 
     const cleaningTasksCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/cleaningTasks`);
-    const assignedResident = residents.find(res => res.name === selectedResidentForCleaning);
+    const assignedResident = residents.find(res => res.id === selectedResidentForCleaning);
 
     try {
       await addDoc(cleaningTasksCollectionRef, {
@@ -1506,9 +1510,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                         <tr key={resident.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
                           <td className="py-3 px-6 text-left whitespace-nowrap font-medium sticky left-0 bg-white dark:bg-gray-800 z-10 border-r border-gray-200 dark:border-gray-700">
                             {resident.name}
-                            {resident.isActive === false && (
-                              <span className="text-xs text-red-500 dark:text-red-400 ml-2">(Vô hiệu hóa)</span>
-                            )}
                           </td>
                           {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map(day => {
                             const dayString = String(day).padStart(2, '0');
@@ -1803,7 +1804,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
           );
         case 'costSharingHistory':
           return (
-            <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg mt-8 max-w-5xl mx-auto">
+            <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
               <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">Lịch sử chia tiền</h2>
               {costSharingHistory.length === 0 ? (
                 <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có lịch sử chia tiền nào được lưu.</p>
@@ -1965,11 +1966,12 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                     {[...Array(8)].map((_, i) => {
                       const shelfNum = i + 1;
                       const assignment = shoeRackAssignments[shelfNum];
+                      const isMyShelf = loggedInResidentProfile && assignment && assignment.residentId === loggedInResidentProfile.id;
                       return (
-                        <li key={shelfNum} className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-600">
-                          <span className="font-medium text-gray-700 dark:text-gray-300">Tầng {shelfNum}:</span>
+                        <li key={shelfNum} className={`flex items-center justify-between p-3 rounded-lg shadow-sm border ${isMyShelf ? 'bg-yellow-200 dark:bg-yellow-900 border-yellow-400' : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600'}`}>
+                          <span className={`font-medium ${isMyShelf ? 'text-yellow-900 dark:text-yellow-100' : 'text-gray-700 dark:text-gray-300'}`}>Tầng {shelfNum}:</span>
                           {assignment ? (
-                            <span className="text-yellow-700 dark:text-yellow-300 font-bold">
+                            <span className={`font-bold ${isMyShelf ? 'text-yellow-800 dark:text-yellow-200' : 'text-yellow-700 dark:text-yellow-300'}`}>
                               {assignment.residentName}
                               {userRole === 'admin' && ( // Chỉ hiển thị nút xóa cho admin
                                 <button
@@ -1993,7 +1995,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
           );
         case 'consumptionStats':
           return (
-            <div className="p-6 bg-purple-50 dark:bg-gray-700 rounded-2xl shadow-lg mt-8 max-w-5xl mx-auto">
+            <div className="p-6 bg-purple-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
               <h2 className="text-2xl font-bold text-purple-800 dark:text-purple-200 mb-5">Thống kê tiêu thụ hàng tháng</h2>
               {Object.keys(monthlyConsumptionStats).length === 0 ? (
                 <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có dữ liệu thống kê.</p>
@@ -2103,7 +2105,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                     Kỳ tính: <span className="font-bold">{myLatestCost.periodStart} đến {myLatestCost.periodEnd}</span>
                   </p>
                   <p className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                    Số ngày có mặt của bạn: <span className="font-bold">{myLatestCost.individualCosts[loggedInResidentProfile.id]?.daysPresent || calculatedDaysPresent[loggedInResidentProfile.id] || 0} ngày</span>
+                    Số ngày có mặt của bạn: <span className="font-bold">{(myLatestCost.individualCosts[loggedInResidentProfile.id]?.daysPresent || 0)} ngày</span>
                   </p>
                   <p className="text-xl font-bold border-t pt-3 mt-3 border-orange-300 dark:border-gray-600">
                     Số tiền bạn cần đóng: <span className="text-orange-800 dark:text-orange-200">
@@ -2165,7 +2167,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
           );
         case 'shoeRackManagement':
           return (
-            <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg mt-8 max-w-5xl mx-auto">
+            <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
               <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">Thông tin kệ giày</h2>
               {Object.keys(shoeRackAssignments).length === 0 ? (
                 <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có kệ giày nào được gán.</p>
@@ -2176,13 +2178,21 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                     {[...Array(8)].map((_, i) => {
                       const shelfNum = i + 1;
                       const assignment = shoeRackAssignments[shelfNum];
+                      const isMyShelf = loggedInResidentProfile && assignment && assignment.residentId === loggedInResidentProfile.id;
                       return (
-                        <li key={shelfNum} className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-600">
-                          <span className="font-medium text-gray-700 dark:text-gray-300">Tầng {shelfNum}:</span>
+                        <li key={shelfNum} className={`flex items-center justify-between p-3 rounded-lg shadow-sm border ${isMyShelf ? 'bg-yellow-200 dark:bg-yellow-900 border-yellow-400' : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600'}`}>
+                          <span className={`font-medium ${isMyShelf ? 'text-yellow-900 dark:text-yellow-100' : 'text-gray-700 dark:text-gray-300'}`}>Tầng {shelfNum}:</span>
                           {assignment ? (
-                            <span className="text-yellow-700 dark:text-yellow-300 font-bold">
+                            <span className={`font-bold ${isMyShelf ? 'text-yellow-800 dark:text-yellow-200' : 'text-yellow-700 dark:text-yellow-300'}`}>
                               {assignment.residentName}
-                              {/* Nút xóa không hiển thị cho thành viên */}
+                              {userRole === 'admin' && ( // Chỉ hiển thị nút xóa cho admin
+                                <button
+                                  onClick={() => handleClearShoeRackAssignment(shelfNum)}
+                                  className="ml-3 px-2 py-1 bg-red-500 text-white text-xs rounded-lg shadow-sm hover:bg-red-600 transition-colors"
+                                >
+                                  Xóa
+                                </button>
+                              )}
                             </span>
                           ) : (
                             <span className="text-gray-500 dark:text-gray-400 italic">Trống</span>
@@ -2199,9 +2209,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
           return (
             <div className="text-center p-8 bg-gray-100 dark:bg-gray-700 rounded-xl shadow-inner">
               <p className="text-xl text-gray-700 dark:text-gray-300 font-semibold mb-4">
-                Bạn đã đăng nhập với vai trò thành viên.
-              </p>
-              <p className="text-md text-gray-600 dark:text-gray-400">
                 Vui lòng chọn một mục từ thanh điều hướng.
               </p>
             </div>
