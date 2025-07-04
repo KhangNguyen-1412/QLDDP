@@ -496,11 +496,7 @@ function App() {
       console.log("Lắng nghe lịch sử chia tiền: Đang chờ DB, Auth hoặc User ID sẵn sàng.");
       return;
     }
-    // Chỉ admin mới cần lắng nghe lịch sử chia sẻ chi phí
-    if (userRole !== 'admin') {
-      setCostSharingHistory([]);
-      return;
-    }
+    // Không cần điều kiện userRole ở đây vì cả admin và thành viên đều cần đọc để hiển thị chi phí
     console.log("Bắt đầu lắng nghe lịch sử chia tiền...");
 
     const costSharingCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/costSharingHistory`);
@@ -523,7 +519,7 @@ function App() {
       console.log("Hủy đăng ký lắng nghe lịch sử chia tiền.");
       unsubscribe();
     };
-  }, [db, isAuthReady, userId, userRole]); // Thêm userRole vào dependency
+  }, [db, isAuthReady, userId]); // userRole không còn là dependency trực tiếp ở đây
 
   // Mới: Lắng nghe cập nhật Lịch trực phòng
   useEffect(() => {
@@ -531,11 +527,7 @@ function App() {
       console.log("Lắng nghe lịch trực phòng: Đang chờ DB, Auth hoặc User ID sẵn sàng.");
       return;
     }
-    // Chỉ admin mới cần lắng nghe lịch trực phòng
-    if (userRole !== 'admin') {
-      setCleaningSchedule([]);
-      return;
-    }
+    // Không cần điều kiện userRole ở đây vì cả admin và thành viên đều cần đọc để hiển thị lịch trực
     console.log("Bắt đầu lắng nghe lịch trực phòng...");
 
     const cleaningTasksCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/cleaningTasks`);
@@ -562,7 +554,7 @@ function App() {
       console.log("Hủy đăng ký lắng nghe lịch trực phòng.");
       unsubscribe();
     };
-  }, [db, isAuthReady, userId, userRole]); // Thêm userRole vào dependency
+  }, [db, isAuthReady, userId]); // userRole không còn là dependency trực tiếp ở đây
 
   // Mới: Lắng nghe cập nhật Phân công kệ giày
   useEffect(() => {
@@ -1032,7 +1024,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
     }
 
     const cleaningTasksCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/cleaningTasks`);
-    const assignedResident = residents.find(res => res.id === selectedResidentForCleaning);
+    const assignedResident = residents.find(res => res.name === selectedResidentForCleaning);
 
     try {
       await addDoc(cleaningTasksCollectionRef, {
@@ -1344,6 +1336,39 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
     } catch (error) {
       console.error("Lỗi khi lưu lịch trực tự động:", error);
       setAuthError(`Lỗi khi lưu lịch trực tự động: ${error.message}`);
+    }
+  };
+
+  // Mới: Hàm để thành viên đánh dấu đã đóng tiền của họ
+  const handleMarkMyPaymentAsPaid = async () => {
+    setAuthError('');
+    if (!db || !userId || userRole !== 'member' || !loggedInResidentProfile) {
+      setAuthError("Bạn không có quyền hoặc không có hồ sơ cư dân liên kết để thực hiện thao tác này.");
+      return;
+    }
+
+    // Tìm bản ghi chia tiền gần nhất (hoặc bản ghi đang hiển thị cho thành viên)
+    // Để đơn giản, chúng ta sẽ tìm bản ghi chia tiền gần nhất trong lịch sử
+    const latestCostSharingRecord = costSharingHistory[0]; // Giả định bản ghi mới nhất là cái cần cập nhật
+
+    if (!latestCostSharingRecord || !latestCostSharingRecord.individualCosts || !latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]) {
+      setAuthError("Không tìm thấy thông tin chi phí để cập nhật.");
+      return;
+    }
+
+    const costSharingDocRef = doc(db, `artifacts/${currentAppId}/public/data/costSharingHistory`, latestCostSharingRecord.id);
+    const updatedIndividualCosts = JSON.parse(JSON.stringify(latestCostSharingRecord.individualCosts));
+
+    // Đảm bảo chỉ cập nhật trạng thái của người dùng hiện tại
+    updatedIndividualCosts[loggedInResidentProfile.id].isPaid = true; // Đánh dấu là đã đóng
+
+    try {
+      await updateDoc(costSharingDocRef, { individualCosts: updatedIndividualCosts });
+      console.log(`Người dùng ${loggedInResidentProfile.name} đã đánh dấu đã đóng tiền cho bản ghi ${latestCostSharingRecord.id}.`);
+      setAuthError("Đã đánh dấu là đã đóng tiền thành công!");
+    } catch (error) {
+      console.error("Lỗi khi đánh dấu đã đóng tiền:", error);
+      setAuthError(`Lỗi khi đánh dấu đã đóng tiền: ${error.message}`);
     }
   };
 
@@ -1900,7 +1925,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
           );
         case 'shoeRackManagement':
           return (
-            <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg mt-8 max-w-5xl mx-auto">
+            <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
               <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">Quản lý kệ giày</h2>
               <div className="flex flex-col sm:flex-row gap-3 mb-4">
                 <select
@@ -1998,10 +2023,9 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
           );
       }
     } else if (userRole === 'member') {
+      // Member-specific sections
       switch (activeSection) {
         case 'attendanceTracking':
-          // Thành viên chỉ có thể xem và chỉnh sửa điểm danh của chính họ
-          // displayedResidents đã được lọc ở trên để chỉ chứa loggedInResidentProfile nếu có.
           return (
             <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
               <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">Điểm danh của bạn</h2>
@@ -2061,6 +2085,84 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
               )}
             </div>
           );
+        case 'memberCostSummary': // New section for member's cost summary
+          const myLatestCost = loggedInResidentProfile && costSharingHistory.length > 0
+            ? costSharingHistory.find(bill => bill.individualCosts && bill.individualCosts[loggedInResidentProfile.id])
+            : null;
+
+          return (
+            <div className="p-6 bg-orange-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-orange-800 dark:text-orange-200 mb-5">Chi phí của tôi</h2>
+              {!loggedInResidentProfile ? (
+                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.</p>
+              ) : !myLatestCost ? (
+                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có thông tin chi phí cho bạn.</p>
+              ) : (
+                <div className="bg-orange-100 dark:bg-gray-800 p-4 rounded-xl shadow-inner border border-orange-200 dark:border-gray-700">
+                  <p className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    Kỳ tính: <span className="font-bold">{myLatestCost.periodStart} đến {myLatestCost.periodEnd}</span>
+                  </p>
+                  <p className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    Số ngày có mặt của bạn: <span className="font-bold">{myLatestCost.individualCosts[loggedInResidentProfile.id]?.daysPresent || calculatedDaysPresent[loggedInResidentProfile.id] || 0} ngày</span>
+                  </p>
+                  <p className="text-xl font-bold border-t pt-3 mt-3 border-orange-300 dark:border-gray-600">
+                    Số tiền bạn cần đóng: <span className="text-orange-800 dark:text-orange-200">
+                      {(myLatestCost.individualCosts[loggedInResidentProfile.id]?.cost || 0).toLocaleString('vi-VN')} VND
+                    </span>
+                  </p>
+                  <div className="flex items-center justify-between mt-4">
+                    <span className="text-lg font-bold">
+                      Trạng thái: <span className={myLatestCost.individualCosts[loggedInResidentProfile.id]?.isPaid ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}>
+                        {myLatestCost.individualCosts[loggedInResidentProfile.id]?.isPaid ? 'Đã đóng' : 'Chưa đóng'}
+                      </span>
+                    </span>
+                    {!myLatestCost.individualCosts[loggedInResidentProfile.id]?.isPaid && (
+                      <button
+                        onClick={handleMarkMyPaymentAsPaid}
+                        className="px-4 py-2 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all duration-300"
+                      >
+                        <i className="fas fa-check-circle mr-2"></i> Đánh dấu đã đóng
+                      </button>
+                    )}
+                  </div>
+                  {authError && <p className="text-red-500 text-sm text-center mt-2">{authError}</p>}
+                </div>
+              )}
+            </div>
+          );
+        case 'memberCleaningSchedule': // New section for member's cleaning schedule
+          const myCleaningTasks = cleaningSchedule.filter(task =>
+            loggedInResidentProfile && task.assignedToResidentId === loggedInResidentProfile.id
+          );
+          return (
+            <div className="p-6 bg-purple-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-purple-800 dark:text-purple-200 mb-5">Lịch trực của tôi</h2>
+              {!loggedInResidentProfile ? (
+                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.</p>
+              ) : myCleaningTasks.length === 0 ? (
+                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn không có công việc lau dọn nào được phân công.</p>
+              ) : (
+                <div className="max-h-60 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-xl p-3 bg-gray-50 dark:bg-gray-700">
+                  <h3 className="text-xl font-semibold text-purple-700 dark:text-purple-200 mb-3">Lịch trực hiện có:</h3>
+                  <ul className="space-y-2">
+                    {myCleaningTasks.map((task) => (
+                      <li key={task.id} className="flex items-center justify-between bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                        <div className="flex flex-col items-start">
+                          <span className="font-medium text-gray-700 dark:text-gray-300">{task.name}</span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Ngày: {task.date}
+                          </span>
+                        </div>
+                        <span className={`font-semibold ${task.isCompleted ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
+                          {task.isCompleted ? 'Đã hoàn thành' : 'Chưa hoàn thành'}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          );
         case 'shoeRackManagement':
           return (
             <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg mt-8 max-w-5xl mx-auto">
@@ -2100,7 +2202,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                 Bạn đã đăng nhập với vai trò thành viên.
               </p>
               <p className="text-md text-gray-600 dark:text-gray-400">
-                Vui lòng chọn "Điểm danh của tôi" hoặc "Thông tin kệ giày" từ thanh điều hướng.
+                Vui lòng chọn một mục từ thanh điều hướng.
               </p>
             </div>
           );
@@ -2262,6 +2364,24 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                   onClick={() => { setActiveSection('attendanceTracking'); setIsSidebarOpen(false); }}
                 >
                   <i className="fas fa-calendar-alt mr-3"></i> Điểm danh của tôi
+                </button>
+                <button
+                  className={`w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${activeSection === 'memberCostSummary' // New nav item
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  onClick={() => { setActiveSection('memberCostSummary'); setIsSidebarOpen(false); }}
+                >
+                  <i className="fas fa-money-bill-wave mr-3"></i> Chi phí của tôi
+                </button>
+                <button
+                  className={`w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${activeSection === 'memberCleaningSchedule' // New nav item
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  onClick={() => { setActiveSection('memberCleaningSchedule'); setIsSidebarOpen(false); }}
+                >
+                  <i className="fas fa-broom mr-3"></i> Lịch trực của tôi
                 </button>
                 <button
                   className={`w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${activeSection === 'shoeRackManagement'
@@ -2472,7 +2592,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
               <button
                 onClick={() => handleGenerateCleaningSchedule()}
                 className="w-full px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl shadow-md hover:bg-indigo-700 transition-all duration-300"
-                disabled={isGeneratingSchedule || residents.filter(res => res.isActive !== false).length === 0} // Vô hiệu hóa nếu không có cư dân hoạt động
+                disabled={residents.filter(res => res.isActive !== false).length === 0} // Vô hiệu hóa nếu không có cư dân hoạt động
               >
                 {isGeneratingSchedule ? (
                   <i className="fas fa-spinner fa-spin mr-2"></i>
