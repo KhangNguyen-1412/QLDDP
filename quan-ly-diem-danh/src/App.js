@@ -2428,7 +2428,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                     </p>
                     {userRole && (
                       <p className="text-md text-blue-700 dark:text-blue-400">
-                        Vai trò: <span className="font-semibold">{userRole === 'admin' ? 'Trưởng phòng' : 'Thành viên'}</span>
+                        Vai trò: <span className="font-semibold">{userRole === 'admin' ? 'Trưởng phòng/phó phòng' : 'Thành viên'}</span>
                       </p>
                     )}
                     {loggedInResidentProfile && (
