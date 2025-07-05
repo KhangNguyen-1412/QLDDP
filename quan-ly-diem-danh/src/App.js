@@ -2026,10 +2026,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
     const prompt = `Bạn là một trợ lý quản lý phòng. Hãy tạo một lịch trực phòng lau dọn cho các thành viên sau: ${residentNames.join(', ')}.
     Lịch trình nên kéo dài trong ${numDaysForSchedule} ngày, bắt đầu từ hôm nay (${formatDate(today)}).
     Các công việc chính cần phân công luân phiên hàng ngày là:
-    - Quét phòng và lau phòng
-    - Đổ rác
-    - Vệ sinh nhà vệ sinh
-    - Vệ sinh khu vực đằng sau
+    - Quét phòng, lau phòng, đổ rác
 
     Hãy đảm bảo mỗi người có ít nhất một công việc trong lịch trình.
     Trả về dưới dạng một mảng JSON, mỗi đối tượng trong mảng có các thuộc tính sau:
