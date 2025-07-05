@@ -3568,6 +3568,15 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                   </button>
                 </div>
               )}
+              <button
+              className={`w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${activeSection === 'memberProfileEdit' // Vẫn trỏ đến cùng section để hiển thị form
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+              onClick={() => { setActiveSection('memberProfileEdit'); setIsSidebarOpen(false); }}
+            >
+              <i className="fas fa-key mr-3"></i> Đổi mật khẩu
+            </button>
             </div>
           );
           case 'roomMemories':    // <--- Đảm bảo case này nằm TRƯỚC default
