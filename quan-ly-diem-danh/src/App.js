@@ -6,7 +6,8 @@ import {
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  updatePassword
 } from 'firebase/auth';
 import { getFirestore, doc, setDoc, collection, onSnapshot, query, addDoc, serverTimestamp, deleteDoc, getDocs, where, getDoc, updateDoc, orderBy  } from 'firebase/firestore';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage'; // Thêm imports cho Firebase Storage
@@ -131,6 +132,12 @@ function App() {
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   const [notificationError, setNotificationError] = useState(''); // Để hiển thị lỗi liên quan đến thông báo
+
+  // New states for Change Password feature
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [passwordChangeMessage, setPasswordChangeMessage] = useState(''); // Để hiển thị thông báo thành công/lỗi khi đổi mật khẩu
 
   // State for sidebar navigation
   const [activeSection, setActiveSection] = useState('residentManagement');
@@ -808,8 +815,64 @@ const deleteNotification = async (notificationId) => {
   }
 };
 
-// ... (các hàm xử lý khác như handleAddResident, handleToggleResidentActiveStatus, v.v.) ...
+  // ... (các hàm xử lý khác của bạn, ví dụ: handleSaveUserProfile) ...
 
+// Mới: Hàm đổi mật khẩu
+const handleChangePassword = async () => {
+  setPasswordChangeMessage('');
+  if (!auth || !userId) {
+    setPasswordChangeMessage("Hệ thống xác thực chưa sẵn sàng hoặc bạn chưa đăng nhập.");
+    return;
+  }
+  if (!oldPassword || !newPassword || !confirmNewPassword) {
+    setPasswordChangeMessage("Vui lòng nhập đầy đủ mật khẩu cũ và mật khẩu mới.");
+    return;
+  }
+  if (newPassword !== confirmNewPassword) {
+    setPasswordChangeMessage("Mật khẩu mới và xác nhận mật khẩu mới không khớp.");
+    return;
+  }
+  if (newPassword.length < 6) { // Firebase yêu cầu mật khẩu tối thiểu 6 ký tự
+    setPasswordChangeMessage("Mật khẩu mới phải có ít nhất 6 ký tự.");
+    return;
+  }
+  if (oldPassword === newPassword) {
+      setPasswordChangeMessage("Mật khẩu mới phải khác mật khẩu cũ.");
+      return;
+  }
+
+  const user = auth.currentUser;
+  if (!user) {
+    setPasswordChangeMessage("Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại.");
+    return;
+  }
+
+  try {
+    // Để updatePassword hoạt động, người dùng phải đăng nhập lại gần đây
+    // Nếu không, updatePassword sẽ thất bại với lỗi auth/requires-recent-login
+    // Chúng ta sẽ cố gắng đăng nhập lại người dùng bằng mật khẩu cũ trước.
+    const credential = signInWithEmailAndPassword(auth, user.email, oldPassword); // Dùng user.email
+    await credential; // Chờ xác thực lại thành công
+    
+    await updatePassword(user, newPassword);
+    setPasswordChangeMessage("Đổi mật khẩu thành công!");
+    setOldPassword('');
+    setNewPassword('');
+    setConfirmNewPassword('');
+  } catch (error) {
+    console.error("Lỗi khi đổi mật khẩu:", error.code, error.message);
+    if (error.code === 'auth/wrong-password') {
+      setPasswordChangeMessage("Mật khẩu cũ không chính xác.");
+    } else if (error.code === 'auth/requires-recent-login') {
+      setPasswordChangeMessage("Để đổi mật khẩu, vui lòng đăng xuất và đăng nhập lại, sau đó thử lại. Hoặc dùng chức năng 'Quên mật khẩu'.");
+    } else if (error.code === 'auth/weak-password') {
+      setPasswordChangeMessage("Mật khẩu quá yếu. Vui lòng chọn mật khẩu mạnh hơn.");
+    }
+    else {
+      setPasswordChangeMessage(`Lỗi đổi mật khẩu: ${error.message}`);
+    }
+  }
+};
 
   // --- Kết thúc các hàm xác thực ---
 
@@ -3036,6 +3099,77 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               </p>
             </div>
         );
+
+        case 'adminProfileEdit': // Chỉnh sửa thông tin cá nhân cho Admin
+          return (
+            <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Chỉnh sửa hồ sơ của tôi</h2>
+              {/* Form chỉnh sửa profile hiện có */}
+              <div className="space-y-4">
+                {/* ... (Các trường Họ tên, SĐT, MSSV, v.v. hiện có) ... */}
+
+                {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
+
+                <button
+                  onClick={handleSaveUserProfile}
+                  className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+                >
+                  <i className="fas fa-save mr-2"></i> Lưu thông tin
+                </button>
+              </div>
+
+              {/* Mới: Phần đổi mật khẩu */}
+              <div className="mt-10 pt-6 border-t border-gray-300 dark:border-gray-600">
+                <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-4">Đổi mật khẩu</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="oldPasswordAdmin" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Mật khẩu cũ:</label>
+                    <input
+                      type="password"
+                      id="oldPasswordAdmin"
+                      value={oldPassword}
+                      onChange={(e) => setOldPassword(e.target.value)}
+                      className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Nhập mật khẩu cũ"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="newPasswordAdmin" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Mật khẩu mới:</label>
+                    <input
+                      type="password"
+                      id="newPasswordAdmin"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="confirmNewPasswordAdmin" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Xác nhận mật khẩu mới:</label>
+                    <input
+                      type="password"
+                      id="confirmNewPasswordAdmin"
+                      value={confirmNewPassword}
+                      onChange={(e) => setConfirmNewPassword(e.target.value)}
+                      className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Xác nhận mật khẩu mới"
+                    />
+                  </div>
+                  {passwordChangeMessage && (
+                    <p className={`text-sm text-center mt-4 ${passwordChangeMessage.includes('thành công') ? 'text-green-600' : 'text-red-500'}`}>
+                      {passwordChangeMessage}
+                    </p>
+                  )}
+                  <button
+                    onClick={handleChangePassword}
+                    className="w-full px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-md hover:bg-red-700 transition-all duration-300"
+                  >
+                    <i className="fas fa-key mr-2"></i> Đổi mật khẩu
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
         case 'adminProfileEdit': // Mới: Chỉnh sửa thông tin cá nhân cho Admin
           return (
             <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
@@ -3672,6 +3806,86 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               <p className="text-xl text-gray-700 dark:text-gray-300 font-semibold mb-4">
                 Chào mừng Thành viên! Vui lòng chọn một mục từ thanh điều hướng.
               </p>
+            </div>
+          );
+
+          case 'memberProfileEdit': // Chỉnh sửa thông tin cá nhân (thành viên có thể tự chỉnh sửa)
+          return (
+            <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Chỉnh sửa thông tin cá nhân</h2>
+              {!loggedInResidentProfile ? (
+                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.</p>
+              ) : (
+                <div className="space-y-4">
+                  {/* ... (Các trường Họ tên, SĐT, MSSV, v.v. hiện có) ... */}
+
+                  {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
+
+                  <button
+                    onClick={handleSaveUserProfile}
+                    className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+                  >
+                    <i className="fas fa-save mr-2"></i> Lưu thông tin
+                  </button>
+                  <button
+                    onClick={() => setEditProfileMode(false)}
+                    className="w-full mt-2 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
+                  >
+                    Hủy
+                  </button>
+                </div>
+              )}
+
+              {/* Mới: Phần đổi mật khẩu */}
+              <div className="mt-10 pt-6 border-t border-gray-300 dark:border-gray-600">
+                <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-4">Đổi mật khẩu</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="oldPasswordMember" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Mật khẩu cũ:</label>
+                    <input
+                      type="password"
+                      id="oldPasswordMember"
+                      value={oldPassword}
+                      onChange={(e) => setOldPassword(e.target.value)}
+                      className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Nhập mật khẩu cũ"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="newPasswordMember" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Mật khẩu mới:</label>
+                    <input
+                      type="password"
+                      id="newPasswordMember"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="confirmNewPasswordMember" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Xác nhận mật khẩu mới:</label>
+                    <input
+                      type="password"
+                      id="confirmNewPasswordMember"
+                      value={confirmNewPassword}
+                      onChange={(e) => setConfirmNewPassword(e.target.value)}
+                      className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Xác nhận mật khẩu mới"
+                    />
+                  </div>
+                  {passwordChangeMessage && (
+                    <p className={`text-sm text-center mt-4 ${passwordChangeMessage.includes('thành công') ? 'text-green-600' : 'text-red-500'}`}>
+                      {passwordChangeMessage}
+                    </p>
+                  )}
+                  <button
+                    onClick={handleChangePassword}
+                    className="w-full px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-md hover:bg-red-700 transition-all duration-300"
+                  >
+                    <i className="fas fa-key mr-2"></i> Đổi mật khẩu
+                  </button>
+                </div>
+              </div>
             </div>
           );
       }
