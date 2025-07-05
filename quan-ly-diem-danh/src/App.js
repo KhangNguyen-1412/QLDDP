@@ -3099,77 +3099,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               </p>
             </div>
         );
-
-        case 'adminProfileEdit': // Chỉnh sửa thông tin cá nhân cho Admin
-          return (
-            <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Chỉnh sửa hồ sơ của tôi</h2>
-              {/* Form chỉnh sửa profile hiện có */}
-              <div className="space-y-4">
-                {/* ... (Các trường Họ tên, SĐT, MSSV, v.v. hiện có) ... */}
-
-                {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
-
-                <button
-                  onClick={handleSaveUserProfile}
-                  className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
-                >
-                  <i className="fas fa-save mr-2"></i> Lưu thông tin
-                </button>
-              </div>
-
-              {/* Mới: Phần đổi mật khẩu */}
-              <div className="mt-10 pt-6 border-t border-gray-300 dark:border-gray-600">
-                <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-4">Đổi mật khẩu</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label htmlFor="oldPasswordAdmin" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Mật khẩu cũ:</label>
-                    <input
-                      type="password"
-                      id="oldPasswordAdmin"
-                      value={oldPassword}
-                      onChange={(e) => setOldPassword(e.target.value)}
-                      className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Nhập mật khẩu cũ"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="newPasswordAdmin" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Mật khẩu mới:</label>
-                    <input
-                      type="password"
-                      id="newPasswordAdmin"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="confirmNewPasswordAdmin" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Xác nhận mật khẩu mới:</label>
-                    <input
-                      type="password"
-                      id="confirmNewPasswordAdmin"
-                      value={confirmNewPassword}
-                      onChange={(e) => setConfirmNewPassword(e.target.value)}
-                      className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Xác nhận mật khẩu mới"
-                    />
-                  </div>
-                  {passwordChangeMessage && (
-                    <p className={`text-sm text-center mt-4 ${passwordChangeMessage.includes('thành công') ? 'text-green-600' : 'text-red-500'}`}>
-                      {passwordChangeMessage}
-                    </p>
-                  )}
-                  <button
-                    onClick={handleChangePassword}
-                    className="w-full px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-md hover:bg-red-700 transition-all duration-300"
-                  >
-                    <i className="fas fa-key mr-2"></i> Đổi mật khẩu
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
         case 'adminProfileEdit': // Mới: Chỉnh sửa thông tin cá nhân cho Admin
           return (
             <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
@@ -3246,6 +3175,57 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                   <i className="fas fa-save mr-2"></i> Lưu thông tin
                 </button>
                 {/* Có thể thêm nút "Hủy" nếu muốn, nhưng admin sẽ không có chế độ "editProfileMode" như member */}
+
+                {/* Mới: Phần đổi mật khẩu */}
+              <div className="mt-10 pt-6 border-t border-gray-300 dark:border-gray-600">
+                <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-4">Đổi mật khẩu</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="oldPasswordAdmin" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Mật khẩu cũ:</label>
+                    <input
+                      type="password"
+                      id="oldPasswordAdmin"
+                      value={oldPassword}
+                      onChange={(e) => setOldPassword(e.target.value)}
+                      className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Nhập mật khẩu cũ"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="newPasswordAdmin" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Mật khẩu mới:</label>
+                    <input
+                      type="password"
+                      id="newPasswordAdmin"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="confirmNewPasswordAdmin" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Xác nhận mật khẩu mới:</label>
+                    <input
+                      type="password"
+                      id="confirmNewPasswordAdmin"
+                      value={confirmNewPassword}
+                      onChange={(e) => setConfirmNewPassword(e.target.value)}
+                      className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Xác nhận mật khẩu mới"
+                    />
+                  </div>
+                  {passwordChangeMessage && (
+                    <p className={`text-sm text-center mt-4 ${passwordChangeMessage.includes('thành công') ? 'text-green-600' : 'text-red-500'}`}>
+                      {passwordChangeMessage}
+                    </p>
+                  )}
+                  <button
+                    onClick={handleChangePassword}
+                    className="w-full px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-md hover:bg-red-700 transition-all duration-300"
+                  >
+                    <i className="fas fa-key mr-2"></i> Đổi mật khẩu
+                  </button>
+                </div>
+              </div>
               </div>
             </div>
           );
