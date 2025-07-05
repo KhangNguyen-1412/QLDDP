@@ -3032,10 +3032,123 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
           return (
             <div className="text-center p-8 bg-gray-100 dark:bg-gray-700 rounded-xl shadow-inner">
               <p className="text-xl text-gray-700 dark:text-gray-300 font-semibold mb-4">
-                Chào mừng Thành viên! Vui lòng chọn một mục từ thanh điều hướng.
+                Chào mừng Admin! Vui lòng chọn một mục từ thanh điều hướng.
               </p>
             </div>
+        );
+        case 'adminProfileEdit': // Mới: Chỉnh sửa thông tin cá nhân cho Admin
+          return (
+            <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Chỉnh sửa hồ sơ của tôi</h2>
+              {/* Form chỉnh sửa profile tương tự như member */}
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="adminEditFullName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Họ tên đầy đủ:</label>
+                  <input
+                    type="text"
+                    id="adminEditFullName"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="adminEditPhoneNumber" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Số điện thoại:</label>
+                  <input
+                    type="text"
+                    id="adminEditPhoneNumber"
+                    value={memberPhoneNumber} // Vẫn dùng state này
+                    onChange={(e) => setMemberPhoneNumber(e.target.value)}
+                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="adminEditStudentId" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Mã số sinh viên:</label>
+                  <input
+                    type="text"
+                    id="adminEditStudentId"
+                    value={memberStudentId} // Vẫn dùng state này
+                    onChange={(e) => setMemberStudentId(e.target.value)}
+                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="adminEditBirthday" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày sinh:</label>
+                  <input
+                    type="date"
+                    id="adminEditBirthday"
+                    value={memberBirthday} // Vẫn dùng state này
+                    onChange={(e) => setMemberBirthday(e.target.value)}
+                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="adminEditDormEntryDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày nhập KTX:</label>
+                  <input
+                    type="date"
+                    id="adminEditDormEntryDate"
+                    value={memberDormEntryDate} // Vẫn dùng state này
+                    onChange={(e) => setMemberDormEntryDate(e.target.value)}
+                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="adminEditAcademicLevel" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email trường:</label>
+                  <input
+                    type="text"
+                    id="adminEditAcademicLevel"
+                    value={memberAcademicLevel} // Vẫn dùng state này
+                    onChange={(e) => setMemberAcademicLevel(e.target.value)}
+                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                  />
+                </div>
+
+                {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
+
+                <button
+                  onClick={handleSaveUserProfile} // Gọi hàm đã được đổi tên
+                  className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+                >
+                  <i className="fas fa-save mr-2"></i> Lưu thông tin
+                </button>
+                {/* Có thể thêm nút "Hủy" nếu muốn, nhưng admin sẽ không có chế độ "editProfileMode" như member */}
+              </div>
+            </div>
           );
+        case 'consumptionStats': //Thống kê tiêu thụ 
+        return (
+          <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+            <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Thống kê tiêu thụ theo tháng</h2>
+            {Object.keys(monthlyConsumptionStats).length === 0 ? (
+              <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có dữ liệu thống kê nào. Vui lòng tính toán hóa đơn.</p>
+            ) : (
+              <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                <table className="min-w-full bg-white dark:bg-gray-800">
+                  <thead>
+                    <tr>
+                      <th className="py-3 px-6 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Tháng</th>
+                      <th className="py-3 px-6 text-right text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Điện (KW)</th>
+                      <th className="py-3 px-6 text-right text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Nước (m³)</th>
+                      <th className="py-3 px-6 text-right text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Tổng tiền (VND)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
+                    {Object.entries(monthlyConsumptionStats).map(([month, stats]) => (
+                      <tr key={month} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                        <td className="py-3 px-6 text-left whitespace-nowrap">{month}</td>
+                        <td className="py-3 px-6 text-right whitespace-nowrap">{stats.electricity.toLocaleString('vi-VN')}</td>
+                        <td className="py-3 px-6 text-right whitespace-nowrap">{stats.water.toLocaleString('vi-VN')}</td>
+                        <td className="py-3 px-6 text-right whitespace-nowrap font-bold text-blue-700 dark:text-blue-300">
+                          {stats.total.toLocaleString('vi-VN')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        );
       }
     }
     // Logic cho Thành viên
