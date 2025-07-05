@@ -4444,7 +4444,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
         </div>
       )}
 
-      // Mới: Modal hiển thị thông báo
       {showNotificationsModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto">
