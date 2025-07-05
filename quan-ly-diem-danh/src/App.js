@@ -1566,7 +1566,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                       <li key={resident.id} className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-600">
                         <div className="flex flex-col items-start">
                           <span className="font-medium text-gray-700 dark:text-gray-300 text-base">{resident.name}</span>
-                          {resident.createdAt && (
+                          {resident.createdAt && typeof resident.createdAt.toDate === 'function' && (
                             <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                               Thêm vào: {resident.createdAt.toDate().toLocaleDateString('vi-VN')}
                             </span>
@@ -1898,7 +1898,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                       {billHistory.map(bill => (
                         <tr key={bill.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
                           <td className="py-3 px-6 text-left whitespace-nowrap">
-                            {bill.billDate?.toDate().toLocaleDateString('vi-VN') || 'N/A'}
+                            {bill.billDate && typeof bill.billDate.toDate === 'function' ? bill.billDate.toDate().toLocaleDateString('vi-VN') : 'N/A'}
                           </td>
                           <td className="py-3 px-6 text-right whitespace-nowrap font-bold text-blue-700 dark:text-blue-300">
                             {bill.totalCost?.toLocaleString('vi-VN') || 0} VND
@@ -2266,6 +2266,40 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
               </p>
             </div>
           );
+        case 'consumptionStats':
+        return (
+          <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+            <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Thống kê tiêu thụ theo tháng</h2>
+            {Object.keys(monthlyConsumptionStats).length === 0 ? (
+              <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có dữ liệu thống kê nào. Vui lòng tính toán hóa đơn.</p>
+            ) : (
+              <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                <table className="min-w-full bg-white dark:bg-gray-800">
+                  <thead>
+                    <tr>
+                      <th className="py-3 px-6 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Tháng</th>
+                      <th className="py-3 px-6 text-right text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Điện (KW)</th>
+                      <th className="py-3 px-6 text-right text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Nước (m³)</th>
+                      <th className="py-3 px-6 text-right text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Tổng tiền (VND)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
+                    {Object.entries(monthlyConsumptionStats).map(([month, stats]) => (
+                      <tr key={month} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                        <td className="py-3 px-6 text-left whitespace-nowrap">{month}</td>
+                        <td className="py-3 px-6 text-right whitespace-nowrap">{stats.electricity.toLocaleString('vi-VN')}</td>
+                        <td className="py-3 px-6 text-right whitespace-nowrap">{stats.water.toLocaleString('vi-VN')}</td>
+                        <td className="py-3 px-6 text-right whitespace-nowrap font-bold text-blue-700 dark:text-blue-300">
+                          {stats.total.toLocaleString('vi-VN')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        );
       }
     }
     // Logic cho Thành viên
@@ -2942,7 +2976,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
             <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">Chi tiết chia tiền</h3>
             <div className="space-y-3 text-gray-700 dark:text-gray-300">
               <p><strong>Kỳ tính:</strong> {selectedCostSharingDetails.periodStart} đến {selectedCostSharingDetails.periodEnd}</p>
-              <p><strong>Ngày tính:</strong> {selectedCostSharingDetails.calculatedDate?.toDate().toLocaleDateString('vi-VN')}</p>
+              <p><strong>Ngày tính:</strong> {selectedCostSharingDetails.calculatedDate && typeof selectedCostSharingDetails.calculatedDate.toDate === 'function' ? selectedCostSharingDetails.calculatedDate.toDate().toLocaleDateString('vi-VN') : 'N/A'}</p>
               <p><strong>Tổng ngày có mặt:</strong> {selectedCostSharingDetails.totalCalculatedDaysAllResidents} ngày</p>
               <p><strong>Chi phí TB 1 ngày/người:</strong> {selectedCostSharingDetails.costPerDayPerPerson?.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} VND</p>
               <p className="text-xl font-bold border-t pt-3 mt-3 border-gray-300 dark:border-gray-600">
