@@ -8,7 +8,7 @@ import {
   onAuthStateChanged,
   sendPasswordResetEmail
 } from 'firebase/auth';
-import { getFirestore, doc, setDoc, collection, onSnapshot, query, addDoc, serverTimestamp, deleteDoc, getDocs, where, getDoc, updateDoc } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, collection, onSnapshot, query, addDoc, serverTimestamp, deleteDoc, getDocs, where, getDoc, updateDoc, orderBy  } from 'firebase/firestore';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage'; // Thêm imports cho Firebase Storage
 // import imageCompression from 'browser-image-compression'; // <-- Đã xóa import này
 
@@ -126,6 +126,11 @@ function App() {
   const [newFormerResidentDormEntryDate, setNewFormerResidentDormEntryDate] = useState('');
   const [newFormerResidentAcademicLevel, setNewFormerResidentAcademicLevel] = useState('');
   const [newFormerResidentDeactivatedDate, setNewFormerResidentDeactivatedDate] = useState(''); // Ngày vô hiệu hóa thủ công
+
+  const [notifications, setNotifications] = useState([]);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  const [notificationError, setNotificationError] = useState(''); // Để hiển thị lỗi liên quan đến thông báo
 
   // State for sidebar navigation
   const [activeSection, setActiveSection] = useState('residentManagement');
@@ -744,6 +749,65 @@ const handleDeleteFormerResident = async (residentId) => { // <-- Tham số ch�
   }
 };
 
+const createNotification = async (recipientId, type, message, createdBy, relatedId = null) => {
+  if (!db) {
+    console.error("DB chưa sẵn sàng để tạo thông báo.");
+    return;
+  }
+  try {
+    const notificationsCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/notifications`);
+    await addDoc(notificationsCollectionRef, {
+      recipientId: recipientId, // UID của người nhận hoặc 'all'
+      type: type, // Loại thông báo
+      message: message,
+      isRead: false, // Mặc định là chưa đọc
+      createdAt: serverTimestamp(),
+      createdBy: createdBy, // UID của người tạo thông báo
+      relatedId: relatedId // ID của tài liệu liên quan
+    });
+    console.log(`Đã tạo thông báo loại '${type}' cho '${recipientId}'.`);
+  } catch (error) {
+    console.error("Lỗi khi tạo thông báo:", error);
+    setNotificationError(`Lỗi khi tạo thông báo: ${error.message}`);
+  }
+};
+
+// Mới: Hàm đánh dấu thông báo đã đọc
+const markNotificationAsRead = async (notificationId) => {
+  if (!db || !userId) {
+    console.error("DB hoặc User ID chưa sẵn sàng để đánh dấu thông báo đã đọc.");
+    return;
+  }
+  try {
+    const notificationDocRef = doc(db, `artifacts/${currentAppId}/public/data/notifications`, notificationId);
+    await updateDoc(notificationDocRef, { isRead: true });
+    console.log(`Đã đánh dấu thông báo ${notificationId} là đã đọc.`);
+  } catch (error) {
+    console.error("Lỗi khi đánh dấu thông báo đã đọc:", error);
+    setNotificationError(`Lỗi khi đánh dấu thông báo đã đọc: ${error.message}`);
+  }
+};
+
+// Mới: Hàm xóa thông báo (chỉ admin)
+const deleteNotification = async (notificationId) => {
+  if (!db || !userId || userRole !== 'admin') {
+    alert("Bạn không có quyền xóa thông báo.");
+    return;
+  }
+  if (!window.confirm("Bạn có chắc chắn muốn xóa thông báo này không?")) {
+    return;
+  }
+  try {
+    const notificationDocRef = doc(db, `artifacts/${currentAppId}/public/data/notifications`, notificationId);
+    await deleteDoc(notificationDocRef);
+    console.log(`Đã xóa thông báo ${notificationId}.`);
+    alert("Đã xóa thông báo thành công!");
+  } catch (error) {
+    console.error("Lỗi khi xóa thông báo:", error);
+    alert(`Lỗi khi xóa thông báo: ${error.message}`);
+  }
+};
+
 // ... (các hàm xử lý khác như handleAddResident, handleToggleResidentActiveStatus, v.v.) ...
 
 
@@ -1165,6 +1229,117 @@ const handleDeleteFormerResident = async (residentId) => { // <-- Tham số ch�
       };
   }, [db, isAuthReady, userId]);
 
+  // Mới: Lắng nghe thông báo
+  useEffect(() => {
+    if (!db || !isAuthReady || userId === null) {
+      console.log("Lắng nghe thông báo: Đang chờ DB, Auth hoặc User ID sẵn sàng.");
+      return;
+    }
+    console.log("Bắt đầu lắng nghe thông báo...");
+
+    const notificationsCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/notifications`);
+    // Lấy các thông báo dành cho người dùng hiện tại (userId) hoặc các thông báo chung ('all')
+    const q = query(
+      notificationsCollectionRef,
+      where("recipientId", "in", [userId, 'all']), // Lấy thông báo cho mình hoặc thông báo chung
+      orderBy("createdAt", "desc") // Sắp xếp thông báo mới nhất lên đầu
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetchedNotifications = [];
+      let unreadCount = 0;
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.createdAt && typeof data.createdAt.toDate === 'function') {
+          data.createdAt = data.createdAt.toDate();
+        }
+        fetchedNotifications.push({ id: docSnap.id, ...data });
+        if (!data.isRead) {
+          unreadCount++;
+        }
+      });
+      setNotifications(fetchedNotifications);
+      setUnreadNotificationsCount(unreadCount);
+      console.log("Đã cập nhật thông báo:", fetchedNotifications);
+    }, (error) => {
+      console.error("Lỗi khi tải thông báo:", error);
+      setNotificationError(`Lỗi khi tải thông báo: ${error.message}`);
+    });
+
+    return () => {
+      console.log("Hủy đăng ký lắng nghe thông báo.");
+      unsubscribe();
+    };
+  }, [db, isAuthReady, userId]);
+
+  // Thêm `notificationError` vào useEffect để reset lỗi khi chuyển section
+  useEffect(() => {
+    // ... (các reset trạng thái đã có) ...
+    setNotificationError(''); // Mới: reset lỗi thông báo
+  }, [activeSection]);
+
+  // Mới: useEffect để kiểm tra và tạo thông báo sinh nhật
+useEffect(() => {
+  if (!db || !isAuthReady || userId === null || !allUsersData.length || !residents.length) {
+    return; // Chờ tất cả dữ liệu sẵn sàng
+  }
+
+  const checkBirthdays = async () => {
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const twoWeeksFromNow = new Date();
+    twoWeeksFromNow.setDate(today.getDate() + 14); // Kiểm tra trong 2 tuần tới
+
+    // Lấy tất cả thông báo sinh nhật đã tồn tại trong năm nay để tránh trùng lặp
+    const notificationsCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/notifications`);
+    const qExistingBirthdays = query(
+      notificationsCollectionRef,
+      where("type", "==", "birthday"),
+      where("createdAt", ">=", new Date(currentYear, 0, 1)), // Từ đầu năm
+      where("createdAt", "<=", new Date(currentYear, 11, 31, 23, 59, 59)) // Đến cuối năm
+    );
+    const existingBirthdayNotificationsSnap = await getDocs(qExistingBirthdays);
+    const existingBirthdayNotifications = {}; // { residentId: true }
+    existingBirthdayNotificationsSnap.forEach(docSnap => {
+      const data = docSnap.data();
+      // Kiểm tra xem thông báo này có phải cho cùng một năm sinh nhật không
+      if (data.relatedId && data.message.includes(`sinh nhật ${currentYear}`)) { // Dựa vào message để kiểm tra năm
+          existingBirthdayNotifications[data.relatedId] = true;
+      }
+    });
+
+    residents.filter(res => res.isActive).forEach(resident => { // Chỉ cư dân đang hoạt động
+      const userLinked = allUsersData.find(u => u.linkedResidentId === resident.id);
+      if (userLinked && userLinked.birthday) {
+        const [birthYear, birthMonth, birthDay] = userLinked.birthday.split('-').map(Number);
+
+        // Tạo ngày sinh nhật trong năm hiện tại
+        const birthdayThisYear = new Date(currentYear, birthMonth - 1, birthDay);
+
+        // Kiểm tra nếu sinh nhật đã qua nhưng còn trong tuần đầu của năm tới, hoặc sắp tới trong 2 tuần
+        // Đơn giản hóa: chỉ kiểm tra nếu sắp tới trong 2 tuần hoặc là hôm nay
+        if (
+            birthdayThisYear >= today && birthdayThisYear <= twoWeeksFromNow &&
+            !existingBirthdayNotifications[resident.id] // Chưa có thông báo sinh nhật cho người này trong năm nay
+        ) {
+          const message = `Sắp đến sinh nhật của ${resident.name} vào ngày ${String(birthDay).padStart(2, '0')}/${String(birthMonth).padStart(2, '0')}/${currentYear}!`;
+          createNotification('all', 'birthday', message, userId, resident.id); // Thông báo chung cho tất cả mọi người
+          // Nếu bạn muốn thông báo cá nhân, thay 'all' bằng userLinked.id
+        }
+      }
+    });
+  };
+
+  // Chạy kiểm tra khi component load
+  checkBirthdays();
+
+  // Có thể chạy lại kiểm tra định kỳ (ví dụ, hàng ngày vào lúc nào đó)
+  // Đây là nơi bạn sẽ cần Cloud Functions để tự động kiểm tra mỗi ngày mà không cần người dùng mở app
+  // Đối với hiện tại, nó sẽ chạy mỗi khi dependencies thay đổi hoặc khi app load.
+  // Một cách đơn giản hơn là lưu lại ngày cuối cùng kiểm tra trong Firestore để tránh tạo lại thông báo liên tục.
+
+}, [db, isAuthReady, userId, allUsersData, residents]); // Thêm allUsersData và residents vào dependencies
+
   // Effect để reset lỗi và modals khi chuyển section
   useEffect(() => {
     setSelectedBillDetails(null);
@@ -1358,6 +1533,7 @@ const handleDeleteFormerResident = async (residentId) => { // <-- Tham số ch�
   };
 
   // Tính toán số ngày có mặt trong một khoảng thời gian và chi phí cá nhân
+  // Tính toán số ngày có mặt trong một khoảng thời gian và chi phí cá nhân
   const calculateAttendanceDays = async () => {
     setAuthError('');
     setBillingError('');
@@ -1388,6 +1564,9 @@ const handleDeleteFormerResident = async (residentId) => { // <-- Tham số ch�
     const daysPresentPerResident = {};
     let totalDaysAcrossAllResidentsLocal = 0;
     const individualCalculatedCostsLocal = {}; // Sẽ lưu { residentId: { cost: X, isPaid: false, daysPresent: Z } }
+
+    let calculatedCostPerDayLocal = 0; // <-- Khai báo biến này ở scope rộng hơn
+    let calculatedRemainingFund = 0; // <-- Khai báo biến này ở scope rộng hơn
 
     try {
       // Lấy các bản ghi điểm danh hàng ngày trong khoảng thời gian đã chọn
@@ -1420,15 +1599,14 @@ const handleDeleteFormerResident = async (residentId) => { // <-- Tham số ch�
       setTotalCalculatedDaysAllResidents(totalDaysAcrossAllResidentsLocal);
 
       let totalRoundedIndividualCosts = 0;
-      let costPerDayLocal = 0;
 
       // Tính toán chi phí cá nhân dựa trên totalCost và totalDaysAcrossAllResidents
       if (totalDaysAcrossAllResidentsLocal > 0 && totalCost > 0) {
-        costPerDayLocal = totalCost / totalDaysAcrossAllResidentsLocal;
-        setCostPerDayPerPerson(costPerDayLocal);
+        calculatedCostPerDayLocal = totalCost / totalDaysAcrossAllResidentsLocal; // Gán vào biến đã khai báo
+        setCostPerDayPerPerson(calculatedCostPerDayLocal);
         residents.forEach(resident => {
           const days = daysPresentPerResident[resident.id] || 0; // Lấy số ngày có mặt
-          const rawCost = days * costPerDayLocal;
+          const rawCost = days * calculatedCostPerDayLocal;
           const roundedCost = Math.round(rawCost / 1000) * 1000;
 
           // Lưu chi phí, trạng thái đã thanh toán và SỐ NGÀY CÓ MẶT
@@ -1448,25 +1626,37 @@ const handleDeleteFormerResident = async (residentId) => { // <-- Tham số ch�
       setIndividualCosts(individualCalculatedCostsLocal);
 
       // Tính quỹ còn lại - sử dụng totalCost và totalRoundedIndividualCosts cục bộ
-      const fundLocal = totalCost - totalRoundedIndividualCosts;
-      setRemainingFund(fundLocal);
+      calculatedRemainingFund = totalCost - totalRoundedIndividualCosts; // Gán vào biến đã khai báo
+      setRemainingFund(calculatedRemainingFund);
 
       // Lưu tóm tắt chia sẻ chi phí vào lịch sử bằng cách sử dụng các biến cục bộ
       const costSharingHistoryCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/costSharingHistory`);
-      await addDoc(costSharingHistoryCollectionRef, {
+      const newCostSharingDocRef = await addDoc(costSharingHistoryCollectionRef, { // Lấy ref của tài liệu mới
         periodStart: startDate,
         periodEnd: endDate,
         totalCalculatedDaysAllResidents: totalDaysAcrossAllResidentsLocal,
-        costPerDayPerPerson: costPerDayLocal,
+        costPerDayPerPerson: calculatedCostPerDayLocal, // Sử dụng biến đã khai báo
         individualCosts: individualCalculatedCostsLocal, // Lưu dưới dạng map các đối tượng {cost, isPaid, daysPresent}
-        remainingFund: fundLocal,
+        remainingFund: calculatedRemainingFund, // Sử dụng biến đã khai báo
         calculatedBy: userId,
         calculatedDate: serverTimestamp(),
         relatedTotalBill: totalCost
       });
 
-
       console.log("Đã tính toán số ngày có mặt và chi phí trung bình.");
+
+      // Mới: TẠO THÔNG BÁO TIỀN ĐIỆN NƯỚC CHO TỪNG THÀNH VIÊN (Đoạn này đã đúng)
+      for (const resident of residents.filter(res => res.isActive)) { // Chỉ thông báo cho cư dân đang hoạt động
+        const userLinkedToResident = allUsersData.find(user => user.linkedResidentId === resident.id);
+        if (userLinkedToResident) { // Nếu có tài khoản người dùng liên kết
+            const cost = individualCalculatedCostsLocal[resident.id]?.cost || 0;
+            const message = `Bạn có hóa đơn tiền điện nước cần đóng ${cost.toLocaleString('vi-VN')} VND cho kỳ từ ${startDate} đến ${endDate}.`;
+            await createNotification(userLinkedToResident.id, 'payment', message, userId, newCostSharingDocRef.id);
+        }
+      }
+      // Tạo thông báo chung cho admin
+      await createNotification('all', 'payment', `Hóa đơn điện nước mới cho kỳ ${startDate} đến ${endDate} đã được tính.`, userId, newCostSharingDocRef.id);
+
     } catch (error) {
       console.error("Lỗi khi tính toán ngày có mặt và chi phí:", error);
       setBillingError(`Lỗi khi tính toán: ${error.message}`);
@@ -1872,6 +2062,30 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
           createdAt: serverTimestamp()
         });
       }
+      for (const task of generatedCleaningTasks) {
+        const assignedResident = residents.find(res => res.name === task.assignedToResidentName);
+        const residentId = assignedResident ? assignedResident.id : 'unknown';
+
+        const newCleaningTaskDocRef = await addDoc(cleaningTasksCollectionRef, { // Lấy ref của task mới
+          name: task.taskName,
+          date: task.date,
+          assignedToResidentId: residentId,
+          assignedToResidentName: task.assignedToResidentName,
+          isCompleted: false,
+          assignedBy: userId,
+          createdAt: serverTimestamp()
+        });
+
+        // Mới: TẠO THÔNG BÁO LỊCH TRỰC CHO NGƯỜI ĐƯỢC PHÂN CÔNG
+        const userLinkedToResident = allUsersData.find(user => user.linkedResidentId === residentId);
+        if (userLinkedToResident) {
+            const message = `Bạn có công việc trực phòng "${task.taskName}" vào ngày ${task.date}.`;
+            await createNotification(userLinkedToResident.id, 'cleaning', message, userId, newCleaningTaskDocRef.id);
+        }
+      }
+      // Tạo thông báo chung cho admin
+      await createNotification('all', 'cleaning', `Lịch trực phòng mới đã được tạo và phân công.`, userId);
+
       setGeneratedCleaningTasks([]); // Xóa các tác vụ đã tạo sau khi lưu
       setShowGenerateScheduleModal(false); // Đóng modal
       console.log("Đã lưu lịch trực tự động thành công!");
@@ -3364,6 +3578,20 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
       <header className="bg-white dark:bg-gray-800 shadow-md p-4 flex justify-between items-center sticky top-0 z-30">
         <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Quản lý phòng</h1>
         <div className="flex items-center space-x-4">
+          {/* Biểu tượng thông báo */}
+          {userId && ( // Chỉ hiển thị nếu đã đăng nhập
+            <button
+              onClick={() => setShowNotificationsModal(true)}
+              className="relative p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 shadow-md hover:shadow-lg transition-all duration-300"
+            >
+              <i className="fas fa-bell text-lg"></i>
+              {unreadNotificationsCount > 0 && (
+                <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">
+                  {unreadNotificationsCount}
+                </span>
+              )}
+            </button>
+          )}
           {/* Theme Toggle Button */}
           <button
             onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
@@ -3859,6 +4087,55 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
         </div>
       )}
 
+      // Mới: Modal hiển thị thông báo
+      {showNotificationsModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto">
+            <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">Thông báo</h3>
+            {notificationError && <p className="text-red-500 text-sm text-center mb-4">{notificationError}</p>}
+            {notifications.length === 0 ? (
+              <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa có thông báo nào.</p>
+            ) : (
+              <ul className="space-y-4">
+                {notifications.map(notification => (
+                  <li
+                    key={notification.id}
+                    className={`p-4 rounded-xl shadow-sm border ${notification.isRead ? 'bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600' : 'bg-blue-50 dark:bg-blue-900 border-blue-200 dark:border-blue-700'} flex justify-between items-start cursor-pointer transition-all duration-200`}
+                    onClick={() => !notification.isRead && markNotificationAsRead(notification.id)} // Đánh dấu đã đọc khi nhấp vào
+                  >
+                    <div className="flex-1">
+                      <p className={`font-semibold ${notification.isRead ? 'text-gray-800 dark:text-gray-300' : 'text-blue-800 dark:text-blue-200'}`}>
+                        {notification.message}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        <i className="fas fa-clock mr-1"></i>
+                        {notification.createdAt instanceof Date ? notification.createdAt.toLocaleString('vi-VN') : 'Đang tải...'}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Loại: {notification.type}
+                      </p>
+                    </div>
+                    {userRole === 'admin' && ( // Chỉ admin mới có nút xóa
+                      <button
+                        onClick={(e) => { e.stopPropagation(); deleteNotification(notification.id); }} // Ngăn chặn sự kiện nổi bọt
+                        className="ml-4 p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-800 rounded-full transition-colors"
+                      >
+                        <i className="fas fa-times"></i>
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <button
+              onClick={() => setShowNotificationsModal(false)}
+              className="mt-6 w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+            >
+              Đóng
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Forgot Password Modal */}
       {showForgotPasswordModal && (
