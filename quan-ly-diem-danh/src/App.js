@@ -2813,6 +2813,521 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 </div>
               )}
             </div>
+          );
+           // Logic cho Thành viên
+    if (userRole === 'member') {
+      switch (activeSection) {
+        case 'attendanceTracking': // Điểm danh của tôi
+          return (
+            <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">Điểm danh của tôi</h2>
+              {/* Giữ nguyên phần chọn tháng */}
+              <div className="mb-6 flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4">
+                <label htmlFor="monthSelector" className="font-semibold text-gray-700 dark:text-gray-300 text-lg">Chọn tháng:</label>
+                <input
+                  type="month"
+                  id="monthSelector"
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700"
+                />
+              </div>
+
+              {/* Dùng lại phần hiển thị bảng điểm danh, nó đã được lọc qua `displayedResidents` */}
+              {displayedResidents.length === 0 ? (
+                userRole === 'member' && !loggedInResidentProfile ? (
+                  <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.</p>
+                ) : (
+                  <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Vui lòng thêm người trong phòng vào danh sách để bắt đầu điểm danh.</p>
+                )
+              ) : (
+                <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                  <table className="min-w-full bg-white dark:bg-gray-800">
+                    <thead><tr>
+                      <th className="py-3 px-6 text-left sticky left-0 bg-green-100 dark:bg-gray-700 z-20 border-r border-green-200 dark:border-gray-600 rounded-tl-xl text-green-800 dark:text-green-200 uppercase text-sm leading-normal">Tên</th>
+                      {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map(day => (
+                        <th key={day} className="py-3 px-2 text-center border-l border-green-200 dark:border-gray-600 text-green-800 dark:text-green-200 uppercase text-sm leading-normal">
+                          {day}
+                        </th>
+                      ))}
+                    </tr></thead>
+                    <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
+                      {displayedResidents.map(resident => (
+                        <tr key={resident.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                          <td className="py-3 px-6 text-left whitespace-nowrap font-medium sticky left-0 bg-white dark:bg-gray-800 z-10 border-r border-gray-200 dark:border-gray-700">
+                            {resident.name}
+                          </td>
+                          {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map(day => {
+                            const dayString = String(day).padStart(2, '0');
+                            const isPresent = monthlyAttendanceData[resident.id]?.[dayString] === 1;
+                            return (
+                              <td key={day} className="py-3 px-2 text-center border-l border-gray-200 dark:border-gray-700">
+                                <input
+                                  type="checkbox"
+                                  checked={isPresent}
+                                  onChange={() => handleToggleDailyPresence(resident.id, day)}
+                                  className="form-checkbox h-5 w-5 text-green-600 dark:text-green-400 rounded focus:ring-green-500 cursor-pointer"
+                                />
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          );
+        case 'memberCostSummary': // Chi phí của tôi
+          // Hiển thị tóm tắt chi phí mới nhất và nút đánh dấu đã đóng
+          const latestCostSharingRecord = costSharingHistory[0];
+          return (
+            <div className="p-6 bg-orange-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-orange-800 dark:text-orange-200 mb-5">Chi phí của tôi</h2>
+              {!loggedInResidentProfile ? (
+                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.</p>
+              ) : !latestCostSharingRecord || !latestCostSharingRecord.individualCosts || !latestCostSharingRecord.individualCosts[loggedInResidentProfile.id] ? (
+                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có thông tin chi phí nào cho bạn.</p>
+              ) : (
+                <div className="bg-orange-100 dark:bg-gray-700 p-4 rounded-xl shadow-inner text-lg font-semibold text-orange-900 dark:text-orange-100 border border-orange-200 dark:border-gray-600">
+                  <p className="mb-2"><strong>Kỳ tính:</strong> {latestCostSharingRecord.periodStart} đến {latestCostSharingRecord.periodEnd}</p>
+                  <p className="mb-2"><strong>Số ngày có mặt:</strong> {latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.daysPresent || 0} ngày</p>
+                  <p className="mb-2 text-xl font-bold border-t pt-3 mt-3 border-orange-300 dark:border-gray-600">
+                    Số tiền cần đóng: <span className="text-orange-800 dark:text-orange-200">
+                      {(latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.cost || 0).toLocaleString('vi-VN')} VND
+                    </span>
+                  </p>
+                  <p className="text-lg font-bold">
+                    Trạng thái: <span className={latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.isPaid ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}>
+                      {latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.isPaid ? 'Đã đóng' : 'Chưa đóng'}
+                    </span>
+                  </p>
+                  {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
+                  {!latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.isPaid && (
+                    <button
+                      onClick={handleMarkMyPaymentAsPaid}
+                      className="w-full mt-4 px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all duration-300"
+                    >
+                      <i className="fas fa-check-circle mr-2"></i> Đánh dấu đã đóng
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        case 'memberCleaningSchedule': // Lịch trực của tôi
+          // Hiển thị lịch trực nhưng chỉ những nhiệm vụ được giao cho thành viên đó
+          const myCleaningTasks = cleaningSchedule.filter(task =>
+            loggedInResidentProfile && task.assignedToResidentId === loggedInResidentProfile.id
+          );
+          return (
+            <div className="p-6 bg-purple-50 dark:bg-gray-700 rounded-2xl shadow-lg mt-8 max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-purple-800 dark:text-purple-200 mb-5">Lịch trực của tôi</h2>
+              {!loggedInResidentProfile ? (
+                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.</p>
+              ) : myCleaningTasks.length === 0 ? (
+                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa có công việc lau dọn nào được giao.</p>
+              ) : (
+                <div className="max-h-60 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-xl p-3 bg-gray-50 dark:bg-gray-700">
+                  <ul className="space-y-2">
+                    {myCleaningTasks.map((task) => (
+                      <li key={task.id} className="flex items-center justify-between bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                        <div className="flex flex-col items-start">
+                          <span className="font-medium text-gray-700 dark:text-gray-300">{task.name}</span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Ngày: {task.date}
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <span className={`ml-2 text-sm font-semibold ${task.isCompleted ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
+                            {task.isCompleted ? 'Đã hoàn thành' : 'Chưa hoàn thành'}
+                          </span>
+                          {/* Thành viên chỉ xem, không được chỉnh sửa trạng thái trực tiếp */}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          );
+        case 'shoeRackManagement': // Thông tin kệ giày (chỉ hiển thị kệ của mình nếu có)
+          return (
+            <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">Thông tin kệ giày</h2>
+              {!loggedInResidentProfile ? (
+                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.</p>
+              ) : (
+                <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-inner border border-gray-200 dark:border-gray-700">
+                  <h3 className="text-xl font-semibold text-yellow-700 dark:text-yellow-200 mb-3">Phân công kệ giày của bạn:</h3>
+                  <ul className="space-y-3">
+                    {[...Array(8)].map((_, i) => {
+                      const shelfNum = i + 1;
+                      const assignment = shoeRackAssignments[shelfNum];
+                      const isMyShelf = loggedInResidentProfile && assignment && assignment.residentId === loggedInResidentProfile.id;
+                      return (
+                        <li key={shelfNum} className={`flex items-center justify-between p-3 rounded-lg shadow-sm border ${isMyShelf ? 'bg-yellow-200 dark:bg-yellow-900 border-yellow-400' : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600'}`}>
+                          <span className={`font-medium ${isMyShelf ? 'text-yellow-900 dark:text-yellow-100' : 'text-gray-700 dark:text-gray-300'}`}>Tầng {shelfNum}:</span>
+                          {isMyShelf ? (
+                            <span className={`font-bold ${isMyShelf ? 'text-yellow-800 dark:text-yellow-200' : 'text-yellow-700 dark:text-yellow-300'}`}>
+                              {assignment.residentName} (Kệ của bạn)
+                            </span>
+                          ) : (
+                            <span className="text-gray-500 dark:text-gray-400 italic">Trống / Người khác</span>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+            </div>
+          );
+        case 'commonRoomInfo': // Thông tin phòng chung (thành viên có thể xem)
+          return (
+            <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Thông tin phòng chung</h2>
+              {residents.length === 0 ? (
+                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có người ở nào trong danh sách.</p>
+              ) : (
+                <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                  <table className="min-w-full bg-white dark:bg-gray-800">
+                    <thead>
+                      <tr>
+                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Họ tên</th>
+                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Email</th>
+                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">SĐT</th>
+                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">MSSV</th>
+                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Ngày sinh</th>
+                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Ngày nhập KTX</th>
+                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Email trường</th>
+                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Trạng thái</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
+                      {residents.map(resident => {
+                        const linkedUser = allUsersData.find(user => user.linkedResidentId === resident.id);
+                        return (
+                          <tr key={resident.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.fullName || resident.name}</td>
+                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.email || 'N/A'}</td>
+                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.phoneNumber || 'N/A'}</td>
+                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.studentId || 'N/A'}</td>
+                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.birthday || 'N/A'}</td>
+                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.dormEntryDate || 'N/A'}</td>
+                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.academicLevel || 'N/A'}</td>
+                            <td className="py-3 px-4 whitespace-nowrap">
+                              <span className={`font-semibold ${resident.isActive ? 'text-green-600' : 'text-red-500'}`}>
+                                {resident.isActive ? 'Hoạt động' : 'Vô hiệu hóa'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          );
+        case 'memberProfileEdit': // Chỉnh sửa thông tin cá nhân (thành viên có thể tự chỉnh sửa)
+          return (
+            <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Chỉnh sửa thông tin cá nhân</h2>
+              {!loggedInResidentProfile ? (
+                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.</p>
+              ) : (
+                <div className="space-y-4">
+                  {/* CÁC TRƯỜNG DỮ LIỆU CÁ NHÂN ĐỂ CHỈNH SỬA */}
+                  <div>
+                    <label htmlFor="editFullName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Họ tên đầy đủ:</label>
+                    <input
+                      type="text"
+                      id="editFullName"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="editPhoneNumber" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Số điện thoại:</label>
+                    <input
+                      type="text"
+                      id="editPhoneNumber"
+                      value={memberPhoneNumber}
+                      onChange={(e) => setMemberPhoneNumber(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="editStudentId" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Mã số sinh viên:</label>
+                    <input
+                      type="text"
+                      id="editStudentId"
+                      value={memberStudentId}
+                      onChange={(e) => setMemberStudentId(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="editBirthday" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày sinh:</label>
+                    <input
+                      type="date"
+                      id="editBirthday"
+                      value={memberBirthday}
+                      onChange={(e) => setMemberBirthday(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="editDormEntryDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày nhập KTX:</label>
+                    <input
+                      type="date"
+                      id="editDormEntryDate"
+                      value={memberDormEntryDate}
+                      onChange={(e) => setMemberDormEntryDate(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="editAcademicLevel" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email trường:</label>
+                    <input
+                      type="text"
+                      id="editAcademicLevel"
+                      value={memberAcademicLevel}
+                      onChange={(e) => setMemberAcademicLevel(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+
+                  {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
+
+                  <button
+                    onClick={handleSaveUserProfile} // <-- Đã đổi tên hàm
+                    className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+                  >
+                    <i className="fas fa-save mr-2"></i> Lưu thông tin
+                  </button>
+                  <button
+                    onClick={() => setEditProfileMode(false)}
+                    className="w-full mt-2 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
+                  >
+                    Hủy
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+          case 'roomMemories':    // <--- Đảm bảo case này nằm TRƯỚC default
+          return (
+            <div className="p-6 bg-indigo-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-indigo-800 dark:text-indigo-200 mb-5">Kỷ niệm phòng</h2>
+
+              {/* Phần đăng ảnh kỷ niệm */}
+              <form onSubmit={handleAddMemory} className="mb-8 p-4 bg-indigo-100 dark:bg-gray-800 rounded-xl shadow-inner border border-indigo-200 dark:border-gray-600">
+                <h3 className="text-xl font-bold text-indigo-700 dark:text-indigo-200 mb-4">Đăng ảnh kỷ niệm mới</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="eventName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Sự kiện:</label>
+                    <input
+                      type="text"
+                      id="eventName"
+                      value={newMemoryEventName}
+                      onChange={(e) => setNewMemoryEventName(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700"
+                      placeholder="Ví dụ: Sinh nhật tháng 10"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="photoDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày chụp:</label>
+                    <input
+                      type="date"
+                      id="photoDate"
+                      value={newMemoryPhotoDate}
+                      onChange={(e) => setNewMemoryPhotoDate(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="imageFile" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Chọn ảnh:</label>
+                    <input
+                      type="file"
+                      id="imageFile"
+                      accept="image/*"
+                      onChange={(e) => setNewMemoryImageFile(e.target.files[0])}
+                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                    />
+                  </div>
+                  {isUploadingMemory && (
+                    <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                      <div className="bg-indigo-600 h-2.5 rounded-full" style={{ width: `${uploadProgress}%` }}></div>
+                    </div>
+                  )}
+                  {memoryError && <p className="text-red-500 text-sm text-center mt-4">{memoryError}</p>}
+                  <button
+                    type="submit"
+                    className="w-full px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl shadow-md hover:bg-indigo-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-75"
+                    disabled={isUploadingMemory}
+                  >
+                    {isUploadingMemory ? <i className="fas fa-spinner fa-spin mr-2"></i> : <i className="fas fa-upload mr-2"></i>}
+                    Đăng kỷ niệm
+                  </button>
+                </div>
+              </form>
+
+              {/* Danh sách các kỷ niệm đã đăng */}
+              <h3 className="text-xl font-bold text-indigo-700 dark:text-indigo-200 mb-4">Các kỷ niệm đã đăng</h3>
+              {memories.length === 0 ? (
+                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có kỷ niệm nào được đăng.</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {memories.map(memory => (
+                    <div key={memory.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                      <img src={memory.imageUrl} alt={memory.eventName} className="w-full h-48 object-cover" />
+                      <div className="p-4">
+                        <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">{memory.eventName}</h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          <i className="fas fa-calendar-alt mr-2"></i>Ngày chụp: {memory.photoDate}
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          <i className="fas fa-upload mr-2"></i>Đăng bởi: {memory.uploadedByName || 'Ẩn danh'} vào {memory.uploadedAt?.toLocaleDateString('vi-VN')}
+                        </p>
+                        {userRole === 'admin' && ( // Chỉ admin mới có nút xóa
+                          <button
+                            onClick={() => handleDeleteMemory(memory.id, memory.imageUrl)}
+                            className="mt-4 px-4 py-2 bg-red-500 text-white rounded-lg shadow hover:bg-red-600 transition-colors duration-200"
+                          >
+                            <i className="fas fa-trash mr-2"></i>Xóa
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        case 'formerResidents': // <--- Đảm bảo case này nằm TRƯỚC default
+          return (
+            <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">Thông tin tiền bối</h2>
+
+              {/* Form thêm tiền bối thủ công (Chỉ cho Admin) */}
+              {userRole === 'admin' && (
+                <form onSubmit={handleAddFormerResidentManually} className="mb-8 p-4 bg-green-100 dark:bg-gray-800 rounded-xl shadow-inner border border-green-200 dark:border-gray-600">
+                  <h3 className="text-xl font-bold text-green-700 dark:text-green-200 mb-4">Thêm tiền bối thủ công</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label htmlFor="formerName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Họ tên:</label>
+                      <input type="text" id="formerName" value={newFormerResidentName} onChange={(e) => setNewFormerResidentName(e.target.value)}
+                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500" placeholder="Nguyễn Văn A" />
+                    </div>
+                    <div>
+                      <label htmlFor="formerEmail" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email:</label>
+                      <input type="email" id="formerEmail" value={newFormerResidentEmail} onChange={(e) => setNewFormerResidentEmail(e.target.value)}
+                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500" placeholder="nguyenvana@example.com" />
+                    </div>
+                    <div>
+                      <label htmlFor="formerPhone" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">SĐT:</label>
+                      <input type="text" id="formerPhone" value={newFormerResidentPhone} onChange={(e) => setNewFormerResidentPhone(e.target.value)}
+                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500" placeholder="0123456789" />
+                    </div>
+                    <div>
+                      <label htmlFor="formerStudentId" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">MSSV:</label>
+                      <input type="text" id="formerStudentId" value={newFormerResidentStudentId} onChange={(e) => setNewFormerResidentStudentId(e.target.value)}
+                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500" placeholder="B1234567" />
+                    </div>
+                    <div>
+                      <label htmlFor="formerBirthday" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày sinh:</label>
+                      <input type="date" id="formerBirthday" value={newFormerResidentBirthday} onChange={(e) => setNewFormerResidentBirthday(e.target.value)}
+                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500" />
+                    </div>
+                    <div>
+                      <label htmlFor="formerDormEntryDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày nhập KTX:</label>
+                      <input type="date" id="formerDormEntryDate" value={newFormerResidentDormEntryDate} onChange={(e) => setNewFormerResidentDormEntryDate(e.target.value)}
+                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500" />
+                    </div>
+                    <div>
+                      <label htmlFor="formerAcademicLevel" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Cấp:</label>
+                      <input type="text" id="formerAcademicLevel" value={newFormerResidentAcademicLevel} onChange={(e) => setNewFormerResidentAcademicLevel(e.target.value)}
+                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500" placeholder="Đại học" />
+                    </div>
+                    <div>
+                      <label htmlFor="formerDeactivatedDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày ra khỏi phòng (Ngày vô hiệu hóa):</label>
+                      <input type="date" id="formerDeactivatedDate" value={newFormerResidentDeactivatedDate} onChange={(e) => setNewFormerResidentDeactivatedDate(e.target.value)}
+                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500" />
+                    </div>
+                  </div>
+                  {/* Toàn bộ div cho input file, progress bar và formerResidentError ĐÃ XÓA */}
+                  <button
+                    type="submit"
+                    className="w-full px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75"
+                    // Thuộc tính disabled={isUploadingFormerResident} đã bị xóa
+                  >
+                    <i className="fas fa-plus-circle mr-2"></i>
+                    Thêm tiền bối
+                  </button>
+                </form>
+              )}
+
+              {/* Nút "Chuyển người dùng sang tiền bối" (Nếu bạn vẫn muốn dùng chức năng này cho admin, nó thường được đặt ở Quản lý người ở) */}
+              {userRole === 'admin' && (
+                <button
+                  onClick={() => { alert('Nút này dùng để chuyển người ở hiện tại sang tiền bối từ mục "Quản lý người ở".'); }}
+                  className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 mb-6"
+                >
+                  <i className="fas fa-exchange-alt mr-2"></i> Chuyển người dùng hiện tại sang tiền bối
+                </button>
+              )}
+
+
+              {/* Danh sách các tiền bối đã lưu */}
+              <h3 className="text-xl font-bold text-green-700 dark:text-green-200 mb-4">Danh sách tiền bối</h3>
+              {formerResidents.length === 0 ? (
+                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có thông tin tiền bối nào được lưu.</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {formerResidents.map(resident => (
+                    <div key={resident.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                      {/* Toàn bộ phần hiển thị ảnh (resident.photoURL) ĐÃ XÓA */}
+                      <div className="p-4">
+                        <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">{resident.name}</h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                            <i className="fas fa-envelope mr-2"></i>Email: {resident.email || 'N/A'}
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                            <i className="fas fa-phone mr-2"></i>SĐT: {resident.phoneNumber || 'N/A'}
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                            <i className="fas fa-id-badge mr-2"></i>MSSV: {resident.studentId || 'N/A'}
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                            <i className="fas fa-birthday-cake mr-2"></i>Ngày sinh: {resident.birthday || 'N/A'}
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                            <i className="fas fa-calendar-alt mr-2"></i>Ngày nhập KTX: {resident.dormEntryDate || 'N/A'}
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                            <i className="fas fa-graduation-cap mr-2"></i>Cấp: {resident.academicLevel || 'N/A'}
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                            <i className="fas fa-door-open mr-2"></i>Ngày ra khỏi phòng: {resident.deactivatedAt && typeof resident.deactivatedAt.toLocaleDateString === 'function' ? resident.deactivatedAt.toLocaleDateString('vi-VN') : (resident.deactivatedAt || 'N/A')}
+                        </p>
+                        {userRole === 'admin' && (
+                          <button
+                            onClick={() => handleDeleteFormerResident(resident.id)} // <-- Đã sửa: chỉ truyền resident.id
+                            className="mt-4 px-4 py-2 bg-red-500 text-white rounded-lg shadow hover:bg-red-600 transition-colors duration-200"
+                          >
+                            <i className="fas fa-trash mr-2"></i>Xóa
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           );        
           default:
           return (
@@ -2822,6 +3337,8 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               </p>
             </div>
           );
+      }
+    }      
       }
     }
 
