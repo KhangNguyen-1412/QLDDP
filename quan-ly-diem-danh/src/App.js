@@ -496,7 +496,8 @@ function App() {
       const options = {
         maxSizeMB: 1, // Kích thước tối đa của ảnh sau khi nén (ví dụ: 1 MB)
         maxWidthOrHeight: 1920, // Chiều rộng hoặc chiều cao tối đa (ví dụ: 1920px)
-        use};
+        useWebWorker: true
+      };
       let compressedFile = newMemoryImageFile; // Mặc định là file gốc
       try {
         compressedFile = await imageCompression(newMemoryImageFile, options);
