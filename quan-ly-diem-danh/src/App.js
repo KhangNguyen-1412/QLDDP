@@ -395,46 +395,60 @@ function App() {
   };
 
   // New: Handle saving member profile
-  const handleSaveMemberProfile = async () => {
-    setAuthError('');
-    if (!db || !userId || !loggedInResidentProfile) {
-      setAuthError("Hệ thống chưa sẵn sàng hoặc bạn không có quyền.");
-      return;
+// Đổi tên thành handleSaveUserProfile vì nó sẽ dùng cho cả admin và member
+const handleSaveUserProfile = async () => {
+  setAuthError('');
+  // Kiểm tra cơ bản
+  if (!db || !userId) {
+    setAuthError("Hệ thống chưa sẵn sàng hoặc bạn không có quyền.");
+    return;
+  }
+
+  const userDocRef = doc(db, `artifacts/${currentAppId}/public/data/users`, userId);
+  let residentDocRef = null;
+
+  // Nếu có hồ sơ cư dân liên kết (áp dụng cho cả member và admin có liên kết)
+  if (loggedInResidentProfile) {
+    residentDocRef = doc(db, `artifacts/${currentAppId}/public/data/residents`, loggedInResidentProfile.id);
+  }
+
+  try {
+    // 1. Cập nhật thông tin cá nhân của người dùng trong tài liệu user
+    const userDataToUpdate = {
+      fullName: fullName.trim(),
+      phoneNumber: memberPhoneNumber.trim(),
+      academicLevel: memberAcademicLevel.trim(),
+      dormEntryDate: memberDormEntryDate.trim(),
+      birthday: memberBirthday.trim(),
+      studentId: memberStudentId.trim()
+    };
+    await updateDoc(userDocRef, userDataToUpdate);
+    console.log("Đã cập nhật tài liệu người dùng thành công!");
+
+    // 2. Cập nhật tên trong tài liệu resident nếu là Admin VÀ có linkedResidentProfile
+    // Chỉ admin mới có quyền ghi vào residents, và chỉ khi có hồ sơ cư dân liên kết
+    if (userRole === 'admin' && residentDocRef && loggedInResidentProfile.name !== fullName.trim()) {
+       await updateDoc(residentDocRef, { name: fullName.trim() });
+       console.log("Đã cập nhật tên cư dân liên kết thành công!");
     }
 
-    const userDocRef = doc(db, `artifacts/${currentAppId}/public/data/users`, userId);
-    const residentDocRef = doc(db, `artifacts/${currentAppId}/public/data/residents`, loggedInResidentProfile.id);
+    setAuthError("Thông tin cá nhân đã được cập nhật thành công!");
+    setEditProfileMode(false); // Thoát chế độ chỉnh sửa (nếu đang ở chế độ thành viên)
 
-    try {
-      // Update user's personal details in their user document
-      await updateDoc(userDocRef, {
-        fullName: fullName.trim(),
-        phoneNumber: memberPhoneNumber.trim(),
-        academicLevel: memberAcademicLevel.trim(),
-        dormEntryDate: memberDormEntryDate.trim(),
-        birthday: memberBirthday.trim(),
-        studentId: memberStudentId.trim()
-      });
-
-      // Optionally, update the resident's name if it was changed in the profile
-      // This requires admin privileges for the 'residents' collection
-      // For simplicity, we'll only update if the name in residents is different
-      // and the user has admin role OR if it's the linked resident.
-      // However, Firestore rules already restrict this to admin, so this will only work for admin.
-      // If a member changes their name, it only changes in their user document, not the resident document.
-      if (userRole === 'admin' && loggedInResidentProfile.name !== fullName.trim()) {
-         await updateDoc(residentDocRef, { name: fullName.trim() });
-      }
-
-
-      setAuthError("Thông tin cá nhân đã được cập nhật thành công!");
-      setEditProfileMode(false); // Exit edit mode
-    } catch (error) {
-      console.error("Lỗi khi cập nhật thông tin cá nhân:", error);
-      setAuthError(`Lỗi khi cập nhật thông tin cá nhân: ${error.message}`);
+    // Cập nhật trạng thái loggedInResidentProfile cục bộ nếu tên cư dân đã thay đổi
+    // Điều này quan trọng để UI phản ánh ngay lập tức thay đổi tên
+    if (loggedInResidentProfile && loggedInResidentProfile.name !== fullName.trim()) {
+        setLoggedInResidentProfile(prevProfile => ({
+            ...prevProfile,
+            name: fullName.trim()
+        }));
     }
-  };
-  // --- Kết thúc các hàm xác thực ---
+
+  } catch (error) {
+    console.error("Lỗi khi cập nhật thông tin cá nhân:", error);
+    setAuthError(`Lỗi khi cập nhật thông tin cá nhân: ${error.message}`);
+  }
+};  // --- Kết thúc các hàm xác thực ---
 
 
   // Lắng nghe cập nhật danh sách tất cả cư dân (admin sẽ thấy tất cả, thành viên sẽ không dùng trực tiếp)
@@ -2300,6 +2314,86 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
             )}
           </div>
         );
+
+        case 'adminProfileEdit': // Mới: Chỉnh sửa thông tin cá nhân cho Admin
+          return (
+            <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Chỉnh sửa hồ sơ của tôi</h2>
+              {/* Form chỉnh sửa profile tương tự như member */}
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="adminEditFullName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Họ tên đầy đủ:</label>
+                  <input
+                    type="text"
+                    id="adminEditFullName"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="adminEditPhoneNumber" className="block text-700 dark:text-gray-300 text-sm font-bold mb-2">Số điện thoại:</label>
+                  <input
+                    type="text"
+                    id="adminEditPhoneNumber"
+                    value={memberPhoneNumber} // Vẫn dùng state này
+                    onChange={(e) => setMemberPhoneNumber(e.target.value)}
+                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="adminEditStudentId" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Mã số sinh viên:</label>
+                  <input
+                    type="text"
+                    id="adminEditStudentId"
+                    value={memberStudentId} // Vẫn dùng state này
+                    onChange={(e) => setMemberStudentId(e.target.value)}
+                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="adminEditBirthday" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày sinh:</label>
+                  <input
+                    type="date"
+                    id="adminEditBirthday"
+                    value={memberBirthday} // Vẫn dùng state này
+                    onChange={(e) => setMemberBirthday(e.target.value)}
+                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="adminEditDormEntryDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày nhập KTX:</label>
+                  <input
+                    type="date"
+                    id="adminEditDormEntryDate"
+                    value={memberDormEntryDate} // Vẫn dùng state này
+                    onChange={(e) => setMemberDormEntryDate(e.target.value)}
+                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="adminEditAcademicLevel" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email trường:</label>
+                  <input
+                    type="text"
+                    id="adminEditAcademicLevel"
+                    value={memberAcademicLevel} // Vẫn dùng state này
+                    onChange={(e) => setMemberAcademicLevel(e.target.value)}
+                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                  />
+                </div>
+
+                {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
+
+                <button
+                  onClick={handleSaveUserProfile} // Gọi hàm đã được đổi tên
+                  className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+                >
+                  <i className="fas fa-save mr-2"></i> Lưu thông tin
+                </button>
+                {/* Có thể thêm nút "Hủy" nếu muốn, nhưng admin sẽ không có chế độ "editProfileMode" như member */}
+              </div>
+            </div>
+          );
       }
     }
     // Logic cho Thành viên
@@ -2759,6 +2853,15 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                   onClick={() => { setActiveSection('consumptionStats'); setIsSidebarOpen(false); }}
                 >
                   <i className="fas fa-chart-bar mr-3"></i> Thống kê tiêu thụ
+                </button>
+                <button
+                  className={`w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${activeSection === 'adminProfileEdit' // Tên mới cho phần chỉnh sửa profile admin
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  onClick={() => { setActiveSection('adminProfileEdit'); setIsSidebarOpen(false); }}
+                >
+                  <i className="fas fa-user-cog mr-3"></i> Chỉnh sửa hồ sơ của tôi
                 </button>
                 <div className="border-t border-gray-200 dark:border-gray-600 pt-2 mt-2">
                   <button
