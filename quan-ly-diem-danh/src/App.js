@@ -2185,7 +2185,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
               )}
             </div>
           );
-        case 'memberProfileEdit': // New section for member profile editing
+          case 'memberProfileEdit': // Chỉnh sửa thông tin cá nhân (thành viên có thể tự chỉnh sửa)
           return (
             <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
               <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Chỉnh sửa thông tin cá nhân</h2>
@@ -2193,6 +2193,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                 <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.</p>
               ) : (
                 <div className="space-y-4">
+                  {/* CÁC TRƯỜNG DỮ LIỆU CÁ NHÂN ĐỂ CHỈNH SỬA */}
                   <div>
                     <label htmlFor="editFullName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Họ tên đầy đủ:</label>
                     <input
@@ -2257,7 +2258,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                   {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
 
                   <button
-                    onClick={handleSaveMemberProfile}
+                    onClick={handleSaveUserProfile} // <-- Changed from handleSaveMemberProfile
                     className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
                   >
                     <i className="fas fa-save mr-2"></i> Lưu thông tin
@@ -2683,7 +2684,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                   {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
 
                   <button
-                    onClick={handleSaveMemberProfile}
+                    onClick={handleSaveUserProfile}
                     className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
                   >
                     <i className="fas fa-save mr-2"></i> Lưu thông tin
