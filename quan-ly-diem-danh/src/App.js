@@ -2813,8 +2813,18 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 </div>
               )}
             </div>
+          ); 
+          default:
+          return (
+            <div className="text-center p-8 bg-gray-100 dark:bg-gray-700 rounded-xl shadow-inner">
+              <p className="text-xl text-gray-700 dark:text-gray-300 font-semibold mb-4">
+                Chào mừng Thành viên! Vui lòng chọn một mục từ thanh điều hướng.
+              </p>
+            </div>
           );
-           // Logic cho Thành viên
+      }
+    }
+    // Logic cho Thành viên
     if (userRole === 'member') {
       switch (activeSection) {
         case 'attendanceTracking': // Điểm danh của tôi
@@ -3337,8 +3347,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               </p>
             </div>
           );
-      }
-    }      
       }
     }
 
