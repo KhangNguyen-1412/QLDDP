@@ -4220,7 +4220,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 >
 
                 <button
-                  className={`w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${activeSection === 'customNotificationDesign' // Tên mới cho phần này
+                  className={`block mb-1 w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${activeSection === 'customNotificationDesign' // Tên mới cho phần này
                     ? 'bg-blue-600 text-white shadow-md'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
