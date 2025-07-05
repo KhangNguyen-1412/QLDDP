@@ -3731,7 +3731,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
         {/* Sidebar */}
         <aside
           className={`flex-shrink-0 fixed inset-y-0 left-0 w-64 bg-white dark:bg-gray-800 shadow-lg p-6 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-            } lg:relative lg:translate-x-0 transition-transform duration-300 ease-in-out z-20`}
+            } lg:relative lg:translate-x-0 transition-transform duration-300 ease-in-out z-20 overflow-y-auto`} // <-- Đã thêm overflow-y-auto ở đây
         >
           {/* Close button for mobile sidebar */}
           <div className="flex justify-end lg:hidden mb-4">
