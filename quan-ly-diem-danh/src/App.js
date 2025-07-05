@@ -2272,1786 +2272,1268 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
     }
 
     // Logic cho Admin
-    if (userRole === 'admin') {
-      switch (activeSection) {
-        case 'residentManagement':
-          return (
-            <div className="p-6 bg-purple-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-purple-800 dark:text-purple-200 mb-5">Quản lý người trong phòng</h2>
-              <div className="flex flex-col sm:flex-row gap-3 mb-4">
-                <input
-                  type="text"
-                  value={newResidentName}
-                  onChange={(e) => { setNewResidentName(e.target.value); setAuthError(''); }}
-                  className="flex-1 shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
-                  placeholder="Nhập tên người trong phòng (tối đa 8 người)"
-                  maxLength="30"
-                />
-                <button
-                  onClick={handleAddResident}
-                  className="px-6 py-2 bg-purple-600 text-white font-semibold rounded-xl shadow-md hover:bg-purple-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75"
-                  disabled={residents.filter(res => res.isActive !== false).length >= 8}
-                >
-                  <i className="fas fa-user-plus mr-2"></i> Thêm
-                </button>
+// Logic cho Admin
+if (userRole === 'admin') {
+  switch (activeSection) {
+    case 'residentManagement':
+      return (
+        <div className="p-6 bg-purple-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+          <h2 className="text-2xl font-bold text-purple-800 dark:text-purple-200 mb-5">Quản lý người trong phòng</h2>
+          <div className="flex flex-col sm:flex-row gap-3 mb-4">
+            <input
+              type="text"
+              value={newResidentName}
+              onChange={(e) => { setNewResidentName(e.target.value); setAuthError(''); }}
+              className="flex-1 shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
+              placeholder="Nhập tên người trong phòng (tối đa 8 người)"
+              maxLength="30"
+            />
+            <button
+              onClick={handleAddResident}
+              className="px-6 py-2 bg-purple-600 text-white font-semibold rounded-xl shadow-md hover:bg-purple-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75"
+              disabled={residents.filter(res => res.isActive !== false).length >= 8}
+            >
+              <i className="fas fa-user-plus mr-2"></i> Thêm
+            </button>
+          </div>
+          {residents.length > 0 && (
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-inner max-h-screen-1/2 overflow-y-auto border border-gray-200 dark:border-gray-700">
+              <h3 className="text-xl font-semibold text-purple-700 dark:text-purple-200 mb-3">Danh sách người trong phòng:</h3>
+              <div className="mb-4">
+                <label className="inline-flex items-center">
+                  <input
+                    type="checkbox"
+                    className="form-checkbox h-5 w-5 text-purple-600 dark:text-purple-400 rounded"
+                    checked={showInactiveResidents}
+                    onChange={(e) => setShowInactiveResidents(e.target.checked)}
+                  />
+                  <span className="ml-2 text-gray-700 dark:text-gray-300">Hiển thị người đã vô hiệu hóa</span>
+                </label>
               </div>
-              {residents.length > 0 && (
-                <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-inner max-h-screen-1/2 overflow-y-auto border border-gray-200 dark:border-gray-700">
-                  <h3 className="text-xl font-semibold text-purple-700 dark:text-purple-200 mb-3">Danh sách người trong phòng:</h3>
-                  <div className="mb-4">
-                    <label className="inline-flex items-center">
-                      <input
-                        type="checkbox"
-                        className="form-checkbox h-5 w-5 text-purple-600 dark:text-purple-400 rounded"
-                        checked={showInactiveResidents}
-                        onChange={(e) => setShowInactiveResidents(e.target.checked)}
-                      />
-                      <span className="ml-2 text-gray-700 dark:text-gray-300">Hiển thị người đã vô hiệu hóa</span>
-                    </label>
-                  </div>
-                  <ul className="space-y-3">
-                    {residents.map((resident) => (
-                      <li key={resident.id} className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-600">
-                        <div className="flex flex-col items-start">
-                          <span className="font-medium text-gray-700 dark:text-gray-300 text-base">{resident.name}</span>
-                          {resident.createdAt && typeof resident.createdAt.toDate === 'function' && (
-                            <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              Thêm vào: {resident.createdAt.toDate().toLocaleDateString('vi-VN')}
-                            </span>
-                          )}
-                          {resident.isActive === false && (
-                            <span className="text-xs text-red-500 dark:text-red-400 mt-1 font-semibold">
-                              (Đã vô hiệu hóa)
-                            </span>
-                          )}
-                          {resident.linkedUserId && (
-                            <span className="text-xs text-blue-500 dark:text-blue-400 mt-1">
-                              (Đã liên kết với Người dùng)
-                            </span>
-                          )}
-                        </div>
-                        {resident.isActive ? (
-                          <button
-                            onClick={() => handleToggleResidentActiveStatus(resident.id, resident.name, true)}
-                            className="ml-4 px-3 py-1 bg-red-500 text-white text-sm rounded-lg shadow-sm hover:bg-red-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-400"
-                          >
-                            Vô hiệu hóa
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleToggleResidentActiveStatus(resident.id, resident.name, false)}
-                            className="ml-4 px-3 py-1 bg-green-500 text-white text-sm rounded-lg shadow-sm hover:bg-green-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-400"
-                          >
-                            Kích hoạt lại
-                          </button>
-                        )}
-                        {resident.isActive && resident.linkedUserId && (
-                            <button
-                                onClick={() => handleMoveToFormerResidents(resident.id, resident.linkedUserId)}
-                                className="ml-2 px-3 py-1 bg-indigo-500 text-white text-sm rounded-lg shadow-sm hover:bg-indigo-600 transition-colors duration-200"
-                            >
-                                Chuyển tiền bối
-                            </button>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          );
-        case 'attendanceTracking':
-          return (
-            <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">Điểm danh theo tháng</h2>
-              <div className="mb-6 flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4">
-                <label htmlFor="monthSelector" className="font-semibold text-gray-700 dark:text-gray-300 text-lg">Chọn tháng:</label>
-                <input
-                  type="month"
-                  id="monthSelector"
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700"
-                />
-              </div>
-
-              {displayedResidents.length === 0 ? (
-                userRole === 'member' && !loggedInResidentProfile ? (
-                  <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.</p>
-                ) : (
-                  <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Vui lòng thêm người trong phòng vào danh sách để bắt đầu điểm danh.</p>
-                )
-              ) : (
-                <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-                  <table className="min-w-full bg-white dark:bg-gray-800">
-                    <thead><tr>
-                      <th className="py-3 px-6 text-left sticky left-0 bg-green-100 dark:bg-gray-700 z-20 border-r border-green-200 dark:border-gray-600 rounded-tl-xl text-green-800 dark:text-green-200 uppercase text-sm leading-normal">Tên</th>
-                      {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map(day => (
-                        <th key={day} className="py-3 px-2 text-center border-l border-green-200 dark:border-gray-600 text-green-800 dark:text-green-200 uppercase text-sm leading-normal">
-                          {day}
-                        </th>
-                      ))}
-                    </tr></thead>
-                    <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
-                      {displayedResidents.map(resident => (
-                        <tr key={resident.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-                          <td className="py-3 px-6 text-left whitespace-nowrap font-medium sticky left-0 bg-white dark:bg-gray-800 z-10 border-r border-gray-200 dark:border-gray-700">
-                            {resident.name}
-                          </td>
-                          {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map(day => {
-                            const dayString = String(day).padStart(2, '0');
-                            const isPresent = monthlyAttendanceData[resident.id]?.[dayString] === 1;
-                            return (
-                              <td key={day} className="py-3 px-2 text-center border-l border-gray-200 dark:border-gray-700">
-                                <input
-                                  type="checkbox"
-                                  checked={isPresent}
-                                  onChange={() => handleToggleDailyPresence(resident.id, day)}
-                                  className="form-checkbox h-5 w-5 text-green-600 dark:text-green-400 rounded focus:ring-green-500 cursor-pointer"
-                                />
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          );
-        case 'billing':
-          return (
-            <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">Tính tiền điện nước</h2>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                {/* Electricity */}
-                <div>
-                  <label htmlFor="lastElectricityReading" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                    Chỉ số điện cuối cùng được ghi nhận (KW):
-                  </label>
-                  <input
-                    type="number"
-                    id="lastElectricityReading"
-                    value={lastElectricityReading}
-                    readOnly
-                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="currentElectricityReading" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                    Chỉ số điện hiện tại (KW):
-                  </label>
-                  <input
-                    type="number"
-                    id="currentElectricityReading"
-                    value={currentElectricityReading}
-                    onChange={(e) => { setCurrentElectricityReading(e.target.value); setBillingError(''); }}
-                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    placeholder="Nhập chỉ số hiện tại"
-                  />
-                </div>
-
-                {/* Water */}
-                <div>
-                  <label htmlFor="lastWaterReading" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                    Chỉ số nước cuối cùng được ghi nhận (m³):
-                  </label>
-                  <input
-                    type="number"
-                    id="lastWaterReading"
-                    value={lastWaterReading}
-                    readOnly
-                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="currentWaterReading" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                    Chỉ số nước hiện tại (m³):
-                  </label>
-                  <input
-                    type="number"
-                    id="currentWaterReading"
-                    value={currentWaterReading}
-                    onChange={(e) => { setCurrentWaterReading(e.target.value); setBillingError(''); }}
-                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    placeholder="Nhập chỉ số hiện tại"
-                  />
-                </div>
-              </div>
-              {billingError && (
-                <p className="text-red-500 dark:text-red-400 text-sm text-center mb-4">{billingError}</p>
-              )}
-              <button
-                onClick={calculateBill}
-                className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 mb-6"
-                disabled={isNaN(parseFloat(currentElectricityReading)) || isNaN(parseFloat(currentWaterReading))}
-              >
-                <i className="fas fa-calculator mr-2"></i> Tính toán chi phí
-              </button>
-
-              {totalCost > 0 && (
-                <div className="bg-blue-100 dark:bg-gray-700 p-4 rounded-xl shadow-inner text-lg font-semibold text-blue-900 dark:text-blue-100 border border-blue-200 dark:border-gray-600">
-                  <p className="mb-2">Tiền điện: <span className="text-blue-700 dark:text-blue-300">{electricityCost.toLocaleString('vi-VN')} VND</span></p>
-                  <p className="mb-2">Tiền nước: <span className="text-blue-700 dark:text-blue-300">{waterCost.toLocaleString('vi-VN')} VND</span></p>
-                  <p className="border-t pt-3 mt-3 border-blue-300 dark:border-gray-600 text-xl font-bold">Tổng cộng: <span className="text-blue-800 dark:text-blue-200">{totalCost.toLocaleString('vi-VN')} VND</span></p>
-                </div>
-              )}
-            </div>
-          );
-        case 'costSharing':
-          return (
-            <div className="p-6 bg-orange-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-orange-800 dark:text-orange-200 mb-5">Tính ngày có mặt & Chia tiền</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <div>
-                  <label htmlFor="startDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                    Ngày bắt đầu:
-                  </label>
-                  <input
-                    type="date"
-                    id="startDate"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="endDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                    Ngày kết thúc:
-                  </label>
-                  <input
-                    type="date"
-                    id="endDate"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700"
-                  />
-                </div>
-              </div>
-              <button
-                onClick={calculateAttendanceDays}
-                className="w-full px-6 py-3 bg-orange-600 text-white font-semibold rounded-xl shadow-md hover:bg-orange-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-75 mb-6"
-                disabled={residents.length === 0 || totalCost <= 0}
-              >
-                <i className="fas fa-calendar-check mr-2"></i> Tính ngày có mặt
-              </button>
-
-              {totalCalculatedDaysAllResidents > 0 && totalCost > 0 && (
-                <div className="bg-orange-100 dark:bg-gray-700 p-4 rounded-xl shadow-inner text-lg font-semibold text-orange-900 dark:text-orange-100 border border-orange-200 dark:border-gray-600">
-                  <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200 mb-3">Kết quả điểm danh theo ngày:</h3>
-                  <ul className="space-y-2 mb-3">
-                    {residents.map(resident => (
-                      <li key={resident.id} className="flex justify-between items-center bg-gray-50 dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                        <span className="font-medium text-gray-700 dark:text-gray-300">{resident.name}:</span>
-                        <span className="text-orange-700 dark:text-orange-300 font-bold">{calculatedDaysPresent[resident.id] || 0} ngày</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <p className="border-t pt-3 mt-3 border-orange-300 dark:border-gray-600 text-xl font-bold">
-                    Tổng số ngày có mặt của tất cả: <span className="text-orange-800 dark:text-orange-200">{totalCalculatedDaysAllResidents} ngày</span>
-                  </p>
-
-                  <>
-                    <p className="mt-3 text-xl font-bold">
-                      Chi phí trung bình 1 ngày 1 người: <span className="text-orange-800 dark:text-orange-200">{costPerDayPerPerson.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} VND</span>
-                    </p>
-                    <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200 mt-5 mb-3">Số tiền mỗi người cần đóng:</h3>
-                    <ul className="space-y-2">
-                      {/* Sắp xếp cư dân để hiển thị dựa trên số ngày có mặt và sau đó là chi phí */}
-                      {[...residents].sort((a, b) => {
-                        const daysA = calculatedDaysPresent[a.id] || 0;
-                        const daysB = calculatedDaysPresent[b.id] || 0;
-                        const costA = individualCosts[a.id]?.cost || 0;
-                        const costB = individualCosts[b.id]?.cost || 0;
-
-                        if (daysA !== daysB) {
-                          return daysB - daysA;
-                        }
-                        return costB - costA;
-                      }).map(resident => (
-                        <li key={resident.id} className="flex justify-between items-center bg-gray-50 dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                          <span className="font-medium text-gray-700 dark:text-gray-300">{resident.name}:</span>
-                          <span className="font-bold">
-                            {(individualCosts[resident.id]?.cost || 0).toLocaleString('vi-VN')} VND
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                    <p className="border-t pt-3 mt-3 border-orange-300 dark:border-gray-600 text-xl font-bold">
-                      Quỹ phòng còn lại: <span className={`font-bold ${remainingFund >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
-                        {remainingFund.toLocaleString('vi-VN')} VND
-                      </span>
-                    </p>
-
-                    {/* Tích hợp Gemini API: Nhắc nhở thanh toán */}
-                    <div className="mt-8 pt-3 border-t border-orange-300 dark:border-gray-600">
-                      <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200 mb-4">✨ Tạo nhắc nhở thanh toán</h3>
-                      <div className="flex flex-col sm:flex-row items-center gap-3 mb-4">
-                        <label htmlFor="selectResidentReminder" className="font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Chọn người:</label>
-                        <select
-                          id="selectResidentReminder"
-                          value={selectedResidentForReminder}
-                          onChange={(e) => setSelectedResidentForReminder(e.target.value)}
-                          className="flex-1 shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700"
-                          disabled={residents.length === 0}
-                        >
-                          <option value="">-- Chọn người --</option>
-                          {residents.map(resident => (
-                            <option key={resident.id} value={resident.id}>
-                              {resident.name}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          onClick={generatePaymentReminder}
-                          className="px-6 py-2 bg-purple-600 text-white font-semibold rounded-xl shadow-md hover:bg-purple-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75"
-                          disabled={isGeneratingReminder || !selectedResidentForReminder || totalCost === 0}
-                        >
-                          {isGeneratingReminder ? (
-                            <i className="fas fa-spinner fa-spin mr-2"></i>
-                          ) : (
-                            <i className="fas fa-magic mr-2"></i>
-                          )}
-                          Tạo nhắc nhở
-                        </button>
-                      </div>
-                      {generatedReminder && (
-                        <div className="mt-4 bg-white dark:bg-gray-800 p-4 rounded-xl shadow-inner border border-gray-200 dark:border-gray-700">
-                          <p className="font-semibold text-gray-800 dark:text-gray-200 mb-2">Tin nhắn gợi ý:</p>
-                          <textarea
-                            readOnly
-                            value={generatedReminder}
-                            rows="6"
-                            className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 resize-y focus:outline-none"
-                          ></textarea>
-                        </div>
+              <ul className="space-y-3">
+                {residents.map((resident) => (
+                  <li key={resident.id} className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-600">
+                    <div className="flex flex-col items-start">
+                      <span className="font-medium text-gray-700 dark:text-gray-300 text-base">{resident.name}</span>
+                      {resident.createdAt && typeof resident.createdAt.toDate === 'function' && (
+                        <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          Thêm vào: {resident.createdAt.toDate().toLocaleDateString('vi-VN')}
+                        </span>
+                      )}
+                      {resident.isActive === false && (
+                        <span className="text-xs text-red-500 dark:text-red-400 mt-1 font-semibold">
+                          (Đã vô hiệu hóa)
+                        </span>
+                      )}
+                      {resident.linkedUserId && (
+                        <span className="text-xs text-blue-500 dark:text-blue-400 mt-1">
+                          (Đã liên kết với Người dùng)
+                        </span>
                       )}
                     </div>
-                  </>
-                </div>
-              )}
+                    {resident.isActive ? (
+                      <button
+                        onClick={() => handleToggleResidentActiveStatus(resident.id, resident.name, true)}
+                        className="ml-4 px-3 py-1 bg-red-500 text-white text-sm rounded-lg shadow-sm hover:bg-red-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-400"
+                      >
+                        Vô hiệu hóa
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleToggleResidentActiveStatus(resident.id, resident.name, false)}
+                        className="ml-4 px-3 py-1 bg-green-500 text-white text-sm rounded-lg shadow-sm hover:bg-green-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-400"
+                      >
+                        Kích hoạt lại
+                      </button>
+                    )}
+                    {resident.isActive && resident.linkedUserId && (
+                        <button
+                            onClick={() => handleMoveToFormerResidents(resident.id, resident.linkedUserId)}
+                            className="ml-2 px-3 py-1 bg-indigo-500 text-white text-sm rounded-lg shadow-sm hover:bg-indigo-600 transition-colors duration-200"
+                        >
+                            Chuyển tiền bối
+                        </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
             </div>
-          );
-        case 'billHistory':
-          return (
-            <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Lịch sử tiền điện nước</h2>
-              {billHistory.length === 0 ? (
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có hóa đơn nào được lưu.</p>
-              ) : (
-                <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-                  <table className="min-w-full bg-white dark:bg-gray-800">
-                    <thead><tr>
-                      <th className="py-3 px-6 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Ngày tính</th>
-                      <th className="py-3 px-6 text-right text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Tổng tiền</th>
-                      <th className="py-3 px-6 text-center text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Người ghi nhận</th>
-                      <th className="py-3 px-6 text-center text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Trạng thái</th>
-                      <th className="py-3 px-6 text-center text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Chi tiết</th>
-                    </tr></thead>
-                    <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
-                      {billHistory.map(bill => (
-                        <tr key={bill.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-                          <td className="py-3 px-6 text-left whitespace-nowrap">
-                            {bill.billDate && bill.billDate instanceof Date ? bill.billDate.toLocaleDateString('vi-VN') : 'N/A'}
-                          </td>
-                          <td className="py-3 px-6 text-right whitespace-nowrap font-bold text-blue-700 dark:text-blue-300">
-                            {bill.totalCost?.toLocaleString('vi-VN') || 0} VND
-                          </td>
-                          <td className="py-3 px-6 text-center whitespace-nowrap">
-                            {bill.recordedBy || 'N/A'}
-                          </td>
-                          <td className="py-3 px-6 text-center">
+          )}
+        </div>
+      );
+    case 'attendanceTracking':
+      return (
+        <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+          <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">Điểm danh theo tháng</h2>
+          <div className="mb-6 flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4">
+            <label htmlFor="monthSelector" className="font-semibold text-gray-700 dark:text-gray-300 text-lg">Chọn tháng:</label>
+            <input
+              type="month"
+              id="monthSelector"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700"
+            />
+          </div>
+
+          {displayedResidents.length === 0 ? (
+            userRole === 'member' && !loggedInResidentProfile ? (
+              <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.</p>
+            ) : (
+              <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Vui lòng thêm người trong phòng vào danh sách để bắt đầu điểm danh.</p>
+            )
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+              <table className="min-w-full bg-white dark:bg-gray-800">
+                <thead><tr>
+                  <th className="py-3 px-6 text-left sticky left-0 bg-green-100 dark:bg-gray-700 z-20 border-r border-green-200 dark:border-gray-600 rounded-tl-xl text-green-800 dark:text-green-200 uppercase text-sm leading-normal">Tên</th>
+                  {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map(day => (
+                    <th key={day} className="py-3 px-2 text-center border-l border-green-200 dark:border-gray-600 text-green-800 dark:text-green-200 uppercase text-sm leading-normal">
+                      {day}
+                    </th>
+                  ))}
+                </tr></thead>
+                <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
+                  {displayedResidents.map(resident => (
+                    <tr key={resident.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                      <td className="py-3 px-6 text-left whitespace-nowrap font-medium sticky left-0 bg-white dark:bg-gray-800 z-10 border-r border-gray-200 dark:border-gray-700">
+                        {resident.name}
+                      </td>
+                      {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map(day => {
+                        const dayString = String(day).padStart(2, '0');
+                        const isPresent = monthlyAttendanceData[resident.id]?.[dayString] === 1;
+                        return (
+                          <td key={day} className="py-3 px-2 text-center border-l border-gray-200 dark:border-gray-700">
                             <input
                               type="checkbox"
-                              checked={bill.isPaid || false}
-                              onChange={() => handleToggleBillPaidStatus(bill.id, bill.isPaid || false)}
-                              className="form-checkbox h-5 w-5 text-green-600 dark:text-green-400 rounded cursor-pointer"
+                              checked={isPresent}
+                              onChange={() => handleToggleDailyPresence(resident.id, day)}
+                              className="form-checkbox h-5 w-5 text-green-600 dark:text-green-400 rounded focus:ring-green-500 cursor-pointer"
                             />
-                            <span className={`ml-2 font-semibold ${bill.isPaid ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
-                              {bill.isPaid ? 'Đã trả' : 'Chưa trả'}
-                            </span>
                           </td>
-                          <td className="py-3 px-6 text-center">
-                            <button
-                              onClick={() => setSelectedBillDetails(bill)}
-                              className="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg shadow-sm hover:bg-blue-600 transition-colors"
-                            >
-                              Xem
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          );
-        case 'costSharingHistory':
-          return (
-            <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg mt-8 max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">Lịch sử chia tiền</h2>
-              {costSharingHistory.length === 0 ? (
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có lịch sử chia tiền nào được lưu.</p>
-              ) : (
-                <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-                  <table className="min-w-full bg-white dark:bg-gray-800">
-                    <thead><tr>
-                      <th className="py-3 px-6 text-left text-yellow-800 dark:text-yellow-200 uppercase text-sm leading-normal bg-yellow-100 dark:bg-gray-700">Kỳ tính</th>
-                      <th className="py-3 px-6 text-right text-yellow-800 dark:text-yellow-200 uppercase text-sm leading-normal bg-yellow-100 dark:bg-gray-700">Tổng ngày có mặt</th>
-                      <th className="py-3 px-6 text-right text-yellow-800 dark:text-yellow-200 uppercase text-sm leading-normal bg-yellow-100 dark:bg-gray-700">Quỹ phòng</th>
-                      <th className="py-3 px-6 text-center text-yellow-800 dark:text-yellow-200 uppercase text-sm leading-normal bg-yellow-100 dark:bg-gray-700">Chi tiết</th>
-                    </tr></thead>
-                    <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
-                      {costSharingHistory.map(summary => (
-                        <tr key={summary.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-                          <td className="py-3 px-6 text-left whitespace-nowrap">
-                            {summary.periodStart} đến {summary.periodEnd}
-                          </td>
-                          <td className="py-3 px-6 text-right whitespace-nowrap">
-                            {summary.totalCalculatedDaysAllResidents} ngày
-                          </td>
-                          <td className="py-3 px-6 text-right whitespace-nowrap">
-                            <span className={`font-bold ${summary.remainingFund >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
-                              {summary.remainingFund?.toLocaleString('vi-VN')} VND
-                            </span>
-                          </td>
-                          <td className="py-3 px-6 text-center">
-                            <button
-                              onClick={() => setSelectedCostSharingDetails(summary)}
-                              className="px-3 py-1 bg-yellow-600 text-white text-xs rounded-lg shadow-sm hover:bg-yellow-700 transition-colors"
-                            >
-                              Xem
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          );
-        case 'cleaningSchedule':
-          return (
-            <div className="p-6 bg-purple-50 dark:bg-gray-700 rounded-2xl shadow-lg mt-8 max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-purple-800 dark:text-purple-200 mb-5">Lịch trực phòng lau dọn</h2>
-              <div className="flex flex-col sm:flex-row gap-3 mb-4">
-                <input
-                  type="text"
-                  value={newCleaningTaskName}
-                  onChange={(e) => { setNewCleaningTaskName(e.target.value); setAuthError(''); }}
-                  className="flex-1 shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
-                  placeholder="Tên công việc (ví dụ: Lau sàn)"
-                />
-                <input
-                  type="date"
-                  value={newCleaningTaskDate}
-                  onChange={(e) => { setNewCleaningTaskDate(e.target.value); setAuthError(''); }}
-                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
-                />
-                <select
-                  value={selectedResidentForCleaning}
-                  onChange={(e) => { setSelectedResidentForCleaning(e.target.value); setAuthError(''); }}
-                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
-                >
-                  <option value="">-- Chọn người --</option>
-                  {residents.filter(res => res.isActive !== false).map(resident => (
-                    <option key={resident.id} value={resident.id}>{resident.name}</option>
-                  ))}
-                </select>
-                <button
-                  onClick={handleAddCleaningTask}
-                  className="px-6 py-2 bg-purple-600 text-white font-semibold rounded-xl shadow-md hover:bg-purple-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75"
-                >
-                  <i className="fas fa-plus mr-2"></i> Thêm công việc
-                </button>
-              </div>
-              <button
-                onClick={() => setShowGenerateScheduleModal(true)} // Mới: Nút để mở modal tạo lịch
-                className="w-full px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl shadow-md hover:bg-indigo-700 transition-all duration-300"
-                disabled={residents.filter(res => res.isActive !== false).length === 0} // Vô hiệu hóa nếu không có cư dân hoạt động
-              >
-                ✨ Tạo lịch tự động
-              </button>
-              {cleaningSchedule.length === 0 ? (
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có công việc lau dọn nào được lên lịch.</p>
-              ) : (
-                <div className="max-h-60 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-xl p-3 bg-gray-50 dark:bg-gray-700">
-                  <h3 className="text-xl font-semibold text-purple-700 dark:text-purple-200 mb-3">Lịch trực hiện có:</h3>
-                  <ul className="space-y-2">
-                    {cleaningSchedule.map((task) => (
-                      <li key={task.id} className="flex items-center justify-between bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                        <div className="flex flex-col items-start">
-                          <span className="font-medium text-gray-700 dark:text-gray-300">{task.name} ({task.assignedToResidentName})</span>
-                          <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            Ngày: {task.date}
-                          </span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <input
-                            type="checkbox"
-                            checked={task.isCompleted || false}
-                            onChange={() => handleToggleCleaningTaskCompletion(task.id, task.isCompleted || false)}
-                            className="form-checkbox h-5 w-5 text-green-600 dark:text-green-400 rounded focus:ring-green-500 cursor-pointer"
-                          />
-                          <button
-                            onClick={() => handleDeleteCleaningTask(task.id, task.name)}
-                            className="px-3 py-1 bg-red-500 text-white text-sm rounded-lg shadow-sm hover:bg-red-600 transition-colors"
-                          >
-                            Xóa
-                          </button>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          );
-        case 'shoeRackManagement':
-          return (
-            <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">Quản lý kệ giày</h2>
-              <div className="flex flex-col sm:flex-row gap-3 mb-4">
-                <select
-                  value={selectedShelfNumber}
-                  onChange={(e) => { setSelectedShelfNumber(e.target.value); setAuthError(''); }}
-                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white dark:bg-gray-700"
-                >
-                  <option value="">-- Chọn tầng kệ --</option>
-                  {[...Array(8)].map((_, i) => (
-                    <option key={i + 1} value={i + 1}>Tầng {i + 1}</option>
-                  ))}
-                </select>
-                <select
-                  value={selectedResidentForShelf}
-                  onChange={(e) => { setSelectedResidentForShelf(e.target.value); setAuthError(''); }}
-                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white dark:bg-gray-700"
-                >
-                  <option value="">-- Chọn người --</option>
-                  {residents.filter(res => res.isActive !== false).map(resident => (
-                    <option key={resident.id} value={resident.id}>{resident.name}</option>
-                  ))}
-                </select>
-                <button
-                  onClick={handleAssignShoeRack}
-                  className="px-6 py-2 bg-yellow-600 text-white font-semibold rounded-xl shadow-md hover:bg-yellow-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-75"
-                  disabled={!selectedShelfNumber || !selectedResidentForShelf}
-                >
-                  <i className="fas fa-shoe-prints mr-2"></i> Gán kệ
-                </button>
-              </div>
-              {Object.keys(shoeRackAssignments).length === 0 ? (
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có kệ giày nào được gán.</p>
-              ) : (
-                <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-inner border border-gray-200 dark:border-gray-700">
-                  <h3 className="text-xl font-semibold text-yellow-700 dark:text-yellow-200 mb-3">Phân công kệ giày:</h3>
-                  <ul className="space-y-3">
-                    {[...Array(8)].map((_, i) => {
-                      const shelfNum = i + 1;
-                      const assignment = shoeRackAssignments[shelfNum];
-                      const isMyShelf = loggedInResidentProfile && assignment && assignment.residentId === loggedInResidentProfile.id;
-                      return (
-                        <li key={shelfNum} className={`flex items-center justify-between p-3 rounded-lg shadow-sm border ${isMyShelf ? 'bg-yellow-200 dark:bg-yellow-900 border-yellow-400' : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600'}`}>
-                          <span className={`font-medium ${isMyShelf ? 'text-yellow-900 dark:text-yellow-100' : 'text-gray-700 dark:text-gray-300'}`}>Tầng {shelfNum}:</span>
-                          {assignment ? (
-                            <span className={`font-bold ${isMyShelf ? 'text-yellow-800 dark:text-yellow-200' : 'text-yellow-700 dark:text-yellow-300'}`}>
-                              {assignment.residentName}
-                              {userRole === 'admin' && ( // Chỉ hiển thị nút xóa cho admin
-                                <button
-                                  onClick={() => handleClearShoeRackAssignment(shelfNum)}
-                                  className="ml-3 px-2 py-1 bg-red-500 text-white text-xs rounded-lg shadow-sm hover:bg-red-600 transition-colors"
-                                >
-                                  Xóa
-                                </button>
-                              )}
-                            </span>
-                          ) : (
-                            <span className="text-gray-500 dark:text-gray-400 italic">Trống</span>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              )}
-            </div>
-          );
-        case 'commonRoomInfo': // New section for common room information
-          return (
-            <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Thông tin phòng chung</h2>
-              {residents.length === 0 ? (
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có người ở nào trong danh sách.</p>
-              ) : (
-                <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-                  <table className="min-w-full bg-white dark:bg-gray-800">
-                    <thead>
-                      <tr>
-                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Họ tên</th>
-                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Email</th>
-                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">SĐT</th>
-                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">MSSV</th>
-                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Ngày sinh</th>
-                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Ngày nhập KTX</th>
-                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Email trường</th>
-                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Trạng thái</th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
-                      {residents.map(resident => {
-                        const linkedUser = allUsersData.find(user => user.linkedResidentId === resident.id);
-                        return (
-                          <tr key={resident.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.fullName || resident.name}</td>
-                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.email || 'N/A'}</td>
-                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.phoneNumber || 'N/A'}</td>
-                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.studentId || 'N/A'}</td>
-                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.birthday || 'N/A'}</td>
-                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.dormEntryDate || 'N/A'}</td>
-                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.academicLevel || 'N/A'}</td>
-                            <td className="py-3 px-4 whitespace-nowrap">
-                              <span className={`font-semibold ${resident.isActive ? 'text-green-600' : 'text-red-500'}`}>
-                                {resident.isActive ? 'Hoạt động' : 'Vô hiệu hóa'}
-                              </span>
-                            </td>
-                          </tr>
                         );
                       })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          );
-        case 'roomMemories': // <--- DI CHUYỂN TOÀN BỘ CASE NÀY LÊN TRÊN default
-          return (
-            <div className="p-6 bg-indigo-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-indigo-800 dark:text-indigo-200 mb-5">Kỷ niệm phòng</h2>
-
-              {/* Phần đăng ảnh kỷ niệm */}
-              <form onSubmit={handleAddMemory} className="mb-8 p-4 bg-indigo-100 dark:bg-gray-800 rounded-xl shadow-inner border border-indigo-200 dark:border-gray-600">
-                <h3 className="text-xl font-bold text-indigo-700 dark:text-indigo-200 mb-4">Đăng ảnh kỷ niệm mới</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label htmlFor="eventName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Sự kiện:</label>
-                    <input
-                      type="text"
-                      id="eventName"
-                      value={newMemoryEventName}
-                      onChange={(e) => setNewMemoryEventName(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700"
-                      placeholder="Ví dụ: Sinh nhật tháng 10"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="photoDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày chụp:</label>
-                    <input
-                      type="date"
-                      id="photoDate"
-                      value={newMemoryPhotoDate}
-                      onChange={(e) => setNewMemoryPhotoDate(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="imageFile" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Chọn ảnh:</label>
-                    <input
-                      type="file"
-                      id="imageFile"
-                      accept="image/*"
-                      onChange={(e) => setNewMemoryImageFile(e.target.files[0])}
-                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                    />
-                  </div>
-                  {isUploadingMemory && (
-                    <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-                      <div className="bg-indigo-600 h-2.5 rounded-full" style={{ width: `${uploadProgress}%` }}></div>
-                    </div>
-                  )}
-                  {memoryError && <p className="text-red-500 text-sm text-center mt-4">{memoryError}</p>}
-                  <button
-                    type="submit"
-                    className="w-full px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl shadow-md hover:bg-indigo-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-75"
-                    disabled={isUploadingMemory}
-                  >
-                    {isUploadingMemory ? <i className="fas fa-spinner fa-spin mr-2"></i> : <i className="fas fa-upload mr-2"></i>}
-                    Đăng kỷ niệm
-                  </button>
-                </div>
-              </form>
-
-              {/* Danh sách các kỷ niệm đã đăng (giống admin) */}
-              <h3 className="text-xl font-bold text-indigo-700 dark:text-indigo-200 mb-4">Các kỷ niệm đã đăng</h3>
-              {memories.length === 0 ? (
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có kỷ niệm nào được đăng.</p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {memories.map(memory => (
-                    <div key={memory.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                      <img src={memory.imageUrl} alt={memory.eventName} className="w-full h-48 object-cover" />
-                      <div className="p-4">
-                        <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">{memory.eventName}</h4>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                          <i className="fas fa-calendar-alt mr-2"></i>Ngày chụp: {memory.photoDate}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                          <i className="fas fa-upload mr-2"></i>Đăng bởi: {memory.uploadedByName || 'Ẩn danh'} vào {memory.uploadedAt?.toLocaleDateString('vi-VN')}
-                        </p>
-                        {userRole === 'admin' && ( // Chỉ admin mới có nút xóa
-                          <button
-                            onClick={() => handleDeleteMemory(memory.id, memory.imageUrl)}
-                            className="mt-4 px-4 py-2 bg-red-500 text-white rounded-lg shadow hover:bg-red-600 transition-colors duration-200"
-                          >
-                            <i className="fas fa-trash mr-2"></i>Xóa
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        case 'formerResidents': // Thông tin tiền bối
-          return (
-            <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">Thông tin tiền bối</h2>
-
-              {/* Form thêm tiền bối thủ công (Chỉ cho Admin) */}
-              {userRole === 'admin' && (
-                <form onSubmit={handleAddFormerResidentManually} className="mb-8 p-4 bg-green-100 dark:bg-gray-800 rounded-xl shadow-inner border border-green-200 dark:border-gray-600">
-                  <h3 className="text-xl font-bold text-green-700 dark:text-green-200 mb-4">Thêm tiền bối thủ công</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <label htmlFor="formerName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Họ tên:</label>
-                      <input type="text" id="formerName" value={newFormerResidentName} onChange={(e) => setNewFormerResidentName(e.target.value)}
-                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500" placeholder="Nguyễn Văn A" />
-                    </div>
-                    <div>
-                      <label htmlFor="formerEmail" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email:</label>
-                      <input type="email" id="formerEmail" value={newFormerResidentEmail} onChange={(e) => setNewFormerResidentEmail(e.target.value)}
-                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500" placeholder="nguyenvana@example.com" />
-                    </div>
-                    <div>
-                      <label htmlFor="formerPhone" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">SĐT:</label>
-                      <input type="text" id="formerPhone" value={newFormerResidentPhone} onChange={(e) => setNewFormerResidentPhone(e.target.value)}
-                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500" placeholder="0123456789" />
-                    </div>
-                    <div>
-                      <label htmlFor="formerStudentId" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">MSSV:</label>
-                      <input type="text" id="formerStudentId" value={newFormerResidentStudentId} onChange={(e) => setNewFormerResidentStudentId(e.target.value)}
-                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500" placeholder="B1234567" />
-                    </div>
-                    <div>
-                      <label htmlFor="formerBirthday" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày sinh:</label>
-                      <input type="date" id="formerBirthday" value={newFormerResidentBirthday} onChange={(e) => setNewFormerResidentBirthday(e.target.value)}
-                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500" />
-                    </div>
-                    <div>
-                      <label htmlFor="formerDormEntryDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày nhập KTX:</label>
-                      <input type="date" id="formerDormEntryDate" value={newFormerResidentDormEntryDate} onChange={(e) => setNewFormerResidentDormEntryDate(e.target.value)}
-                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500" />
-                    </div>
-                    <div>
-                      <label htmlFor="formerAcademicLevel" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Cấp:</label>
-                      <input type="text" id="formerAcademicLevel" value={newFormerResidentAcademicLevel} onChange={(e) => setNewFormerResidentAcademicLevel(e.target.value)}
-                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500" placeholder="Đại học" />
-                    </div>
-                    <div>
-                      <label htmlFor="formerDeactivatedDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày ra khỏi phòng (Ngày vô hiệu hóa):</label>
-                      <input type="date" id="formerDeactivatedDate" value={newFormerResidentDeactivatedDate} onChange={(e) => setNewFormerResidentDeactivatedDate(e.target.value)}
-                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500" />
-                    </div>
-                  </div>
-                  {/* Toàn bộ div cho input file, progress bar và formerResidentError ĐÃ XÓA */}
-                  <button
-                    type="submit"
-                    className="w-full px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75"
-                    // Thuộc tính disabled={isUploadingFormerResident} đã bị xóa
-                  >
-                    <i className="fas fa-plus-circle mr-2"></i>
-                    Thêm tiền bối
-                  </button>
-                </form>
-              )}
-
-              {/* Nút "Chuyển người dùng sang tiền bối" (Nếu bạn vẫn muốn dùng chức năng này cho admin, nó thường được đặt ở Quản lý người ở) */}
-              {userRole === 'admin' && (
-                <button
-                  onClick={() => { alert('Nút này dùng để chuyển người ở hiện tại sang tiền bối từ mục "Quản lý người ở".'); }}
-                  className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 mb-6"
-                >
-                  <i className="fas fa-exchange-alt mr-2"></i> Chuyển người dùng hiện tại sang tiền bối
-                </button>
-              )}
-
-
-              {/* Danh sách các tiền bối đã lưu */}
-              <h3 className="text-xl font-bold text-green-700 dark:text-green-200 mb-4">Danh sách tiền bối</h3>
-              {formerResidents.length === 0 ? (
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có thông tin tiền bối nào được lưu.</p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {formerResidents.map(resident => (
-                    <div key={resident.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                      {/* Toàn bộ phần hiển thị ảnh (resident.photoURL) ĐÃ XÓA */}
-                      <div className="p-4">
-                        <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">{resident.name}</h4>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                            <i className="fas fa-envelope mr-2"></i>Email: {resident.email || 'N/A'}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                            <i className="fas fa-phone mr-2"></i>SĐT: {resident.phoneNumber || 'N/A'}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                            <i className="fas fa-id-badge mr-2"></i>MSSV: {resident.studentId || 'N/A'}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                            <i className="fas fa-birthday-cake mr-2"></i>Ngày sinh: {resident.birthday || 'N/A'}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                            <i className="fas fa-calendar-alt mr-2"></i>Ngày nhập KTX: {resident.dormEntryDate || 'N/A'}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                            <i className="fas fa-graduation-cap mr-2"></i>Cấp: {resident.academicLevel || 'N/A'}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                            <i className="fas fa-door-open mr-2"></i>Ngày ra khỏi phòng: {resident.deactivatedAt && typeof resident.deactivatedAt.toLocaleDateString === 'function' ? resident.deactivatedAt.toLocaleDateString('vi-VN') : (resident.deactivatedAt || 'N/A')}
-                        </p>
-                        {userRole === 'admin' && (
-                          <button
-                            onClick={() => handleDeleteFormerResident(resident.id)} // <-- Đã sửa: chỉ truyền resident.id
-                            className="mt-4 px-4 py-2 bg-red-500 text-white rounded-lg shadow hover:bg-red-600 transition-colors duration-200"
-                          >
-                            <i className="fas fa-trash mr-2"></i>Xóa
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ); 
-          default:
-          return (
-            <div className="text-center p-8 bg-gray-100 dark:bg-gray-700 rounded-xl shadow-inner">
-              <p className="text-xl text-gray-700 dark:text-gray-300 font-semibold mb-4">
-                Chào mừng Admin! Vui lòng chọn một mục từ thanh điều hướng.
-              </p>
-            </div>
-        );
-
-        case 'customNotificationDesign': // Mới: Thiết kế thông báo
-        return (
-          <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-            <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Thiết kế thông báo tùy chỉnh</h2>
-
-            <form onSubmit={handleSendCustomNotification} className="mb-8 p-4 bg-blue-100 dark:bg-gray-800 rounded-xl shadow-inner border border-blue-200 dark:border-gray-600">
-              <h3 className="text-xl font-bold text-blue-700 dark:text-blue-200 mb-4">Soạn thông báo mới</h3>
-              <div className="space-y-4">
-                {/* Tiêu đề thông báo (Tùy chọn) */}
-                <div>
-                  <label htmlFor="notificationTitle" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Tiêu đề (Tùy chọn):</label>
-                  <input
-                    type="text"
-                    id="notificationTitle"
-                    value={newNotificationTitle}
-                    onChange={(e) => setNewNotificationTitle(e.target.value)}
-                    className="shadow-sm appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Ví dụ: Thông báo khẩn về tiền điện"
-                  />
-                </div>
-
-                {/* Người nhận */}
-                <div>
-                  <label htmlFor="notificationRecipient" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Gửi đến:</label>
-                  <select
-                    id="notificationRecipient"
-                    value={newNotificationRecipient}
-                    onChange={(e) => setNewNotificationRecipient(e.target.value)}
-                    className="shadow-sm appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="all">Tất cả thành viên</option>
-                    {residents.filter(res => res.isActive).map(resident => { // Chỉ hiển thị cư dân đang hoạt động
-                        const linkedUser = allUsersData.find(user => user.linkedResidentId === resident.id);
-                        if (linkedUser) { // Chỉ hiển thị người dùng có tài khoản liên kết
-                          return <option key={linkedUser.id} value={linkedUser.id}>{linkedUser.fullName || resident.name}</option>;
-                        }
-                        return null;
-                    })}
-                  </select>
-                </div>
-
-                {/* Loại thông báo */}
-                <div>
-                  <label htmlFor="notificationType" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Loại thông báo:</label>
-                  <select
-                    id="notificationType"
-                    value={newNotificationType}
-                    onChange={(e) => setNewNotificationType(e.target.value)}
-                    className="shadow-sm appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="general">Thông báo chung</option>
-                    <option value="urgent">Thông báo khẩn</option>
-                    <option value="custom">Thông báo tùy chỉnh</option>
-                    {/* Có thể thêm các loại khác nếu cần */}
-                  </select>
-                </div>
-
-                {/* Nội dung thông báo */}
-                <div>
-                  <label htmlFor="notificationMessage" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Nội dung thông báo:</label>
-                  <textarea
-                    id="notificationMessage"
-                    value={newNotificationMessage}
-                    onChange={(e) => setNewNotificationMessage(e.target.value)}
-                    rows="5"
-                    className="shadow-sm appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500 resize-y"
-                    placeholder="Nhập nội dung thông báo..."
-                  ></textarea>
-                </div>
-
-                {customNotificationError && <p className="text-red-500 text-sm text-center mt-4">{customNotificationError}</p>}
-                {customNotificationSuccess && <p className="text-green-600 text-sm text-center mt-4">{customNotificationSuccess}</p>}
-
-                <button
-                  type="submit"
-                  className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75"
-                >
-                  <i className="fas fa-paper-plane mr-2"></i> Gửi thông báo
-                </button>
-              </div>
-            </form>
-          </div>
-        );
-
-        case 'adminProfileEdit': // Mới: Chỉnh sửa thông tin cá nhân cho Admin
-          return (
-            <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Chỉnh sửa hồ sơ của tôi</h2>
-              {/* Form chỉnh sửa profile tương tự như member */}
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="adminEditFullName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Họ tên đầy đủ:</label>
-                  <input
-                    type="text"
-                    id="adminEditFullName"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="adminEditPhoneNumber" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Số điện thoại:</label>
-                  <input
-                    type="text"
-                    id="adminEditPhoneNumber"
-                    value={memberPhoneNumber} // Vẫn dùng state này
-                    onChange={(e) => setMemberPhoneNumber(e.target.value)}
-                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="adminEditStudentId" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Mã số sinh viên:</label>
-                  <input
-                    type="text"
-                    id="adminEditStudentId"
-                    value={memberStudentId} // Vẫn dùng state này
-                    onChange={(e) => setMemberStudentId(e.target.value)}
-                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="adminEditBirthday" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày sinh:</label>
-                  <input
-                    type="date"
-                    id="adminEditBirthday"
-                    value={memberBirthday} // Vẫn dùng state này
-                    onChange={(e) => setMemberBirthday(e.target.value)}
-                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="adminEditDormEntryDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày nhập KTX:</label>
-                  <input
-                    type="date"
-                    id="adminEditDormEntryDate"
-                    value={memberDormEntryDate} // Vẫn dùng state này
-                    onChange={(e) => setMemberDormEntryDate(e.target.value)}
-                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="adminEditAcademicLevel" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email trường:</label>
-                  <input
-                    type="text"
-                    id="adminEditAcademicLevel"
-                    value={memberAcademicLevel} // Vẫn dùng state này
-                    onChange={(e) => setMemberAcademicLevel(e.target.value)}
-                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                  />
-                </div>
-
-                {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
-
-                <button
-                  onClick={handleSaveUserProfile} // Gọi hàm đã được đổi tên
-                  className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
-                >
-                  <i className="fas fa-save mr-2"></i> Lưu thông tin
-                </button>
-                {/* Có thể thêm nút "Hủy" nếu muốn, nhưng admin sẽ không có chế độ "editProfileMode" như member */}
-
-                {/* Mới: Phần đổi mật khẩu */}
-              <div className="mt-10 pt-6 border-t border-gray-300 dark:border-gray-600">
-                <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-4">Đổi mật khẩu</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label htmlFor="oldPasswordAdmin" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Mật khẩu cũ:</label>
-                    <input
-                      type="password"
-                      id="oldPasswordAdmin"
-                      value={oldPassword}
-                      onChange={(e) => setOldPassword(e.target.value)}
-                      className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Nhập mật khẩu cũ"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="newPasswordAdmin" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Mật khẩu mới:</label>
-                    <input
-                      type="password"
-                      id="newPasswordAdmin"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="confirmNewPasswordAdmin" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Xác nhận mật khẩu mới:</label>
-                    <input
-                      type="password"
-                      id="confirmNewPasswordAdmin"
-                      value={confirmNewPassword}
-                      onChange={(e) => setConfirmNewPassword(e.target.value)}
-                      className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Xác nhận mật khẩu mới"
-                    />
-                  </div>
-                  {passwordChangeMessage && (
-                    <p className={`text-sm text-center mt-4 ${passwordChangeMessage.includes('thành công') ? 'text-green-600' : 'text-red-500'}`}>
-                      {passwordChangeMessage}
-                    </p>
-                  )}
-                  <button
-                    onClick={handleChangePassword}
-                    className="w-full px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-md hover:bg-red-700 transition-all duration-300"
-                  >
-                    <i className="fas fa-key mr-2"></i> Đổi mật khẩu
-                  </button>
-                </div>
-              </div>
-              </div>
-            </div>
-          );
-        case 'consumptionStats': //Thống kê tiêu thụ 
-        return (
-          <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-            <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Thống kê tiêu thụ theo tháng</h2>
-            {Object.keys(monthlyConsumptionStats).length === 0 ? (
-              <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có dữ liệu thống kê nào. Vui lòng tính toán hóa đơn.</p>
-            ) : (
-              <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-                <table className="min-w-full bg-white dark:bg-gray-800">
-                  <thead>
-                    <tr>
-                      <th className="py-3 px-6 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Tháng</th>
-                      <th className="py-3 px-6 text-right text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Điện (KW)</th>
-                      <th className="py-3 px-6 text-right text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Nước (m³)</th>
-                      <th className="py-3 px-6 text-right text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Tổng tiền (VND)</th>
                     </tr>
-                  </thead>
-                  <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
-                    {Object.entries(monthlyConsumptionStats).map(([month, stats]) => (
-                      <tr key={month} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-                        <td className="py-3 px-6 text-left whitespace-nowrap">{month}</td>
-                        <td className="py-3 px-6 text-right whitespace-nowrap">{stats.electricity.toLocaleString('vi-VN')}</td>
-                        <td className="py-3 px-6 text-right whitespace-nowrap">{stats.water.toLocaleString('vi-VN')}</td>
-                        <td className="py-3 px-6 text-right whitespace-nowrap font-bold text-blue-700 dark:text-blue-300">
-                          {stats.total.toLocaleString('vi-VN')}
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      );
+    case 'billing':
+      return (
+        <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+          <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">Tính tiền điện nước</h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            {/* Electricity */}
+            <div>
+              <label htmlFor="lastElectricityReading" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                Chỉ số điện cuối cùng được ghi nhận (KW):
+              </label>
+              <input
+                type="number"
+                id="lastElectricityReading"
+                value={lastElectricityReading}
+                readOnly
+                className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+              />
+            </div>
+            <div>
+              <label htmlFor="currentElectricityReading" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                Chỉ số điện hiện tại (KW):
+              </label>
+              <input
+                type="number"
+                id="currentElectricityReading"
+                value={currentElectricityReading}
+                onChange={(e) => { setCurrentElectricityReading(e.target.value); setBillingError(''); }}
+                className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                placeholder="Nhập chỉ số hiện tại"
+              />
+            </div>
+
+            {/* Water */}
+            <div>
+              <label htmlFor="lastWaterReading" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                Chỉ số nước cuối cùng được ghi nhận (m³):
+              </label>
+              <input
+                type="number"
+                id="lastWaterReading"
+                value={lastWaterReading}
+                readOnly
+                className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+              />
+            </div>
+            <div>
+              <label htmlFor="currentWaterReading" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                Chỉ số nước hiện tại (m³):
+              </label>
+              <input
+                type="number"
+                id="currentWaterReading"
+                value={currentWaterReading}
+                onChange={(e) => { setCurrentWaterReading(e.target.value); setBillingError(''); }}
+                className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                placeholder="Nhập chỉ số hiện tại"
+              />
+            </div>
+          </div>
+          {billingError && (
+            <p className="text-red-500 dark:text-red-400 text-sm text-center mb-4">{billingError}</p>
+          )}
+          <button
+            onClick={calculateBill}
+            className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 mb-6"
+            disabled={isNaN(parseFloat(currentElectricityReading)) || isNaN(parseFloat(currentWaterReading))}
+          >
+            <i className="fas fa-calculator mr-2"></i> Tính toán chi phí
+          </button>
+
+          {totalCost > 0 && (
+            <div className="bg-blue-100 dark:bg-gray-700 p-4 rounded-xl shadow-inner text-lg font-semibold text-blue-900 dark:text-blue-100 border border-blue-200 dark:border-gray-600">
+              <p className="mb-2">Tiền điện: <span className="text-blue-700 dark:text-blue-300">{electricityCost.toLocaleString('vi-VN')} VND</span></p>
+              <p className="mb-2">Tiền nước: <span className="text-blue-700 dark:text-blue-300">{waterCost.toLocaleString('vi-VN')} VND</span></p>
+              <p className="border-t pt-3 mt-3 border-blue-300 dark:border-gray-600 text-xl font-bold">Tổng cộng: <span className="text-blue-800 dark:text-blue-200">{totalCost.toLocaleString('vi-VN')} VND</span></p>
+            </div>
+          )}
+        </div>
+      );
+    case 'costSharing':
+      return (
+        <div className="p-6 bg-orange-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+          <h2 className="text-2xl font-bold text-orange-800 dark:text-orange-200 mb-5">Tính ngày có mặt & Chia tiền</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div>
+              <label htmlFor="startDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                Ngày bắt đầu:
+              </label>
+              <input
+                type="date"
+                id="startDate"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700"
+              />
+            </div>
+            <div>
+              <label htmlFor="endDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                Ngày kết thúc:
+              </label>
+              <input
+                type="date"
+                id="endDate"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700"
+              />
+            </div>
+          </div>
+          <button
+            onClick={calculateAttendanceDays}
+            className="w-full px-6 py-3 bg-orange-600 text-white font-semibold rounded-xl shadow-md hover:bg-orange-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-75 mb-6"
+            disabled={residents.length === 0 || totalCost <= 0}
+          >
+            <i className="fas fa-calendar-check mr-2"></i> Tính ngày có mặt
+          </button>
+
+          {totalCalculatedDaysAllResidents > 0 && totalCost > 0 && (
+            <div className="bg-orange-100 dark:bg-gray-700 p-4 rounded-xl shadow-inner text-lg font-semibold text-orange-900 dark:text-orange-100 border border-orange-200 dark:border-gray-600">
+              <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200 mb-3">Kết quả điểm danh theo ngày:</h3>
+              <ul className="space-y-2 mb-3">
+                {residents.map(resident => (
+                  <li key={resident.id} className="flex justify-between items-center bg-gray-50 dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                    <span className="font-medium text-gray-700 dark:text-gray-300">{resident.name}:</span>
+                    <span className="text-orange-700 dark:text-orange-300 font-bold">{calculatedDaysPresent[resident.id] || 0} ngày</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="border-t pt-3 mt-3 border-orange-300 dark:border-gray-600 text-xl font-bold">
+                Tổng số ngày có mặt của tất cả: <span className="text-orange-800 dark:text-orange-200">{totalCalculatedDaysAllResidents} ngày</span>
+              </p>
+
+              <>
+                <p className="mt-3 text-xl font-bold">
+                  Chi phí trung bình 1 ngày 1 người: <span className="text-orange-800 dark:text-orange-200">{costPerDayPerPerson.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} VND</span>
+                </p>
+                <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200 mt-5 mb-3">Số tiền mỗi người cần đóng:</h3>
+                <ul className="space-y-2">
+                  {/* Sắp xếp cư dân để hiển thị dựa trên số ngày có mặt và sau đó là chi phí */}
+                  {[...residents].sort((a, b) => {
+                    const daysA = calculatedDaysPresent[a.id] || 0;
+                    const daysB = calculatedDaysPresent[b.id] || 0;
+                    const costA = individualCosts[a.id]?.cost || 0;
+                    const costB = individualCosts[b.id]?.cost || 0;
+
+                    if (daysA !== daysB) {
+                      return daysB - daysA;
+                    }
+                    return costB - costA;
+                  }).map(resident => (
+                    <li key={resident.id} className="flex justify-between items-center bg-gray-50 dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                      <span className="font-medium text-gray-700 dark:text-gray-300">{resident.name}:</span>
+                      <span className="font-bold">
+                        {(individualCosts[resident.id]?.cost || 0).toLocaleString('vi-VN')} VND
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="border-t pt-3 mt-3 border-orange-300 dark:border-gray-600 text-xl font-bold">
+                  Quỹ phòng còn lại: <span className={`font-bold ${remainingFund >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
+                    {remainingFund.toLocaleString('vi-VN')} VND
+                  </span>
+                </p>
+
+                {/* Tích hợp Gemini API: Nhắc nhở thanh toán */}
+                <div className="mt-8 pt-3 border-t border-orange-300 dark:border-gray-600">
+                  <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200 mb-4">✨ Tạo nhắc nhở thanh toán</h3>
+                  <div className="flex flex-col sm:flex-row items-center gap-3 mb-4">
+                    <label htmlFor="selectResidentReminder" className="font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Chọn người:</label>
+                    <select
+                      id="selectResidentReminder"
+                      value={selectedResidentForReminder}
+                      onChange={(e) => setSelectedResidentForReminder(e.target.value)}
+                      className="flex-1 shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700"
+                      disabled={residents.length === 0}
+                    >
+                      <option value="">-- Chọn người --</option>
+                      {residents.map(resident => (
+                        <option key={resident.id} value={resident.id}>
+                          {resident.name}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={generatePaymentReminder}
+                      className="px-6 py-2 bg-purple-600 text-white font-semibold rounded-xl shadow-md hover:bg-purple-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75"
+                      disabled={isGeneratingReminder || !selectedResidentForReminder || totalCost === 0}
+                    >
+                      {isGeneratingReminder ? (
+                        <i className="fas fa-spinner fa-spin mr-2"></i>
+                      ) : (
+                        <i className="fas fa-magic mr-2"></i>
+                      )}
+                      Tạo nhắc nhở
+                    </button>
+                  </div>
+                  {generatedReminder && (
+                    <div className="mt-4 bg-white dark:bg-gray-800 p-4 rounded-xl shadow-inner border border-gray-200 dark:border-gray-700">
+                      <p className="font-semibold text-gray-800 dark:text-gray-200 mb-2">Tin nhắn gợi ý:</p>
+                      <textarea
+                        readOnly
+                        value={generatedReminder}
+                        rows="6"
+                        className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 resize-y focus:outline-none"
+                      ></textarea>
+                    </div>
+                  )}
+                </div>
+              </>
+            </div>
+          )}
+        </div>
+      );
+    case 'billHistory':
+      return (
+        <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+          <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Lịch sử tiền điện nước</h2>
+          {billHistory.length === 0 ? (
+            <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có hóa đơn nào được lưu.</p>
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+              <table className="min-w-full bg-white dark:bg-gray-800">
+                <thead><tr>
+                  <th className="py-3 px-6 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Ngày tính</th>
+                  <th className="py-3 px-6 text-right text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Tổng tiền</th>
+                  <th className="py-3 px-6 text-center text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Người ghi nhận</th>
+                  <th className="py-3 px-6 text-center text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Trạng thái</th>
+                  <th className="py-3 px-6 text-center text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Chi tiết</th>
+                </tr></thead>
+                <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
+                  {billHistory.map(bill => (
+                    <tr key={bill.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                      <td className="py-3 px-6 text-left whitespace-nowrap">
+                        {bill.billDate && bill.billDate instanceof Date ? bill.billDate.toLocaleDateString('vi-VN') : 'N/A'}
+                      </td>
+                      <td className="py-3 px-6 text-right whitespace-nowrap font-bold text-blue-700 dark:text-blue-300">
+                        {bill.totalCost?.toLocaleString('vi-VN') || 0} VND
+                      </td>
+                      <td className="py-3 px-6 text-center whitespace-nowrap">
+                        {bill.recordedBy || 'N/A'}
+                      </td>
+                      <td className="py-3 px-6 text-center">
+                        <input
+                          type="checkbox"
+                          checked={bill.isPaid || false}
+                          onChange={() => handleToggleBillPaidStatus(bill.id, bill.isPaid || false)}
+                          className="form-checkbox h-5 w-5 text-green-600 dark:text-green-400 rounded cursor-pointer"
+                        />
+                        <span className={`ml-2 font-semibold ${bill.isPaid ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
+                          {bill.isPaid ? 'Đã trả' : 'Chưa trả'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-6 text-center">
+                        <button
+                          onClick={() => setSelectedBillDetails(bill)}
+                          className="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg shadow-sm hover:bg-blue-600 transition-colors"
+                        >
+                          Xem
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      );
+    case 'costSharingHistory':
+      return (
+        <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg mt-8 max-w-5xl mx-auto">
+          <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">Lịch sử chia tiền</h2>
+          {costSharingHistory.length === 0 ? (
+            <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có lịch sử chia tiền nào được lưu.</p>
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+              <table className="min-w-full bg-white dark:bg-gray-800">
+                <thead><tr>
+                  <th className="py-3 px-6 text-left text-yellow-800 dark:text-yellow-200 uppercase text-sm leading-normal bg-yellow-100 dark:bg-gray-700">Kỳ tính</th>
+                  <th className="py-3 px-6 text-right text-yellow-800 dark:text-yellow-200 uppercase text-sm leading-normal bg-yellow-100 dark:bg-gray-700">Tổng ngày có mặt</th>
+                  <th className="py-3 px-6 text-right text-yellow-800 dark:text-yellow-200 uppercase text-sm leading-normal bg-yellow-100 dark:bg-gray-700">Quỹ phòng</th>
+                  <th className="py-3 px-6 text-center text-yellow-800 dark:text-yellow-200 uppercase text-sm leading-normal bg-yellow-100 dark:bg-gray-700">Chi tiết</th>
+                </tr></thead>
+                <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
+                  {costSharingHistory.map(summary => (
+                    <tr key={summary.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                      <td className="py-3 px-6 text-left whitespace-nowrap">
+                        {summary.periodStart} đến {summary.periodEnd}
+                      </td>
+                      <td className="py-3 px-6 text-right whitespace-nowrap">
+                        {summary.totalCalculatedDaysAllResidents} ngày
+                      </td>
+                      <td className="py-3 px-6 text-right whitespace-nowrap">
+                        <span className={`font-bold ${summary.remainingFund >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
+                          {summary.remainingFund?.toLocaleString('vi-VN')} VND
+                        </span>
+                      </td>
+                      <td className="py-3 px-6 text-center">
+                        <button
+                          onClick={() => setSelectedCostSharingDetails(summary)}
+                          className="px-3 py-1 bg-yellow-600 text-white text-xs rounded-lg shadow-sm hover:bg-yellow-700 transition-colors"
+                        >
+                          Xem
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      );
+    case 'cleaningSchedule':
+      return (
+        <div className="p-6 bg-purple-50 dark:bg-gray-700 rounded-2xl shadow-lg mt-8 max-w-5xl mx-auto">
+          <h2 className="text-2xl font-bold text-purple-800 dark:text-purple-200 mb-5">Lịch trực phòng lau dọn</h2>
+          <div className="flex flex-col sm:flex-row gap-3 mb-4">
+            <input
+              type="text"
+              value={newCleaningTaskName}
+              onChange={(e) => { setNewCleaningTaskName(e.target.value); setAuthError(''); }}
+              className="flex-1 shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
+              placeholder="Tên công việc (ví dụ: Lau sàn)"
+            />
+            <input
+              type="date"
+              value={newCleaningTaskDate}
+              onChange={(e) => { setNewCleaningTaskDate(e.target.value); setAuthError(''); }}
+              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
+            />
+            <select
+              value={selectedResidentForCleaning}
+              onChange={(e) => { setSelectedResidentForCleaning(e.target.value); setAuthError(''); }}
+              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
+            >
+              <option value="">-- Chọn người --</option>
+              {residents.filter(res => res.isActive !== false).map(resident => (
+                <option key={resident.id} value={resident.id}>{resident.name}</option>
+              ))}
+            </select>
+            <button
+              onClick={handleAddCleaningTask}
+              className="px-6 py-2 bg-purple-600 text-white font-semibold rounded-xl shadow-md hover:bg-purple-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75"
+            >
+              <i className="fas fa-plus mr-2"></i> Thêm công việc
+            </button>
+          </div>
+          <button
+            onClick={() => setShowGenerateScheduleModal(true)} // Mới: Nút để mở modal tạo lịch
+            className="w-full px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl shadow-md hover:bg-indigo-700 transition-all duration-300"
+            disabled={residents.filter(res => res.isActive !== false).length === 0} // Vô hiệu hóa nếu không có cư dân hoạt động
+          >
+            ✨ Tạo lịch tự động
+          </button>
+          {cleaningSchedule.length === 0 ? (
+            <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có công việc lau dọn nào được lên lịch.</p>
+          ) : (
+            <div className="max-h-60 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-xl p-3 bg-gray-50 dark:bg-gray-700">
+              <h3 className="text-xl font-semibold text-purple-700 dark:text-purple-200 mb-3">Lịch trực hiện có:</h3>
+              <ul className="space-y-2">
+                {cleaningSchedule.map((task) => (
+                  <li key={task.id} className="flex items-center justify-between bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                    <div className="flex flex-col items-start">
+                      <span className="font-medium text-gray-700 dark:text-gray-300">{task.name} ({task.assignedToResidentName})</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Ngày: {task.date}
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={task.isCompleted || false}
+                        onChange={() => handleToggleCleaningTaskCompletion(task.id, task.isCompleted || false)}
+                        className="form-checkbox h-5 w-5 text-green-600 dark:text-green-400 rounded focus:ring-green-500 cursor-pointer"
+                      />
+                      <button
+                        onClick={() => handleDeleteCleaningTask(task.id, task.name)}
+                        className="px-3 py-1 bg-red-500 text-white text-sm rounded-lg shadow-sm hover:bg-red-600 transition-colors"
+                      >
+                        Xóa
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      );
+    case 'shoeRackManagement':
+      return (
+        <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+          <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">Quản lý kệ giày</h2>
+          <div className="flex flex-col sm:flex-row gap-3 mb-4">
+            <select
+              value={selectedShelfNumber}
+              onChange={(e) => { setSelectedShelfNumber(e.target.value); setAuthError(''); }}
+              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white dark:bg-gray-700"
+            >
+              <option value="">-- Chọn tầng kệ --</option>
+              {[...Array(8)].map((_, i) => (
+                <option key={i + 1} value={i + 1}>Tầng {i + 1}</option>
+              ))}
+            </select>
+            <select
+              value={selectedResidentForShelf}
+              onChange={(e) => { setSelectedResidentForShelf(e.target.value); setAuthError(''); }}
+              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white dark:bg-gray-700"
+            >
+              <option value="">-- Chọn người --</option>
+              {residents.filter(res => res.isActive !== false).map(resident => (
+                <option key={resident.id} value={resident.id}>{resident.name}</option>
+              ))}
+            </select>
+            <button
+              onClick={handleAssignShoeRack}
+              className="px-6 py-2 bg-yellow-600 text-white font-semibold rounded-xl shadow-md hover:bg-yellow-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-75"
+              disabled={!selectedShelfNumber || !selectedResidentForShelf}
+            >
+              <i className="fas fa-shoe-prints mr-2"></i> Gán kệ
+            </button>
+          </div>
+          {Object.keys(shoeRackAssignments).length === 0 ? (
+            <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có kệ giày nào được gán.</p>
+          ) : (
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-inner border border-gray-200 dark:border-gray-700">
+              <h3 className="text-xl font-semibold text-yellow-700 dark:text-yellow-200 mb-3">Phân công kệ giày:</h3>
+              <ul className="space-y-3">
+                {[...Array(8)].map((_, i) => {
+                  const shelfNum = i + 1;
+                  const assignment = shoeRackAssignments[shelfNum];
+                  const isMyShelf = loggedInResidentProfile && assignment && assignment.residentId === loggedInResidentProfile.id;
+                  return (
+                    <li key={shelfNum} className={`flex items-center justify-between p-3 rounded-lg shadow-sm border ${isMyShelf ? 'bg-yellow-200 dark:bg-yellow-900 border-yellow-400' : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600'}`}>
+                      <span className={`font-medium ${isMyShelf ? 'text-yellow-900 dark:text-yellow-100' : 'text-gray-700 dark:text-gray-300'}`}>Tầng {shelfNum}:</span>
+                      {assignment ? (
+                        <span className={`font-bold ${isMyShelf ? 'text-yellow-800 dark:text-yellow-200' : 'text-yellow-700 dark:text-yellow-300'}`}>
+                          {assignment.residentName}
+                          {userRole === 'admin' && ( // Chỉ hiển thị nút xóa cho admin
+                            <button
+                              onClick={() => handleClearShoeRackAssignment(shelfNum)}
+                              className="ml-3 px-2 py-1 bg-red-500 text-white text-xs rounded-lg shadow-sm hover:bg-red-600 transition-colors"
+                            >
+                              Xóa
+                            </button>
+                          )}
+                        </span>
+                      ) : (
+                        <span className="text-gray-500 dark:text-gray-400 italic">Trống</span>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+        </div>
+      );
+    case 'commonRoomInfo': // New section for common room information
+      return (
+        <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+          <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Thông tin phòng chung</h2>
+          {residents.length === 0 ? (
+            <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có người ở nào trong danh sách.</p>
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+              <table className="min-w-full bg-white dark:bg-gray-800">
+                <thead>
+                  <tr>
+                    <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Họ tên</th>
+                    <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Email</th>
+                    <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">SĐT</th>
+                    <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">MSSV</th>
+                    <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Ngày sinh</th>
+                    <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Ngày nhập KTX</th>
+                    <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Email trường</th>
+                    <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
+                  {residents.map(resident => {
+                    const linkedUser = allUsersData.find(user => user.linkedResidentId === resident.id);
+                    return (
+                      <tr key={resident.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                        <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.fullName || resident.name}</td>
+                        <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.email || 'N/A'}</td>
+                        <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.phoneNumber || 'N/A'}</td>
+                        <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.studentId || 'N/A'}</td>
+                        <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.birthday || 'N/A'}</td>
+                        <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.dormEntryDate || 'N/A'}</td>
+                        <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.academicLevel || 'N/A'}</td>
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <span className={`font-semibold ${resident.isActive ? 'text-green-600' : 'text-red-500'}`}>
+                            {resident.isActive ? 'Hoạt động' : 'Vô hiệu hóa'}
+                          </span>
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        );
-      }
-    }
-    // Logic cho Thành viên
-    if (userRole === 'member') {
-      switch (activeSection) {
-        case 'attendanceTracking': // Điểm danh của tôi
-          return (
-            <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">Điểm danh của tôi</h2>
-              {/* Giữ nguyên phần chọn tháng */}
-              <div className="mb-6 flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4">
-                <label htmlFor="monthSelector" className="font-semibold text-gray-700 dark:text-gray-300 text-lg">Chọn tháng:</label>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      );
+    case 'customNotificationDesign': // Mới: Thiết kế thông báo
+      return (
+        <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+          <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Thiết kế thông báo tùy chỉnh</h2>
+
+          <form onSubmit={handleSendCustomNotification} className="mb-8 p-4 bg-blue-100 dark:bg-gray-800 rounded-xl shadow-inner border border-blue-200 dark:border-gray-600">
+            <h3 className="text-xl font-bold text-blue-700 dark:text-blue-200 mb-4">Soạn thông báo mới</h3>
+            <div className="space-y-4">
+              {/* Tiêu đề thông báo (Tùy chọn) */}
+              <div>
+                <label htmlFor="notificationTitle" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Tiêu đề (Tùy chọn):</label>
                 <input
-                  type="month"
-                  id="monthSelector"
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700"
+                  type="text"
+                  id="notificationTitle"
+                  value={newNotificationTitle}
+                  onChange={(e) => setNewNotificationTitle(e.target.value)}
+                  className="shadow-sm appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Ví dụ: Thông báo khẩn về tiền điện"
                 />
               </div>
 
-              {/* Dùng lại phần hiển thị bảng điểm danh, nó đã được lọc qua `displayedResidents` */}
-              {displayedResidents.length === 0 ? (
-                userRole === 'member' && !loggedInResidentProfile ? (
-                  <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.</p>
-                ) : (
-                  <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Vui lòng thêm người trong phòng vào danh sách để bắt đầu điểm danh.</p>
-                )
-              ) : (
-                <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-                  <table className="min-w-full bg-white dark:bg-gray-800">
-                    <thead><tr>
-                      <th className="py-3 px-6 text-left sticky left-0 bg-green-100 dark:bg-gray-700 z-20 border-r border-green-200 dark:border-gray-600 rounded-tl-xl text-green-800 dark:text-green-200 uppercase text-sm leading-normal">Tên</th>
-                      {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map(day => (
-                        <th key={day} className="py-3 px-2 text-center border-l border-green-200 dark:border-gray-600 text-green-800 dark:text-green-200 uppercase text-sm leading-normal">
-                          {day}
-                        </th>
-                      ))}
-                    </tr></thead>
-                    <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
-                      {displayedResidents.map(resident => (
-                        <tr key={resident.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-                          <td className="py-3 px-6 text-left whitespace-nowrap font-medium sticky left-0 bg-white dark:bg-gray-800 z-10 border-r border-gray-200 dark:border-gray-700">
-                            {resident.name}
-                          </td>
-                          {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map(day => {
-                            const dayString = String(day).padStart(2, '0');
-                            const isPresent = monthlyAttendanceData[resident.id]?.[dayString] === 1;
-                            return (
-                              <td key={day} className="py-3 px-2 text-center border-l border-gray-200 dark:border-gray-700">
-                                <input
-                                  type="checkbox"
-                                  checked={isPresent}
-                                  onChange={() => handleToggleDailyPresence(resident.id, day)}
-                                  className="form-checkbox h-5 w-5 text-green-600 dark:text-green-400 rounded focus:ring-green-500 cursor-pointer"
-                                />
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          );
-        case 'memberCostSummary': // Chi phí của tôi
-          // Hiển thị tóm tắt chi phí mới nhất và nút đánh dấu đã đóng
-          const latestCostSharingRecord = costSharingHistory[0];
-          return (
-            <div className="p-6 bg-orange-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-orange-800 dark:text-orange-200 mb-5">Chi phí của tôi</h2>
-              {!loggedInResidentProfile ? (
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.</p>
-              ) : !latestCostSharingRecord || !latestCostSharingRecord.individualCosts || !latestCostSharingRecord.individualCosts[loggedInResidentProfile.id] ? (
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có thông tin chi phí nào cho bạn.</p>
-              ) : (
-                <div className="bg-orange-100 dark:bg-gray-700 p-4 rounded-xl shadow-inner text-lg font-semibold text-orange-900 dark:text-orange-100 border border-orange-200 dark:border-gray-600">
-                  <p className="mb-2"><strong>Kỳ tính:</strong> {latestCostSharingRecord.periodStart} đến {latestCostSharingRecord.periodEnd}</p>
-                  <p className="mb-2"><strong>Số ngày có mặt:</strong> {latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.daysPresent || 0} ngày</p>
-                  <p className="mb-2 text-xl font-bold border-t pt-3 mt-3 border-orange-300 dark:border-gray-600">
-                    Số tiền cần đóng: <span className="text-orange-800 dark:text-orange-200">
-                      {(latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.cost || 0).toLocaleString('vi-VN')} VND
-                    </span>
-                  </p>
-                  <p className="text-lg font-bold">
-                    Trạng thái: <span className={latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.isPaid ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}>
-                      {latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.isPaid ? 'Đã đóng' : 'Chưa đóng'}
-                    </span>
-                  </p>
-                  {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
-                  {!latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.isPaid && (
-                    <button
-                      onClick={handleMarkMyPaymentAsPaid}
-                      className="w-full mt-4 px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all duration-300"
-                    >
-                      <i className="fas fa-check-circle mr-2"></i> Đánh dấu đã đóng
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        case 'memberCleaningSchedule': // Lịch trực của tôi
-          // Hiển thị lịch trực nhưng chỉ những nhiệm vụ được giao cho thành viên đó
-          const myCleaningTasks = cleaningSchedule.filter(task =>
-            loggedInResidentProfile && task.assignedToResidentId === loggedInResidentProfile.id
-          );
-          return (
-            <div className="p-6 bg-purple-50 dark:bg-gray-700 rounded-2xl shadow-lg mt-8 max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-purple-800 dark:text-purple-200 mb-5">Lịch trực của tôi</h2>
-              {!loggedInResidentProfile ? (
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.</p>
-              ) : myCleaningTasks.length === 0 ? (
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa có công việc lau dọn nào được giao.</p>
-              ) : (
-                <div className="max-h-60 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-xl p-3 bg-gray-50 dark:bg-gray-700">
-                  <ul className="space-y-2">
-                    {myCleaningTasks.map((task) => (
-                      <li key={task.id} className="flex items-center justify-between bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                        <div className="flex flex-col items-start">
-                          <span className="font-medium text-gray-700 dark:text-gray-300">{task.name}</span>
-                          <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            Ngày: {task.date}
-                          </span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <span className={`ml-2 text-sm font-semibold ${task.isCompleted ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
-                            {task.isCompleted ? 'Đã hoàn thành' : 'Chưa hoàn thành'}
-                          </span>
-                          {/* Thành viên chỉ xem, không được chỉnh sửa trạng thái trực tiếp */}
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          );
-        case 'shoeRackManagement': // Thông tin kệ giày (chỉ hiển thị kệ của mình nếu có)
-          return (
-            <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">Thông tin kệ giày</h2>
-              {!loggedInResidentProfile ? (
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.</p>
-              ) : (
-                <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-inner border border-gray-200 dark:border-gray-700">
-                  <h3 className="text-xl font-semibold text-yellow-700 dark:text-yellow-200 mb-3">Phân công kệ giày của bạn:</h3>
-                  <ul className="space-y-3">
-                    {[...Array(8)].map((_, i) => {
-                      const shelfNum = i + 1;
-                      const assignment = shoeRackAssignments[shelfNum];
-                      const isMyShelf = loggedInResidentProfile && assignment && assignment.residentId === loggedInResidentProfile.id;
-                      return (
-                        <li key={shelfNum} className={`flex items-center justify-between p-3 rounded-lg shadow-sm border ${isMyShelf ? 'bg-yellow-200 dark:bg-yellow-900 border-yellow-400' : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600'}`}>
-                          <span className={`font-medium ${isMyShelf ? 'text-yellow-900 dark:text-yellow-100' : 'text-gray-700 dark:text-gray-300'}`}>Tầng {shelfNum}:</span>
-                          {isMyShelf ? (
-                            <span className={`font-bold ${isMyShelf ? 'text-yellow-800 dark:text-yellow-200' : 'text-yellow-700 dark:text-yellow-300'}`}>
-                              {assignment.residentName} (Kệ của bạn)
-                            </span>
-                          ) : (
-                            <span className="text-gray-500 dark:text-gray-400 italic">Trống / Người khác</span>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              )}
-            </div>
-          );
-        case 'commonRoomInfo': // Thông tin phòng chung (thành viên có thể xem)
-          return (
-            <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Thông tin phòng chung</h2>
-              {residents.length === 0 ? (
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có người ở nào trong danh sách.</p>
-              ) : (
-                <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-                  <table className="min-w-full bg-white dark:bg-gray-800">
-                    <thead>
-                      <tr>
-                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Họ tên</th>
-                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Email</th>
-                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">SĐT</th>
-                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">MSSV</th>
-                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Ngày sinh</th>
-                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Ngày nhập KTX</th>
-                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Email trường</th>
-                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Trạng thái</th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
-                      {residents.map(resident => {
-                        const linkedUser = allUsersData.find(user => user.linkedResidentId === resident.id);
-                        return (
-                          <tr key={resident.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.fullName || resident.name}</td>
-                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.email || 'N/A'}</td>
-                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.phoneNumber || 'N/A'}</td>
-                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.studentId || 'N/A'}</td>
-                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.birthday || 'N/A'}</td>
-                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.dormEntryDate || 'N/A'}</td>
-                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.academicLevel || 'N/A'}</td>
-                            <td className="py-3 px-4 whitespace-nowrap">
-                              <span className={`font-semibold ${resident.isActive ? 'text-green-600' : 'text-red-500'}`}>
-                                {resident.isActive ? 'Hoạt động' : 'Vô hiệu hóa'}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          );
-        case 'memberProfileEdit': // Chỉnh sửa thông tin cá nhân (thành viên có thể tự chỉnh sửa)
-          return (
-            <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Chỉnh sửa thông tin cá nhân</h2>
-              {!loggedInResidentProfile ? (
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.</p>
-              ) : (
-                <div className="space-y-4">
-                  {/* CÁC TRƯỜNG DỮ LIỆU CÁ NHÂN ĐỂ CHỈNH SỬA */}
-                  <div>
-                    <label htmlFor="editFullName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Họ tên đầy đủ:</label>
-                    <input
-                      type="text"
-                      id="editFullName"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="editPhoneNumber" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Số điện thoại:</label>
-                    <input
-                      type="text"
-                      id="editPhoneNumber"
-                      value={memberPhoneNumber}
-                      onChange={(e) => setMemberPhoneNumber(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="editStudentId" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Mã số sinh viên:</label>
-                    <input
-                      type="text"
-                      id="editStudentId"
-                      value={memberStudentId}
-                      onChange={(e) => setMemberStudentId(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="editBirthday" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày sinh:</label>
-                    <input
-                      type="date"
-                      id="editBirthday"
-                      value={memberBirthday}
-                      onChange={(e) => setMemberBirthday(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="editDormEntryDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày nhập KTX:</label>
-                    <input
-                      type="date"
-                      id="editDormEntryDate"
-                      value={memberDormEntryDate}
-                      onChange={(e) => setMemberDormEntryDate(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="editAcademicLevel" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email trường:</label>
-                    <input
-                      type="text"
-                      id="editAcademicLevel"
-                      value={memberAcademicLevel}
-                      onChange={(e) => setMemberAcademicLevel(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    />
-                  </div>
-
-                  {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
-
-                  <button
-                    onClick={handleSaveUserProfile} // <-- Đã đổi tên hàm
-                    className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
-                  >
-                    <i className="fas fa-save mr-2"></i> Lưu thông tin
-                  </button>
-                  <button
-                    onClick={() => setEditProfileMode(false)}
-                    className="w-full mt-2 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
-                  >
-                    Hủy
-                  </button>
-                </div>
-              )}
-              {/* Mới: Phần đổi mật khẩu */}
-              <div className="mt-10 pt-6 border-t border-gray-300 dark:border-gray-600">
-                <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-4">Đổi mật khẩu</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label htmlFor="oldPasswordMember" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Mật khẩu cũ:</label>
-                    <input
-                      type="password"
-                      id="oldPasswordMember" // Đổi ID cho phù hợp với member
-                      value={oldPassword}
-                      onChange={(e) => setOldPassword(e.target.value)}
-                      className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Nhập mật khẩu cũ"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="newPasswordMember" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Mật khẩu mới:</label>
-                    <input
-                      type="password"
-                      id="newPasswordMember" // Đổi ID cho phù hợp với member
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="confirmNewPasswordMember" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Xác nhận mật khẩu mới:</label>
-                    <input
-                      type="password"
-                      id="confirmNewPasswordMember" // Đổi ID cho phù hợp với member
-                      value={confirmNewPassword}
-                      onChange={(e) => setConfirmNewPassword(e.target.value)}
-                      className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Xác nhận mật khẩu mới"
-                    />
-                  </div>
-                  {passwordChangeMessage && (
-                    <p className={`text-sm text-center mt-4 ${passwordChangeMessage.includes('thành công') ? 'text-green-600' : 'text-red-500'}`}>
-                      {passwordChangeMessage}
-                    </p>
-                  )}
-                  <button
-                    onClick={handleChangePassword}
-                    className="w-full px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-md hover:bg-red-700 transition-all duration-300"
-                  >
-                    <i className="fas fa-key mr-2"></i> Đổi mật khẩu
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-          case 'roomMemories':    // <--- Đảm bảo case này nằm TRƯỚC default
-          return (
-            <div className="p-6 bg-indigo-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-indigo-800 dark:text-indigo-200 mb-5">Kỷ niệm phòng</h2>
-
-              {/* Phần đăng ảnh kỷ niệm */}
-              <form onSubmit={handleAddMemory} className="mb-8 p-4 bg-indigo-100 dark:bg-gray-800 rounded-xl shadow-inner border border-indigo-200 dark:border-gray-600">
-                <h3 className="text-xl font-bold text-indigo-700 dark:text-indigo-200 mb-4">Đăng ảnh kỷ niệm mới</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label htmlFor="eventName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Sự kiện:</label>
-                    <input
-                      type="text"
-                      id="eventName"
-                      value={newMemoryEventName}
-                      onChange={(e) => setNewMemoryEventName(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700"
-                      placeholder="Ví dụ: Sinh nhật tháng 10"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="photoDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày chụp:</label>
-                    <input
-                      type="date"
-                      id="photoDate"
-                      value={newMemoryPhotoDate}
-                      onChange={(e) => setNewMemoryPhotoDate(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="imageFile" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Chọn ảnh:</label>
-                    <input
-                      type="file"
-                      id="imageFile"
-                      accept="image/*"
-                      onChange={(e) => setNewMemoryImageFile(e.target.files[0])}
-                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                    />
-                  </div>
-                  {isUploadingMemory && (
-                    <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-                      <div className="bg-indigo-600 h-2.5 rounded-full" style={{ width: `${uploadProgress}%` }}></div>
-                    </div>
-                  )}
-                  {memoryError && <p className="text-red-500 text-sm text-center mt-4">{memoryError}</p>}
-                  <button
-                    type="submit"
-                    className="w-full px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl shadow-md hover:bg-indigo-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-75"
-                    disabled={isUploadingMemory}
-                  >
-                    {isUploadingMemory ? <i className="fas fa-spinner fa-spin mr-2"></i> : <i className="fas fa-upload mr-2"></i>}
-                    Đăng kỷ niệm
-                  </button>
-                </div>
-              </form>
-
-              {/* Danh sách các kỷ niệm đã đăng */}
-              <h3 className="text-xl font-bold text-indigo-700 dark:text-indigo-200 mb-4">Các kỷ niệm đã đăng</h3>
-              {memories.length === 0 ? (
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có kỷ niệm nào được đăng.</p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {memories.map(memory => (
-                    <div key={memory.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                      <img src={memory.imageUrl} alt={memory.eventName} className="w-full h-48 object-cover" />
-                      <div className="p-4">
-                        <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">{memory.eventName}</h4>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                          <i className="fas fa-calendar-alt mr-2"></i>Ngày chụp: {memory.photoDate}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                          <i className="fas fa-upload mr-2"></i>Đăng bởi: {memory.uploadedByName || 'Ẩn danh'} vào {memory.uploadedAt?.toLocaleDateString('vi-VN')}
-                        </p>
-                        {userRole === 'admin' && ( // Chỉ admin mới có nút xóa
-                          <button
-                            onClick={() => handleDeleteMemory(memory.id, memory.imageUrl)}
-                            className="mt-4 px-4 py-2 bg-red-500 text-white rounded-lg shadow hover:bg-red-600 transition-colors duration-200"
-                          >
-                            <i className="fas fa-trash mr-2"></i>Xóa
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        case 'formerResidents': // <--- Đảm bảo case này nằm TRƯỚC default
-          return (
-            <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">Thông tin tiền bối</h2>
-
-              {/* Form thêm tiền bối thủ công (Chỉ cho Admin) */}
-              {userRole === 'admin' && (
-                <form onSubmit={handleAddFormerResidentManually} className="mb-8 p-4 bg-green-100 dark:bg-gray-800 rounded-xl shadow-inner border border-green-200 dark:border-gray-600">
-                  <h3 className="text-xl font-bold text-green-700 dark:text-green-200 mb-4">Thêm tiền bối thủ công</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <label htmlFor="formerName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Họ tên:</label>
-                      <input type="text" id="formerName" value={newFormerResidentName} onChange={(e) => setNewFormerResidentName(e.target.value)}
-                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500" placeholder="Nguyễn Văn A" />
-                    </div>
-                    <div>
-                      <label htmlFor="formerEmail" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email:</label>
-                      <input type="email" id="formerEmail" value={newFormerResidentEmail} onChange={(e) => setNewFormerResidentEmail(e.target.value)}
-                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500" placeholder="nguyenvana@example.com" />
-                    </div>
-                    <div>
-                      <label htmlFor="formerPhone" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">SĐT:</label>
-                      <input type="text" id="formerPhone" value={newFormerResidentPhone} onChange={(e) => setNewFormerResidentPhone(e.target.value)}
-                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500" placeholder="0123456789" />
-                    </div>
-                    <div>
-                      <label htmlFor="formerStudentId" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">MSSV:</label>
-                      <input type="text" id="formerStudentId" value={newFormerResidentStudentId} onChange={(e) => setNewFormerResidentStudentId(e.target.value)}
-                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500" placeholder="B1234567" />
-                    </div>
-                    <div>
-                      <label htmlFor="formerBirthday" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày sinh:</label>
-                      <input type="date" id="formerBirthday" value={newFormerResidentBirthday} onChange={(e) => setNewFormerResidentBirthday(e.target.value)}
-                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500" />
-                    </div>
-                    <div>
-                      <label htmlFor="formerDormEntryDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày nhập KTX:</label>
-                      <input type="date" id="formerDormEntryDate" value={newFormerResidentDormEntryDate} onChange={(e) => setNewFormerResidentDormEntryDate(e.target.value)}
-                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500" />
-                    </div>
-                    <div>
-                      <label htmlFor="formerAcademicLevel" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Cấp:</label>
-                      <input type="text" id="formerAcademicLevel" value={newFormerResidentAcademicLevel} onChange={(e) => setNewFormerResidentAcademicLevel(e.target.value)}
-                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500" placeholder="Đại học" />
-                    </div>
-                    <div>
-                      <label htmlFor="formerDeactivatedDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày ra khỏi phòng (Ngày vô hiệu hóa):</label>
-                      <input type="date" id="formerDeactivatedDate" value={newFormerResidentDeactivatedDate} onChange={(e) => setNewFormerResidentDeactivatedDate(e.target.value)}
-                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500" />
-                    </div>
-                  </div>
-                  {/* Toàn bộ div cho input file, progress bar và formerResidentError ĐÃ XÓA */}
-                  <button
-                    type="submit"
-                    className="w-full px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75"
-                    // Thuộc tính disabled={isUploadingFormerResident} đã bị xóa
-                  >
-                    <i className="fas fa-plus-circle mr-2"></i>
-                    Thêm tiền bối
-                  </button>
-                </form>
-              )}
-
-              {/* Nút "Chuyển người dùng sang tiền bối" (Nếu bạn vẫn muốn dùng chức năng này cho admin, nó thường được đặt ở Quản lý người ở) */}
-              {userRole === 'admin' && (
-                <button
-                  onClick={() => { alert('Nút này dùng để chuyển người ở hiện tại sang tiền bối từ mục "Quản lý người ở".'); }}
-                  className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 mb-6"
+              {/* Người nhận */}
+              <div>
+                <label htmlFor="notificationRecipient" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Gửi đến:</label>
+                <select
+                  id="notificationRecipient"
+                  value={newNotificationRecipient}
+                  onChange={(e) => setNewNotificationRecipient(e.target.value)}
+                  className="shadow-sm appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <i className="fas fa-exchange-alt mr-2"></i> Chuyển người dùng hiện tại sang tiền bối
-                </button>
-              )}
-
-
-              {/* Danh sách các tiền bối đã lưu */}
-              <h3 className="text-xl font-bold text-green-700 dark:text-green-200 mb-4">Danh sách tiền bối</h3>
-              {formerResidents.length === 0 ? (
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có thông tin tiền bối nào được lưu.</p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {formerResidents.map(resident => (
-                    <div key={resident.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                      {/* Toàn bộ phần hiển thị ảnh (resident.photoURL) ĐÃ XÓA */}
-                      <div className="p-4">
-                        <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">{resident.name}</h4>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                            <i className="fas fa-envelope mr-2"></i>Email: {resident.email || 'N/A'}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                            <i className="fas fa-phone mr-2"></i>SĐT: {resident.phoneNumber || 'N/A'}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                            <i className="fas fa-id-badge mr-2"></i>MSSV: {resident.studentId || 'N/A'}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                            <i className="fas fa-birthday-cake mr-2"></i>Ngày sinh: {resident.birthday || 'N/A'}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                            <i className="fas fa-calendar-alt mr-2"></i>Ngày nhập KTX: {resident.dormEntryDate || 'N/A'}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                            <i className="fas fa-graduation-cap mr-2"></i>Cấp: {resident.academicLevel || 'N/A'}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                            <i className="fas fa-door-open mr-2"></i>Ngày ra khỏi phòng: {resident.deactivatedAt && typeof resident.deactivatedAt.toLocaleDateString === 'function' ? resident.deactivatedAt.toLocaleDateString('vi-VN') : (resident.deactivatedAt || 'N/A')}
-                        </p>
-                        {userRole === 'admin' && (
-                          <button
-                            onClick={() => handleDeleteFormerResident(resident.id)} // <-- Đã sửa: chỉ truyền resident.id
-                            className="mt-4 px-4 py-2 bg-red-500 text-white rounded-lg shadow hover:bg-red-600 transition-colors duration-200"
-                          >
-                            <i className="fas fa-trash mr-2"></i>Xóa
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          );        
-          default:
-          return (
-            <div className="text-center p-8 bg-gray-100 dark:bg-gray-700 rounded-xl shadow-inner">
-              <p className="text-xl text-gray-700 dark:text-gray-300 font-semibold mb-4">
-                Chào mừng Thành viên! Vui lòng chọn một mục từ thanh điều hướng.
-              </p>
-            </div>
-          );
-
-          case 'memberProfileEdit': // Chỉnh sửa thông tin cá nhân (thành viên có thể tự chỉnh sửa)
-          return (
-            <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Chỉnh sửa thông tin cá nhân</h2>
-              {!loggedInResidentProfile ? (
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.</p>
-              ) : (
-                <div className="space-y-4">
-                  {/* ... (Các trường Họ tên, SĐT, MSSV, v.v. hiện có) ... */}
-
-                  {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
-
-                  <button
-                    onClick={handleSaveUserProfile}
-                    className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
-                  >
-                    <i className="fas fa-save mr-2"></i> Lưu thông tin
-                  </button>
-                  <button
-                    onClick={() => setEditProfileMode(false)}
-                    className="w-full mt-2 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
-                  >
-                    Hủy
-                  </button>
-                </div>
-              )}
-
-              {/* Mới: Phần đổi mật khẩu */}
-              <div className="mt-10 pt-6 border-t border-gray-300 dark:border-gray-600">
-                <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-4">Đổi mật khẩu</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label htmlFor="oldPasswordMember" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Mật khẩu cũ:</label>
-                    <input
-                      type="password"
-                      id="oldPasswordMember"
-                      value={oldPassword}
-                      onChange={(e) => setOldPassword(e.target.value)}
-                      className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Nhập mật khẩu cũ"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="newPasswordMember" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Mật khẩu mới:</label>
-                    <input
-                      type="password"
-                      id="newPasswordMember"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="confirmNewPasswordMember" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Xác nhận mật khẩu mới:</label>
-                    <input
-                      type="password"
-                      id="confirmNewPasswordMember"
-                      value={confirmNewPassword}
-                      onChange={(e) => setConfirmNewPassword(e.target.value)}
-                      className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Xác nhận mật khẩu mới"
-                    />
-                  </div>
-                  {passwordChangeMessage && (
-                    <p className={`text-sm text-center mt-4 ${passwordChangeMessage.includes('thành công') ? 'text-green-600' : 'text-red-500'}`}>
-                      {passwordChangeMessage}
-                    </p>
-                  )}
-                  <button
-                    onClick={handleChangePassword}
-                    className="w-full px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-md hover:bg-red-700 transition-all duration-300"
-                  >
-                    <i className="fas fa-key mr-2"></i> Đổi mật khẩu
-                  </button>
-                </div>
+                  <option value="all">Tất cả thành viên</option>
+                  {residents.filter(res => res.isActive).map(resident => { // Chỉ hiển thị cư dân đang hoạt động
+                      const linkedUser = allUsersData.find(user => user.linkedResidentId === resident.id);
+                      if (linkedUser) { // Chỉ hiển thị người dùng có tài khoản liên kết
+                        return <option key={linkedUser.id} value={linkedUser.id}>{linkedUser.fullName || resident.name}</option>;
+                      }
+                      return null;
+                  })}
+                </select>
               </div>
-            </div>
-          );
-      }
-    }
 
+              {/* Loại thông báo */}
+              <div>
+                <label htmlFor="notificationType" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Loại thông báo:</label>
+                <select
+                  id="notificationType"
+                  value={newNotificationType}
+                  onChange={(e) => setNewNotificationType(e.target.value)}
+                  className="shadow-sm appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="general">Thông báo chung</option>
+                  <option value="urgent">Thông báo khẩn</option>
+                  <option value="custom">Thông báo tùy chỉnh</option>
+                  {/* Có thể thêm các loại khác nếu cần */}
+                </select>
+              </div>
+
+              {/* Nội dung thông báo */}
+              <div>
+                <label htmlFor="notificationMessage" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Nội dung thông báo:</label>
+                <textarea
+                  id="notificationMessage"
+                  value={newNotificationMessage}
+                  onChange={(e) => setNewNotificationMessage(e.target.value)}
+                  rows="5"
+                  className="shadow-sm appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500 resize-y"
+                  placeholder="Nhập nội dung thông báo..."
+                ></textarea>
+              </div>
+
+              {customNotificationError && <p className="text-red-500 text-sm text-center mt-4">{customNotificationError}</p>}
+              {customNotificationSuccess && <p className="text-green-600 text-sm text-center mt-4">{customNotificationSuccess}</p>}
+
+              <button
+                type="submit"
+                className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75"
+              >
+                <i className="fas fa-paper-plane mr-2"></i> Gửi thông báo
+              </button>
+            </div>
+          </form>
+        </div>
+      );
+    case 'adminProfileEdit': // Mới: Chỉnh sửa thông tin cá nhân cho Admin
+      return (
+        <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+          <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Chỉnh sửa hồ sơ của tôi</h2>
+          {/* Form chỉnh sửa profile tương tự như member */}
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="adminEditFullName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Họ tên đầy đủ:</label>
+              <input
+                type="text"
+                id="adminEditFullName"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+              />
+            </div>
+            <div>
+              <label htmlFor="adminEditPhoneNumber" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Số điện thoại:</label>
+              <input
+                type="text"
+                id="adminEditPhoneNumber"
+                value={memberPhoneNumber} // Vẫn dùng state này
+                onChange={(e) => setMemberPhoneNumber(e.target.value)}
+                className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+              />
+            </div>
+            <div>
+              <label htmlFor="adminEditStudentId" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Mã số sinh viên:</label>
+              <input
+                type="text"
+                id="adminEditStudentId"
+                value={memberStudentId} // Vẫn dùng state này
+                onChange={(e) => setMemberStudentId(e.target.value)}
+                className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+              />
+            </div>
+            <div>
+              <label htmlFor="adminEditBirthday" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày sinh:</label>
+              <input
+                type="date"
+                id="adminEditBirthday"
+                value={memberBirthday} // Vẫn dùng state này
+                onChange={(e) => setMemberBirthday(e.target.value)}
+                className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+              />
+            </div>
+            <div>
+              <label htmlFor="adminEditDormEntryDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày nhập KTX:</label>
+              <input
+                type="date"
+                id="adminEditDormEntryDate"
+                value={memberDormEntryDate} // Vẫn dùng state này
+                onChange={(e) => setMemberDormEntryDate(e.target.value)}
+                className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+              />
+            </div>
+            <div>
+              <label htmlFor="adminEditAcademicLevel" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email trường:</label>
+              <input
+                type="text"
+                id="adminEditAcademicLevel"
+                value={memberAcademicLevel} // Vẫn dùng state này
+                onChange={(e) => setMemberAcademicLevel(e.target.value)}
+                className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+              />
+            </div>
+
+            {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
+
+            <button
+              onClick={handleSaveUserProfile} // Gọi hàm đã được đổi tên
+              className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+            >
+              <i className="fas fa-save mr-2"></i> Lưu thông tin
+            </button>
+            {/* Có thể thêm nút "Hủy" nếu muốn, nhưng admin sẽ không có chế độ "editProfileMode" như member */}
+
+            {/* Mới: Phần đổi mật khẩu */}
+          <div className="mt-10 pt-6 border-t border-gray-300 dark:border-gray-600">
+            <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-4">Đổi mật khẩu</h3>
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="oldPasswordAdmin" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Mật khẩu cũ:</label>
+                <input
+                  type="password"
+                  id="oldPasswordAdmin"
+                  value={oldPassword}
+                  onChange={(e) => setOldPassword(e.target.value)}
+                  className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Nhập mật khẩu cũ"
+                />
+              </div>
+              <div>
+                <label htmlFor="newPasswordAdmin" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Mật khẩu mới:</label>
+                <input
+                  type="password"
+                  id="newPasswordAdmin"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)"
+                />
+              </div>
+              <div>
+                <label htmlFor="confirmNewPasswordAdmin" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Xác nhận mật khẩu mới:</label>
+                <input
+                  type="password"
+                  id="confirmNewPasswordAdmin"
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Xác nhận mật khẩu mới"
+                />
+              </div>
+              {passwordChangeMessage && (
+                <p className={`text-sm text-center mt-4 ${passwordChangeMessage.includes('thành công') ? 'text-green-600' : 'text-red-500'}`}>
+                  {passwordChangeMessage}
+                </p>
+              )}
+              <button
+                onClick={handleChangePassword}
+                className="w-full px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-md hover:bg-red-700 transition-all duration-300"
+              >
+                <i className="fas fa-key mr-2"></i> Đổi mật khẩu
+              </button>
+            </div>
+          </div>
+          </div>
+        </div>
+      );
+    case 'consumptionStats': //Thống kê tiêu thụ 
+    return (
+      <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+        <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Thống kê tiêu thụ theo tháng</h2>
+        {Object.keys(monthlyConsumptionStats).length === 0 ? (
+          <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có dữ liệu thống kê nào. Vui lòng tính toán hóa đơn.</p>
+        ) : (
+          <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+            <table className="min-w-full bg-white dark:bg-gray-800">
+              <thead>
+                <tr>
+                  <th className="py-3 px-6 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Tháng</th>
+                  <th className="py-3 px-6 text-right text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Điện (KW)</th>
+                  <th className="py-3 px-6 text-right text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Nước (m³)</th>
+                  <th className="py-3 px-6 text-right text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Tổng tiền (VND)</th>
+                </tr>
+              </thead>
+              <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
+                {Object.entries(monthlyConsumptionStats).map(([month, stats]) => (
+                  <tr key={month} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                    <td className="py-3 px-6 text-left whitespace-nowrap">{month}</td>
+                    <td className="py-3 px-6 text-right whitespace-nowrap">{stats.electricity.toLocaleString('vi-VN')}</td>
+                    <td className="py-3 px-6 text-right whitespace-nowrap">{stats.water.toLocaleString('vi-VN')}</td>
+                    <td className="py-3 px-6 text-right whitespace-nowrap font-bold text-blue-700 dark:text-blue-300">
+                      {stats.total.toLocaleString('vi-VN')}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    );
+  }
+}
+// Logic cho Thành viên
+if (userRole === 'member') {
+switch (activeSection) {
+case 'attendanceTracking': // Điểm danh của tôi
+  return (
+    <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+      <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">Điểm danh của tôi</h2>
+      {/* Giữ nguyên phần chọn tháng */}
+      <div className="mb-6 flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4">
+        <label htmlFor="monthSelector" className="font-semibold text-gray-700 dark:text-gray-300 text-lg">Chọn tháng:</label>
+        <input
+          type="month"
+          id="monthSelector"
+          value={selectedMonth}
+          onChange={(e) => setSelectedMonth(e.target.value)}
+          className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700"
+        />
+      </div>
+
+      {/* Dùng lại phần hiển thị bảng điểm danh, nó đã được lọc qua `displayedResidents` */}
+      {displayedResidents.length === 0 ? (
+        userRole === 'member' && !loggedInResidentProfile ? (
+          <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.</p>
+        ) : (
+          <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Vui lòng thêm người trong phòng vào danh sách để bắt đầu điểm danh.</p>
+        )
+      ) : (
+        <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+          <table className="min-w-full bg-white dark:bg-gray-800">
+            <thead><tr>
+              <th className="py-3 px-6 text-left sticky left-0 bg-green-100 dark:bg-gray-700 z-20 border-r border-green-200 dark:border-gray-600 rounded-tl-xl text-green-800 dark:text-green-200 uppercase text-sm leading-normal">Tên</th>
+              {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map(day => (
+                <th key={day} className="py-3 px-2 text-center border-l border-green-200 dark:border-gray-600 text-green-800 dark:text-green-200 uppercase text-sm leading-normal">
+                  {day}
+                </th>
+              ))}
+            </tr></thead>
+            <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
+              {displayedResidents.map(resident => (
+                <tr key={resident.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                  <td className="py-3 px-6 text-left whitespace-nowrap font-medium sticky left-0 bg-white dark:bg-gray-800 z-10 border-r border-gray-200 dark:border-gray-700">
+                    {resident.name}
+                  </td>
+                  {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map(day => {
+                    const dayString = String(day).padStart(2, '0');
+                    const isPresent = monthlyAttendanceData[resident.id]?.[dayString] === 1;
+                    return (
+                      <td key={day} className="py-3 px-2 text-center border-l border-gray-200 dark:border-gray-700">
+                        <input
+                          type="checkbox"
+                          checked={isPresent}
+                          onChange={() => handleToggleDailyPresence(resident.id, day)}
+                          className="form-checkbox h-5 w-5 text-green-600 dark:text-green-400 rounded focus:ring-green-500 cursor-pointer"
+                        />
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+case 'memberCostSummary': // Chi phí của tôi
+  // Hiển thị tóm tắt chi phí mới nhất và nút đánh dấu đã đóng
+  const latestCostSharingRecord = costSharingHistory[0];
+  return (
+    <div className="p-6 bg-orange-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+      <h2 className="text-2xl font-bold text-orange-800 dark:text-orange-200 mb-5">Chi phí của tôi</h2>
+      {!loggedInResidentProfile ? (
+        <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.</p>
+      ) : !latestCostSharingRecord || !latestCostSharingRecord.individualCosts || !latestCostSharingRecord.individualCosts[loggedInResidentProfile.id] ? (
+        <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có thông tin chi phí nào cho bạn.</p>
+      ) : (
+        <div className="bg-orange-100 dark:bg-gray-700 p-4 rounded-xl shadow-inner text-lg font-semibold text-orange-900 dark:text-orange-100 border border-orange-200 dark:border-gray-600">
+          <p className="mb-2"><strong>Kỳ tính:</strong> {latestCostSharingRecord.periodStart} đến {latestCostSharingRecord.periodEnd}</p>
+          <p className="mb-2"><strong>Số ngày có mặt:</strong> {latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.daysPresent || 0} ngày</p>
+          <p className="mb-2 text-xl font-bold border-t pt-3 mt-3 border-orange-300 dark:border-gray-600">
+            Số tiền cần đóng: <span className="text-orange-800 dark:text-orange-200">
+              {(latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.cost || 0).toLocaleString('vi-VN')} VND
+            </span>
+          </p>
+          <p className="text-lg font-bold">
+            Trạng thái: <span className={latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.isPaid ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}>
+              {latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.isPaid ? 'Đã đóng' : 'Chưa đóng'}
+            </span>
+          </p>
+          {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
+          {!latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.isPaid && (
+            <button
+              onClick={handleMarkMyPaymentAsPaid}
+              className="w-full mt-4 px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all duration-300"
+            >
+              <i className="fas fa-check-circle mr-2"></i> Đánh dấu đã đóng
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+case 'memberCleaningSchedule': // Lịch trực của tôi
+  // Hiển thị lịch trực nhưng chỉ những nhiệm vụ được giao cho thành viên đó
+  const myCleaningTasks = cleaningSchedule.filter(task =>
+    loggedInResidentProfile && task.assignedToResidentId === loggedInResidentProfile.id
+  );
+  return (
+    <div className="p-6 bg-purple-50 dark:bg-gray-700 rounded-2xl shadow-lg mt-8 max-w-5xl mx-auto">
+      <h2 className="text-2xl font-bold text-purple-800 dark:text-purple-200 mb-5">Lịch trực của tôi</h2>
+      {!loggedInResidentProfile ? (
+        <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.</p>
+      ) : myCleaningTasks.length === 0 ? (
+        <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa có công việc lau dọn nào được giao.</p>
+      ) : (
+        <div className="max-h-60 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-xl p-3 bg-gray-50 dark:bg-gray-700">
+          <ul className="space-y-2">
+            {myCleaningTasks.map((task) => (
+              <li key={task.id} className="flex items-center justify-between bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                <div className="flex flex-col items-start">
+                  <span className="font-medium text-gray-700 dark:text-gray-300">{task.name}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Ngày: {task.date}
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className={`ml-2 text-sm font-semibold ${task.isCompleted ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
+                    {task.isCompleted ? 'Đã hoàn thành' : 'Chưa hoàn thành'}
+                  </span>
+                  {/* Thành viên chỉ xem, không được chỉnh sửa trạng thái trực tiếp */}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+case 'shoeRackManagement': // Thông tin kệ giày (chỉ hiển thị kệ của mình nếu có)
+  return (
+    <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+      <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">Thông tin kệ giày</h2>
+      {!loggedInResidentProfile ? (
+        <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.</p>
+      ) : (
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-inner border border-gray-200 dark:border-gray-700">
+          <h3 className="text-xl font-semibold text-yellow-700 dark:text-yellow-200 mb-3">Phân công kệ giày của bạn:</h3>
+          <ul className="space-y-3">
+            {[...Array(8)].map((_, i) => {
+              const shelfNum = i + 1;
+              const assignment = shoeRackAssignments[shelfNum];
+              const isMyShelf = loggedInResidentProfile && assignment && assignment.residentId === loggedInResidentProfile.id;
+              return (
+                <li key={shelfNum} className={`flex items-center justify-between p-3 rounded-lg shadow-sm border ${isMyShelf ? 'bg-yellow-200 dark:bg-yellow-900 border-yellow-400' : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600'}`}>
+                  <span className={`font-medium ${isMyShelf ? 'text-yellow-900 dark:text-yellow-100' : 'text-gray-700 dark:text-gray-300'}`}>Tầng {shelfNum}:</span>
+                  {isMyShelf ? (
+                    <span className={`font-bold ${isMyShelf ? 'text-yellow-800 dark:text-yellow-200' : 'text-yellow-700 dark:text-yellow-300'}`}>
+                      {assignment.residentName} (Kệ của bạn)
+                    </span>
+                  ) : (
+                    <span className="text-gray-500 dark:text-gray-400 italic">Trống / Người khác</span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+case 'commonRoomInfo': // Thông tin phòng chung (thành viên có thể xem)
+  return (
+    <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+      <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Thông tin phòng chung</h2>
+      {residents.length === 0 ? (
+        <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có người ở nào trong danh sách.</p>
+      ) : (
+        <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+          <table className="min-w-full bg-white dark:bg-gray-800">
+            <thead>
+              <tr>
+                <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Họ tên</th>
+                <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Email</th>
+                <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">SĐT</th>
+                <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">MSSV</th>
+                <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Ngày sinh</th>
+                <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Ngày nhập KTX</th>
+                <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Email trường</th>
+                <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Trạng thái</th>
+              </tr>
+            </thead>
+            <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
+              {residents.map(resident => {
+                const linkedUser = allUsersData.find(user => user.linkedResidentId === resident.id);
+                return (
+                  <tr key={resident.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                    <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.fullName || resident.name}</td>
+                    <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.email || 'N/A'}</td>
+                    <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.phoneNumber || 'N/A'}</td>
+                    <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.studentId || 'N/A'}</td>
+                    <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.birthday || 'N/A'}</td>
+                    <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.dormEntryDate || 'N/A'}</td>
+                    <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.academicLevel || 'N/A'}</td>
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      <span className={`font-semibold ${resident.isActive ? 'text-green-600' : 'text-red-500'}`}>
+                        {resident.isActive ? 'Hoạt động' : 'Vô hiệu hóa'}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+case 'memberProfileEdit': // Chỉnh sửa thông tin cá nhân (thành viên có thể tự chỉnh sửa)
+  return (
+    <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+      <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Chỉnh sửa thông tin cá nhân</h2>
+      {!loggedInResidentProfile ? (
+        <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.</p>
+      ) : (
+        <div className="space-y-4">
+          {/* CÁC TRƯỜNG DỮ LIỆU CÁ NHÂN ĐỂ CHỈNH SỬA */}
+          <div>
+            <label htmlFor="editFullName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Họ tên đầy đủ:</label>
+            <input
+              type="text"
+              id="editFullName"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+            />
+          </div>
+          <div>
+            <label htmlFor="editPhoneNumber" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Số điện thoại:</label>
+            <input
+              type="text"
+              id="editPhoneNumber"
+              value={memberPhoneNumber}
+              onChange={(e) => setMemberPhoneNumber(e.target.value)}
+              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+            />
+          </div>
+          <div>
+            <label htmlFor="editStudentId" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Mã số sinh viên:</label>
+            <input
+              type="text"
+              id="editStudentId"
+              value={memberStudentId}
+              onChange={(e) => setMemberStudentId(e.target.value)}
+              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+            />
+          </div>
+          <div>
+            <label htmlFor="editBirthday" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày sinh:</label>
+            <input
+              type="date"
+              id="editBirthday"
+              value={memberBirthday}
+              onChange={(e) => setMemberBirthday(e.target.value)}
+              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+            />
+          </div>
+          <div>
+            <label htmlFor="editDormEntryDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày nhập KTX:</label>
+            <input
+              type="date"
+              id="editDormEntryDate"
+              value={memberDormEntryDate}
+              onChange={(e) => setMemberDormEntryDate(e.target.value)}
+              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+            />
+          </div>
+          <div>
+            <label htmlFor="editAcademicLevel" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email trường:</label>
+            <input
+              type="text"
+              id="editAcademicLevel"
+              value={memberAcademicLevel}
+              onChange={(e) => setMemberAcademicLevel(e.target.value)}
+              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+            />
+          </div>
+
+          {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
+
+          <button
+            onClick={handleSaveUserProfile} // <-- Đã đổi tên hàm
+            className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+          >
+            <i className="fas fa-save mr-2"></i> Lưu thông tin
+          </button>
+          <button
+            onClick={() => setEditProfileMode(false)}
+            className="w-full mt-2 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
+          >
+            Hủy
+          </button>
+        </div>
+      )}
+      {/* Mới: Phần đổi mật khẩu */}
+      <div className="mt-10 pt-6 border-t border-gray-300 dark:border-gray-600">
+        <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-4">Đổi mật khẩu</h3>
+        <div className="space-y-4">
+          <div>
+            <label htmlFor="oldPasswordMember" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Mật khẩu cũ:</label>
+            <input
+              type="password"
+              id="oldPasswordMember" // Đổi ID cho phù hợp với member
+              value={oldPassword}
+              onChange={(e) => setOldPassword(e.target.value)}
+              className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Nhập mật khẩu cũ"
+            />
+          </div>
+          <div>
+            <label htmlFor="newPasswordMember" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Mật khẩu mới:</label>
+            <input
+              type="password"
+              id="newPasswordMember" // Đổi ID cho phù hợp với member
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)"
+            />
+          </div>
+          <div>
+            <label htmlFor="confirmNewPasswordMember" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Xác nhận mật khẩu mới:</label>
+            <input
+              type="password"
+              id="confirmNewPasswordMember" // Đổi ID cho phù hợp với member
+              value={confirmNewPassword}
+              onChange={(e) => setConfirmNewPassword(e.target.value)}
+              className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Xác nhận mật khẩu mới"
+            />
+          </div>
+          {passwordChangeMessage && (
+            <p className={`text-sm text-center mt-4 ${passwordChangeMessage.includes('thành công') ? 'text-green-600' : 'text-red-500'}`}>
+              {passwordChangeMessage}
+            </p>
+          )}
+          <button
+            onClick={handleChangePassword}
+            className="w-full px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-md hover:bg-red-700 transition-all duration-300"
+          >
+            <i className="fas fa-key mr-2"></i> Đổi mật khẩu
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+}
     // Trường hợp không có vai trò hoặc không xác định (hiển thị khi chưa đăng nhập)
     return (
       <div className="text-center p-8 bg-gray-100 dark:bg-gray-700 rounded-xl shadow-inner">
