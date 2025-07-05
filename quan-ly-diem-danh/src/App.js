@@ -4218,6 +4218,8 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                     }`}
                   onClick={() => { setActiveSection('roomMemories'); setIsSidebarOpen(false); }}
                 >
+                  <i className="fas fa-camera mr-3"></i> Kỷ niệm phòng
+                </button>
 
                 <button
                   className={`block mb-1 w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${activeSection === 'customNotificationDesign' // Tên mới cho phần này
@@ -4229,8 +4231,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                   <i className="fas fa-bullhorn mr-3"></i> Thiết kế thông báo
                 </button>
 
-                  <i className="fas fa-camera mr-3"></i> Kỷ niệm phòng
-                </button>
                 <button
                     className={`block mb-1 w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${activeSection === 'formerResidents'
                       ? 'bg-blue-600 text-white shadow-md'
