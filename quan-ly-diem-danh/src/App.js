@@ -116,7 +116,7 @@ function App() {
   const [isUploadingMemory, setIsUploadingMemory] = useState(false);
   const [memoryError, setMemoryError] = useState('');
 
-  // States for Former Residents <-- KHÔNG CÒN CÁC STATE LIÊN QUAN ĐẾN HÌNH ẢNH TIỀN BỐI Ở ĐÂY NỮA
+  // States for Former Residents <-- KHAI BÁO CHÍNH XÁC VÀ DUY NHẤT Ở ĐÂY
   const [formerResidents, setFormerResidents] = useState([]); // <-- Đảm bảo dòng này tồn tại và không bị xóa
   const [newFormerResidentName, setNewFormerResidentName] = useState('');
   const [newFormerResidentEmail, setNewFormerResidentEmail] = useState('');
@@ -498,35 +498,15 @@ function App() {
   
     try {
       // ===============================================
-      // BẮT ĐẦU: Tối ưu hóa ảnh trước khi tải lên
+      // BỎ QUA HOÀN TOÀN LOGIC NÉN ẢNH VÌ THƯ VIỆN ĐÃ ĐƯỢC XÓA IMPORT
       // ===============================================
-      const options = {
-        maxSizeMB: 1, // Kích thước tối đa của ảnh sau khi nén (ví dụ: 1 MB)
-        maxWidthOrHeight: 1920, // Chiều rộng hoặc chiều cao tối đa (ví dụ: 1920px)
-        useWebWorker: true // <-- Đã sửa lỗi cú pháp ở đây
-      };
-      let compressedFile = newMemoryImageFile; // Mặc định là file gốc
-      try {
-        // Đảm bảo bạn đã import imageCompression từ 'browser-image-compression'
-        // import imageCompression from 'browser-image-compression'; // <-- Đây là dòng import bị thiếu
-        compressedFile = await imageCompression(newMemoryImageFile, options);
-        console.log('Kích thước ảnh gốc:', newMemoryImageFile.size / 1024 / 1024, 'MB');
-        console.log('Kích thước ảnh đã nén:', compressedFile.size / 1024 / 1024, 'MB');
-      } catch (error) {
-        console.error('Lỗi khi nén ảnh kỷ niệm:', error);
-        // Nếu có lỗi khi nén, vẫn cố gắng tải ảnh gốc lên
-        setMemoryError(`Lỗi nén ảnh, sẽ tải ảnh gốc. Chi tiết: ${error.message}`);
-      }
-      // ===============================================
-      // KẾT THÚC: Tối ưu hóa ảnh
-      // ===============================================
-  
+    
       const storage = getStorage();
-      // Sử dụng `compressedFile` thay vì `newMemoryImageFile`
-      const uniqueFileName = `${Date.now()}-${compressedFile.name || newMemoryImageFile.name}`;
+      // Sử dụng `newMemoryImageFile` trực tiếp (không nén)
+      const uniqueFileName = `${Date.now()}-${newMemoryImageFile.name}`;
       const storageRef = ref(storage, `memories/${uniqueFileName}`);
-      const uploadTask = uploadBytesResumable(storageRef, compressedFile); // Tải ảnh đã nén
-  
+      const uploadTask = uploadBytesResumable(storageRef, newMemoryImageFile); // <-- Upload ảnh GỐC
+    
       uploadTask.on('state_changed',
         (snapshot) => {
           const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
@@ -587,7 +567,13 @@ function App() {
 
         // Xóa ảnh từ Firebase Storage
         const storage = getStorage();
-        const imageRef = ref(storage, imageUrl);
+        // Lấy đường dẫn từ URL đầy đủ để xóa
+        const pathStartIndex = imageUrl.indexOf('/o/') + 3;
+        const pathEndIndex = imageUrl.indexOf('?');
+        let imagePath = imageUrl.substring(pathStartIndex, pathEndIndex !== -1 ? pathEndIndex : imageUrl.length);
+        imagePath = decodeURIComponent(imagePath); // Giải mã URL nếu cần
+
+        const imageRef = ref(storage, imagePath);
         await deleteObject(imageRef);
 
         console.log(`Đã xóa kỷ niệm ${memoryId} và ảnh liên quan.`);
@@ -690,10 +676,13 @@ function App() {
           return;
       }
 
-      // Đã xóa các dòng setIsUploadingFormerResident, setFormerResidentUploadProgress, v.v.
-      // Vì không còn upload ảnh, không cần các trạng thái này nữa.
+      // Các dòng liên quan đến trạng thái upload ảnh tiền bối đã được xóa:
+      // setIsUploadingFormerResident(true);
+      // setFormerResidentUploadProgress(0);
 
       try {
+          // Toàn bộ logic nén và upload ảnh ĐÃ ĐƯỢC XÓA BỎ Ở ĐÂY
+
           const formerResidentsCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/formerResidents`);
           // Sử dụng addDoc để Firestore tự tạo ID cho tiền bối thêm thủ công
           await addDoc(formerResidentsCollectionRef, {
@@ -727,6 +716,35 @@ function App() {
           alert(`Lỗi khi thêm tiền bối: ${error.message}`);
       }
   };
+
+  // ... (các hàm xử lý khác của bạn, ví dụ: handleAddFormerResidentManually) ...
+
+// Mới: Hàm để xóa tiền bối thủ công (chỉ xóa tài liệu Firestore)
+const handleDeleteFormerResident = async (residentId) => { // <-- Tham số chỉ là residentId
+  if (!db || !userId || userRole !== 'admin') {
+      alert("Bạn không có quyền xóa tiền bối.");
+      return;
+  }
+
+  if (!window.confirm("Bạn có chắc chắn muốn xóa thông tin tiền bối này không?")) {
+      return;
+  }
+
+  try {
+      // Xóa tài liệu Firestore
+      await deleteDoc(doc(db, `artifacts/${currentAppId}/public/data/formerResidents`, residentId));
+
+      // Toàn bộ logic xóa ảnh từ Firebase Storage đã bị loại bỏ
+
+      console.log(`Đã xóa tiền bối ${residentId}.`);
+      alert("Đã xóa tiền bối thành công!");
+  } catch (error) {
+      console.error("Lỗi khi xóa tiền bối:", error);
+      alert(`Lỗi khi xóa tiền bối: ${error.message}`);
+  }
+};
+
+// ... (các hàm xử lý khác như handleAddResident, handleToggleResidentActiveStatus, v.v.) ...
 
 
   // --- Kết thúc các hàm xác thực ---
@@ -1158,7 +1176,7 @@ function App() {
     setGeneratedCleaningTasks([]);
     setIsGeneratingReminder(false);
     setIsGeneratingSchedule(false);
-    setMemoryError(''); // Mới: reset lỗi kỷ niệm
+    setMemoryError('');
     //formerResidentError không còn là state, không cần reset
   }, [activeSection]);
 
@@ -1294,7 +1312,7 @@ function App() {
     const waterRate = 4000;     // VND/m3
 
     const electricityConsumption = elecCurrent - lastElectricityReading;
-    const waterConsumption = waterCurrent - lastWaterReading; // Sửa lỗi ở đây: dùng waterCurrent
+    const waterConsumption = currentWaterReading - lastWaterReading; // Sửa lỗi ở đây: dùng waterCurrent
 
     const currentElectricityCost = electricityConsumption * electricityRate;
     const currentWaterCost = waterConsumption * waterRate;
@@ -1719,7 +1737,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
     const shoeRackDocRef = doc(db, `artifacts/${currentAppId}/public/data/shoeRackAssignments`, String(shelfNumber));
     try {
       await deleteDoc(shoeRackDocRef);
-      console.log(`Đã xóa việc gán tầng kệ ${shelfNumber}.`);
+      console.log(`Đã xóa việc gán tầng kệ ${shelfNumber}.`); // Sửa lỗi cú pháp string
     } catch (error) {
       console.error("Lỗi khi xóa gán kệ giày:", error);
       setAuthError(`Lỗi khi xóa gán kệ giày: ${error.message}`);
@@ -2586,7 +2604,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               )}
             </div>
           );
-          case 'roomMemories': // <--- DI CHUYỂN TOÀN BỘ CASE NÀY LÊN TRÊN default
+        case 'roomMemories': // <--- DI CHUYỂN TOÀN BỘ CASE NÀY LÊN TRÊN default
           return (
             <div className="p-6 bg-indigo-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
               <h2 className="text-2xl font-bold text-indigo-800 dark:text-indigo-200 mb-5">Kỷ niệm phòng</h2>
@@ -2643,7 +2661,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 </div>
               </form>
 
-              {/* Danh sách các kỷ niệm đã đăng */}
+              {/* Danh sách các kỷ niệm đã đăng (giống admin) */}
               <h3 className="text-xl font-bold text-indigo-700 dark:text-indigo-200 mb-4">Các kỷ niệm đã đăng</h3>
               {memories.length === 0 ? (
                 <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có kỷ niệm nào được đăng.</p>
@@ -2675,7 +2693,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               )}
             </div>
           );
-          case 'formerResidents': // Thông tin tiền bối
+        case 'formerResidents': // Thông tin tiền bối
           return (
             <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
               <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">Thông tin tiền bối</h2>
@@ -2726,35 +2744,20 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                         className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500" />
                     </div>
                   </div>
-                  <div className="mb-4">
-                    <label htmlFor="formerImageFile" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Chọn ảnh:</label>
-                    <input
-                      type="file"
-                      id="formerImageFile"
-                      accept="image/*"
-                      onChange={(e) => setNewFormerResidentImageFile(e.target.files[0])}
-                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
-                    />
-                  </div>
-                  {isUploadingFormerResident && (
-                    <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mb-4">
-                      <div className="bg-green-600 h-2.5 rounded-full" style={{ width: `${formerResidentUploadProgress}%` }}></div>
-                    </div>
-                  )}
-                  {formerResidentError && <p className="text-red-500 text-sm text-center mt-4">{formerResidentError}</p>}
+                  {/* Toàn bộ div cho input file, progress bar và formerResidentError ĐÃ XÓA */}
                   <button
                     type="submit"
                     className="w-full px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75"
-                    disabled={isUploadingFormerResident}
+                    // Thuộc tính disabled={isUploadingFormerResident} đã bị xóa
                   >
-                    {isUploadingFormerResident ? <i className="fas fa-spinner fa-spin mr-2"></i> : <i className="fas fa-plus-circle mr-2"></i>}
+                    <i className="fas fa-plus-circle mr-2"></i>
                     Thêm tiền bối
                   </button>
                 </form>
               )}
 
               {/* Nút "Chuyển người dùng sang tiền bối" (Nếu bạn vẫn muốn dùng chức năng này cho admin, nó thường được đặt ở Quản lý người ở) */}
-              {userRole === 'admin' && ( // Chỉ admin mới thấy nút này
+              {userRole === 'admin' && (
                 <button
                   onClick={() => { alert('Nút này dùng để chuyển người ở hiện tại sang tiền bối từ mục "Quản lý người ở".'); }}
                   className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 mb-6"
@@ -2772,9 +2775,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {formerResidents.map(resident => (
                     <div key={resident.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                      {resident.photoURL && (
-                        <img src={resident.photoURL} alt={resident.name} className="w-full h-48 object-cover" />
-                      )}
+                      {/* Toàn bộ phần hiển thị ảnh (resident.photoURL) ĐÃ XÓA */}
                       <div className="p-4">
                         <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">{resident.name}</h4>
                         <p className="text-sm text-gray-600 dark:text-gray-300">
@@ -2800,7 +2801,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                         </p>
                         {userRole === 'admin' && (
                           <button
-                            onClick={() => handleDeleteFormerResident(resident.id, resident.photoURL)}
+                            onClick={() => handleDeleteFormerResident(resident.id)} // <-- Đã sửa: chỉ truyền resident.id
                             className="mt-4 px-4 py-2 bg-red-500 text-white rounded-lg shadow hover:bg-red-600 transition-colors duration-200"
                           >
                             <i className="fas fa-trash mr-2"></i>Xóa
