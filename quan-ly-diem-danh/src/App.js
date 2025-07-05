@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { initializeApp, getApps, getApp } from 'firebase/app'; // Import getApps và getApp
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
   getAuth,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
-  sendPasswordResetEmail // Import sendPasswordResetEmail
+  sendPasswordResetEmail
 } from 'firebase/auth';
 import { getFirestore, doc, setDoc, collection, onSnapshot, query, addDoc, serverTimestamp, deleteDoc, getDocs, where, getDoc, updateDoc } from 'firebase/firestore';
+import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage'; // Thêm imports cho Firebase Storage
+import imageCompression from 'browser-image-compression';
 
 // Firebase Config - Moved outside the component to be a constant
 const firebaseConfig = {
@@ -28,8 +30,8 @@ function App() {
   const [db, setDb] = useState(null);
   const [auth, setAuth] = useState(null);
   const [userId, setUserId] = useState(null);
-  const [userRole, setUserRole] = useState(null); // Trạng thái mới cho vai trò người dùng
-  const [loggedInResidentProfile, setLoggedInResidentProfile] = useState(null); // Hồ sơ cư dân được liên kết với người dùng đã đăng nhập
+  const [userRole, setUserRole] = useState(null);
+  const [loggedInResidentProfile, setLoggedInResidentProfile] = useState(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [residents, setResidents] = useState([]);
   const [newResidentName, setNewResidentName] = useState('');
@@ -61,12 +63,12 @@ function App() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState(''); // New state for full name
+  const [fullName, setFullName] = useState('');
   const [authError, setAuthError] = useState('');
   const [billingError, setBillingError] = useState('');
-  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false); // New state for forgot password modal
-  const [forgotPasswordEmail, setForgotPasswordEmail] = useState(''); // New state for forgot password email input
-  const [forgotPasswordMessage, setForgotPasswordMessage] = useState(''); // New state for forgot password message
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
+  const [forgotPasswordMessage, setForgotPasswordMessage] = useState('');
 
   // New states for member's editable profile
   const [memberPhoneNumber, setMemberPhoneNumber] = useState('');
@@ -74,9 +76,9 @@ function App() {
   const [memberDormEntryDate, setMemberDormEntryDate] = useState('');
   const [memberBirthday, setMemberBirthday] = useState('');
   const [memberStudentId, setMemberStudentId] = useState('');
-  const [editProfileMode, setEditProfileMode] = useState(false); // Toggle edit mode for member profile
+  const [editProfileMode, setEditProfileMode] = useState(false);
 
-  const [allUsersData, setAllUsersData] = useState([]); // To store all user data for common room info
+  const [allUsersData, setAllUsersData] = useState([]);
 
   const [billHistory, setBillHistory] = useState([]);
   const [selectedBillDetails, setSelectedBillDetails] = useState(null);
@@ -94,7 +96,7 @@ function App() {
   const [showGenerateScheduleModal, setShowGenerateScheduleModal] = useState(false);
   const [generatedCleaningTasks, setGeneratedCleaningTasks] = useState([]);
   const [isGeneratingSchedule, setIsGeneratingSchedule] = useState(false);
-  const [numDaysForSchedule, setNumDaysForSchedule] = useState(7); // New: Input for number of days for schedule
+  const [numDaysForSchedule, setNumDaysForSchedule] = useState(7);
 
   // State for Shoe Rack Management
   const [shoeRackAssignments, setShoeRackAssignments] = useState({});
@@ -105,9 +107,21 @@ function App() {
     return localStorage.getItem('theme') || 'light';
   });
 
+  // State for Room Memories
+  const [memories, setMemories] = useState([]);
+  const [newMemoryEventName, setNewMemoryEventName] = useState('');
+  const [newMemoryPhotoDate, setNewMemoryPhotoDate] = useState('');
+  const [newMemoryImageFile, setNewMemoryImageFile] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploadingMemory, setIsUploadingMemory] = useState(false);
+  const [memoryError, setMemoryError] = useState('');
+
+  // States for Former Residents
+  const [formerResidents, setFormerResidents] = useState([]);
+
   // State for sidebar navigation
-  const [activeSection, setActiveSection] = useState('residentManagement'); // Default active section
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // State for mobile sidebar
+  const [activeSection, setActiveSection] = useState('residentManagement');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const hasInitialized = useRef(false);
 
@@ -121,7 +135,7 @@ function App() {
     localStorage.setItem('theme', theme);
   }, [theme]);
 
-  // Hàm trợ giúp để định dạng ngày thành,"%Y-%m-%d"
+  // Hàm trợ giúp để định dạng ngày thành "%Y-%m-%d"
   const formatDate = (date) => {
     const d = new Date(date);
     const year = d.getFullYear();
@@ -214,6 +228,7 @@ function App() {
             await setDoc(userDocRef, { email: user.email, fullName: user.email, role: 'member', createdAt: serverTimestamp() }, { merge: true });
           }
           setUserRole(fetchedRole);
+          setFullName(fetchedFullName); // Cập nhật fullName cho state
           console.log("8. Vai trò người dùng:", fetchedRole);
 
           // Set states for editable profile fields
@@ -266,8 +281,16 @@ function App() {
           setUserId(null);
           setUserRole(null); // Xóa vai trò khi đăng xuất
           setLoggedInResidentProfile(null); // Xóa hồ sơ cư dân liên kết
-          console.log("7. Không có người dùng nào được xác thực.");
-          console.log("DEBUG AUTH: Người dùng đã đăng xuất.");
+          setActiveSection('residentManagement'); // Đặt lại phần hoạt động
+          // Reset profile edit states
+          setFullName('');
+          setEmail('');
+          setPassword('');
+          setMemberPhoneNumber('');
+          setMemberAcademicLevel('');
+          setMemberDormEntryDate('');
+          setMemberBirthday('');
+          setMemberStudentId('');
         }
         setIsAuthReady(true);
         console.log("9. Trạng thái xác thực Firebase đã sẵn sàng: ", true);
@@ -394,61 +417,257 @@ function App() {
     }
   };
 
-  // New: Handle saving member profile
-// Đổi tên thành handleSaveUserProfile vì nó sẽ dùng cho cả admin và member
-const handleSaveUserProfile = async () => {
-  setAuthError('');
-  // Kiểm tra cơ bản
-  if (!db || !userId) {
-    setAuthError("Hệ thống chưa sẵn sàng hoặc bạn không có quyền.");
-    return;
-  }
-
-  const userDocRef = doc(db, `artifacts/${currentAppId}/public/data/users`, userId);
-  let residentDocRef = null;
-
-  // Nếu có hồ sơ cư dân liên kết (áp dụng cho cả member và admin có liên kết)
-  if (loggedInResidentProfile) {
-    residentDocRef = doc(db, `artifacts/${currentAppId}/public/data/residents`, loggedInResidentProfile.id);
-  }
-
-  try {
-    // 1. Cập nhật thông tin cá nhân của người dùng trong tài liệu user
-    const userDataToUpdate = {
-      fullName: fullName.trim(),
-      phoneNumber: memberPhoneNumber.trim(),
-      academicLevel: memberAcademicLevel.trim(),
-      dormEntryDate: memberDormEntryDate.trim(),
-      birthday: memberBirthday.trim(),
-      studentId: memberStudentId.trim()
-    };
-    await updateDoc(userDocRef, userDataToUpdate);
-    console.log("Đã cập nhật tài liệu người dùng thành công!");
-
-    // 2. Cập nhật tên trong tài liệu resident nếu là Admin VÀ có linkedResidentProfile
-    // Chỉ admin mới có quyền ghi vào residents, và chỉ khi có hồ sơ cư dân liên kết
-    if (userRole === 'admin' && residentDocRef && loggedInResidentProfile.name !== fullName.trim()) {
-       await updateDoc(residentDocRef, { name: fullName.trim() });
-       console.log("Đã cập nhật tên cư dân liên kết thành công!");
+  // New: Handle saving user profile (for both member and admin)
+  const handleSaveUserProfile = async () => {
+    setAuthError('');
+    // Kiểm tra cơ bản
+    if (!db || !userId) {
+      setAuthError("Hệ thống chưa sẵn sàng hoặc bạn không có quyền.");
+      return;
     }
 
-    setAuthError("Thông tin cá nhân đã được cập nhật thành công!");
-    setEditProfileMode(false); // Thoát chế độ chỉnh sửa (nếu đang ở chế độ thành viên)
+    const userDocRef = doc(db, `artifacts/${currentAppId}/public/data/users`, userId);
+    let residentDocRef = null;
 
-    // Cập nhật trạng thái loggedInResidentProfile cục bộ nếu tên cư dân đã thay đổi
-    // Điều này quan trọng để UI phản ánh ngay lập tức thay đổi tên
-    if (loggedInResidentProfile && loggedInResidentProfile.name !== fullName.trim()) {
-        setLoggedInResidentProfile(prevProfile => ({
-            ...prevProfile,
-            name: fullName.trim()
-        }));
+    // Nếu có hồ sơ cư dân liên kết (áp dụng cho cả member và admin có liên kết)
+    if (loggedInResidentProfile) {
+      residentDocRef = doc(db, `artifacts/${currentAppId}/public/data/residents`, loggedInResidentProfile.id);
     }
 
-  } catch (error) {
-    console.error("Lỗi khi cập nhật thông tin cá nhân:", error);
-    setAuthError(`Lỗi khi cập nhật thông tin cá nhân: ${error.message}`);
-  }
-};  // --- Kết thúc các hàm xác thực ---
+    try {
+      // 1. Cập nhật thông tin cá nhân của người dùng trong tài liệu user
+      const userDataToUpdate = {
+        fullName: fullName.trim(),
+        phoneNumber: memberPhoneNumber.trim(),
+        academicLevel: memberAcademicLevel.trim(),
+        dormEntryDate: memberDormEntryDate.trim(),
+        birthday: memberBirthday.trim(),
+        studentId: memberStudentId.trim()
+      };
+      await updateDoc(userDocRef, userDataToUpdate);
+      console.log("Đã cập nhật tài liệu người dùng thành công!");
+
+      // 2. Cập nhật tên trong tài liệu resident nếu là Admin VÀ có linkedResidentProfile
+      // Chỉ admin mới có quyền ghi vào residents, và chỉ khi có hồ sơ cư dân liên kết
+      if (userRole === 'admin' && residentDocRef && loggedInResidentProfile.name !== fullName.trim()) {
+         await updateDoc(residentDocRef, { name: fullName.trim() });
+         console.log("Đã cập nhật tên cư dân liên kết thành công!");
+      }
+
+      setAuthError("Thông tin cá nhân đã được cập nhật thành công!");
+      setEditProfileMode(false); // Thoát chế độ chỉnh sửa (nếu đang ở chế độ thành viên)
+
+      // Cập nhật trạng thái loggedInResidentProfile cục bộ nếu tên cư dân đã thay đổi
+      // Điều này quan trọng để UI phản ánh ngay lập tức thay đổi tên
+      if (loggedInResidentProfile && loggedInResidentProfile.name !== fullName.trim()) {
+          setLoggedInResidentProfile(prevProfile => ({
+              ...prevProfile,
+              name: fullName.trim()
+          }));
+      }
+
+    } catch (error) {
+      console.error("Lỗi khi cập nhật thông tin cá nhân:", error);
+      setAuthError(`Lỗi khi cập nhật thông tin cá nhân: ${error.message}`);
+    }
+  };
+
+
+  // Mới: Hàm để thêm một kỷ niệm mới
+  const handleAddMemory = async (e) => {
+    e.preventDefault(); // Ngăn form submit mặc định
+    setMemoryError('');
+    if (!db || !auth || !newMemoryEventName || !newMemoryPhotoDate || !newMemoryImageFile) {
+      setMemoryError("Vui lòng điền đầy đủ thông tin và chọn ảnh.");
+      return;
+    }
+    if (!userId) {
+      setMemoryError("Bạn cần đăng nhập để đăng kỷ niệm.");
+      return;
+    }
+  
+    setIsUploadingMemory(true); // Bắt đầu trạng thái đang tải lên
+    setUploadProgress(0); // Đặt lại tiến trình
+  
+    try {
+      // ===============================================
+      // BẮT ĐẦU: Tối ưu hóa ảnh trước khi tải lên
+      // ===============================================
+      const options = {
+        maxSizeMB: 1, // Kích thước tối đa của ảnh sau khi nén (ví dụ: 1 MB)
+        maxWidthOrHeight: 1920, // Chiều rộng hoặc chiều cao tối đa (ví dụ: 1920px)
+        use};
+      let compressedFile = newMemoryImageFile; // Mặc định là file gốc
+      try {
+        compressedFile = await imageCompression(newMemoryImageFile, options);
+        console.log('Kích thước ảnh gốc:', newMemoryImageFile.size / 1024 / 1024, 'MB');
+        console.log('Kích thước ảnh đã nén:', compressedFile.size / 1024 / 1024, 'MB');
+      } catch (error) {
+        console.error('Lỗi khi nén ảnh kỷ niệm:', error);
+        // Nếu có lỗi khi nén, vẫn cố gắng tải ảnh gốc lên
+        setMemoryError(`Lỗi nén ảnh, sẽ tải ảnh gốc. Chi tiết: ${error.message}`);
+      }
+      // ===============================================
+      // KẾT THÚC: Tối ưu hóa ảnh
+      // ===============================================
+  
+      const storage = getStorage();
+      // Sử dụng `compressedFile` thay vì `newMemoryImageFile`
+      const uniqueFileName = `${Date.now()}-${compressedFile.name || newMemoryImageFile.name}`;
+      const storageRef = ref(storage, `memories/${uniqueFileName}`);
+      const uploadTask = uploadBytesResumable(storageRef, compressedFile); // Tải ảnh đã nén
+  
+      uploadTask.on('state_changed',
+        (snapshot) => {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          setUploadProgress(progress);
+          console.log('Upload is ' + progress + '% done');
+        },
+        (error) => {
+          console.error("Lỗi tải ảnh lên Storage:", error);
+          setMemoryError(`Lỗi tải ảnh lên: ${error.message}`);
+          setIsUploadingMemory(false);
+        },
+        async () => {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          console.log('File available at', downloadURL);
+  
+          const memoriesCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/memories`);
+          await addDoc(memoriesCollectionRef, {
+            eventName: newMemoryEventName.trim(),
+            photoDate: newMemoryPhotoDate,
+            imageUrl: downloadURL,
+            uploadedBy: userId,
+            uploadedAt: serverTimestamp(),
+            uploadedByName: loggedInResidentProfile ? loggedInResidentProfile.name : (allUsersData.find(u => u.id === userId)?.fullName || 'Người dùng ẩn danh')
+          });
+  
+          // Reset form và trạng thái
+          setNewMemoryEventName('');
+          setNewMemoryPhotoDate('');
+          setNewMemoryImageFile(null);
+          setUploadProgress(0);
+          setIsUploadingMemory(false);
+          setMemoryError(''); // Xóa lỗi sau khi thành công
+          console.log("Đã thêm kỷ niệm mới thành công!");
+        }
+      );
+    } catch (error) {
+      console.error("Lỗi khi thêm kỷ niệm (tổng thể):", error);
+      setMemoryError(`Lỗi khi thêm kỷ niệm: ${error.message}`);
+      setIsUploadingMemory(false);
+    }
+  };
+
+  // Mới: Hàm để xóa một kỷ niệm (chỉ admin)
+  const handleDeleteMemory = async (memoryId, imageUrl) => {
+    setMemoryError('');
+    if (!db || !userId || userRole !== 'admin') {
+        setMemoryError("Bạn không có quyền xóa kỷ niệm.");
+        return;
+    }
+
+    if (!window.confirm("Bạn có chắc chắn muốn xóa kỷ niệm này không?")) {
+        return;
+    }
+
+    try {
+        // Xóa tài liệu Firestore
+        await deleteDoc(doc(db, `artifacts/${currentAppId}/public/data/memories`, memoryId));
+
+        // Xóa ảnh từ Firebase Storage
+        const storage = getStorage();
+        const imageRef = ref(storage, imageUrl);
+        await deleteObject(imageRef);
+
+        console.log(`Đã xóa kỷ niệm ${memoryId} và ảnh liên quan.`);
+    } catch (error) {
+        console.error("Lỗi khi xóa kỷ niệm:", error);
+        setMemoryError(`Lỗi khi xóa kỷ niệm: ${error.message}`);
+    }
+  };
+
+  // Mới: Hàm để chuyển một người dùng/cư dân sang danh sách tiền bối (chỉ admin)
+  const handleMoveToFormerResidents = async (residentId, userIdToDeactivate) => {
+    setAuthError(''); // Reset authError
+    if (!db || !userId || userRole !== 'admin') {
+        setAuthError("Bạn không có quyền thực hiện thao tác này.");
+        return;
+    }
+
+    if (!window.confirm("Bạn có chắc chắn muốn vô hiệu hóa người này và chuyển họ vào danh sách tiền bối không?")) {
+        return;
+    }
+
+    try {
+        // Lấy thông tin người dùng và cư dân
+        const userDocRef = userIdToDeactivate ? doc(db, `artifacts/${currentAppId}/public/data/users`, userIdToDeactivate) : null;
+        const residentDocRef = doc(db, `artifacts/${currentAppId}/public/data/residents`, residentId);
+
+        let residentData = null;
+        const residentSnap = await getDoc(residentDocRef);
+        if (residentSnap.exists()) {
+            residentData = residentSnap.data();
+        } else {
+            setAuthError("Không tìm thấy hồ sơ cư dân để chuyển đổi.");
+            return;
+        }
+
+        let userData = null;
+        if (userDocRef) {
+            const userSnap = await getDoc(userDocRef);
+            if (userSnap.exists()) {
+                userData = userSnap.data();
+            }
+        }
+
+        // 1. Vô hiệu hóa tài khoản người dùng (nếu có)
+        // Lưu ý: Vô hiệu hóa tài khoản người dùng Firebase Auth trực tiếp từ client là không thể
+        // Bạn cần một Cloud Function để làm điều này một cách an toàn.
+        // Tạm thời, chúng ta sẽ chỉ cập nhật vai trò/trạng thái trong Firestore.
+        if (userDocRef && userData) {
+            await updateDoc(userDocRef, {
+                role: 'inactive', // Đặt vai trò là 'inactive'
+                linkedResidentId: null, // Hủy liên kết cư dân
+                deactivatedAt: serverTimestamp()
+            });
+            console.log(`Đã vô hiệu hóa tài khoản người dùng ${userData.email}`);
+        }
+
+        // 2. Vô hiệu hóa hồ sơ cư dân hiện tại
+        await updateDoc(residentDocRef, {
+            isActive: false,
+            linkedUserId: null // Hủy liên kết người dùng
+        });
+        console.log(`Đã vô hiệu hóa hồ sơ cư dân ${residentData.name}`);
+
+
+        // 3. Chuyển thông tin vào collection 'formerResidents'
+        const formerResidentsCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/formerResidents`);
+        await setDoc(doc(formerResidentsCollectionRef, residentId), { // Dùng residentId làm doc ID
+            name: residentData.name,
+            email: userData?.email || null, // Lấy email từ user data nếu có
+            phoneNumber: userData?.phoneNumber || null,
+            studentId: userData?.studentId || null,
+            birthday: userData?.birthday || null,
+            dormEntryDate: userData?.dormEntryDate || null,
+            academicLevel: userData?.academicLevel || null,
+            originalUserId: userIdToDeactivate,
+            deactivatedAt: serverTimestamp(),
+            reasonForDeparture: 'Đã chuyển đi' // Có thể thêm input cho lý do
+        }, { merge: true }); // Dùng merge để không ghi đè nếu đã tồn tại
+
+        setAuthError(`Đã chuyển ${residentData.name} sang danh sách tiền bối.`);
+        console.log(`Đã chuyển ${residentData.name} sang danh sách tiền bối.`);
+
+    } catch (error) {
+        console.error("Lỗi khi chuyển người dùng sang tiền bối:", error);
+        setAuthError(`Lỗi: ${error.message}`);
+    }
+  };
+
+
+  // --- Kết thúc các hàm xác thực ---
 
 
   // Lắng nghe cập nhật danh sách tất cả cư dân (admin sẽ thấy tất cả, thành viên sẽ không dùng trực tiếp)
@@ -550,7 +769,7 @@ const handleSaveUserProfile = async () => {
 
     const meterReadingsDocRef = doc(db, `artifacts/${currentAppId}/public/data/meterReadings`, 'currentReadings');
 
-    const unsubscribe = onSnapshot(meterReadingsDocRef, (docSnap) => { // Sửa lỗi ReferenceError: meterReadRef -> meterReadingsDocRef
+    const unsubscribe = onSnapshot(meterReadingsDocRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
         setLastElectricityReading(data.electricity || 0);
@@ -589,11 +808,16 @@ const handleSaveUserProfile = async () => {
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const history = [];
-      snapshot.forEach((doc) => {
-        history.push({ id: doc.id, ...doc.data() });
+      snapshot.forEach((docSnap) => { // Use docSnap instead of doc
+        const data = docSnap.data();
+        // Chuyển đổi Timestamp thành Date nếu có
+        if (data.billDate && typeof data.billDate.toDate === 'function') {
+          data.billDate = data.billDate.toDate();
+        }
+        history.push({ id: docSnap.id, ...data });
       });
       // Sắp xếp phía client theo billDate giảm dần
-      history.sort((a, b) => (b.billDate?.toDate() || 0) - (a.billDate?.toDate() || 0));
+      history.sort((a, b) => (b.billDate || 0) - (a.billDate || 0));
       setBillHistory(history);
       console.log("Đã cập nhật lịch sử hóa đơn:", history);
     }, (error) => {
@@ -734,7 +958,7 @@ const handleSaveUserProfile = async () => {
 
     const stats = {};
     billHistory.forEach(bill => {
-      const billDate = bill.billDate?.toDate();
+      const billDate = bill.billDate; // billDate đã là Date object do chuyển đổi trong useEffect billHistory
       if (billDate) {
         const yearMonth = `${billDate.getFullYear()}-${String(billDate.getMonth() + 1).padStart(2, '0')}`;
         if (!stats[yearMonth]) {
@@ -757,6 +981,124 @@ const handleSaveUserProfile = async () => {
     setMonthlyConsumptionStats(sortedStats);
     console.log("Đã cập nhật thống kê tiêu thụ hàng tháng:", sortedStats);
   }, [billHistory, userRole]); // Thêm userRole vào dependency
+
+  // Mới: Lắng nghe tất cả dữ liệu người dùng để hiển thị trong "Thông tin phòng chung"
+  useEffect(() => {
+    if (!db || !isAuthReady || userId === null) {
+      console.log("Lắng nghe tất cả người dùng: Đang chờ DB, Auth hoặc User ID sẵn sàng.");
+      return;
+    }
+    console.log("Bắt đầu lắng nghe cập nhật tất cả người dùng...");
+
+    const usersCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/users`);
+    const q = query(usersCollectionRef);
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const allUsers = [];
+      snapshot.forEach((docSnap) => { // Use docSnap instead of doc
+        const userData = docSnap.data();
+        // Chuyển đổi Timestamp thành Date nếu có
+        if (userData.createdAt && typeof userData.createdAt.toDate === 'function') {
+          userData.createdAt = userData.createdAt.toDate();
+        }
+        allUsers.push({ id: docSnap.id, ...userData });
+      });
+      setAllUsersData(allUsers);
+      console.log("Đã cập nhật tất cả dữ liệu người dùng:", allUsers);
+    }, (error) => {
+      console.error("Lỗi khi lấy tất cả dữ liệu người dùng:", error);
+    });
+
+    return () => {
+      console.log("Hủy đăng ký lắng nghe tất cả người dùng.");
+      unsubscribe();
+    };
+  }, [db, isAuthReady, userId]); // userId is still relevant for the collection path.
+
+
+  // Mới: Lắng nghe cập nhật Kỷ niệm phòng
+  useEffect(() => {
+    if (!db || !isAuthReady || userId === null) {
+      console.log("Lắng nghe kỷ niệm: Đang chờ DB, Auth hoặc User ID sẵn sàng.");
+      return;
+    }
+    console.log("Bắt đầu lắng nghe cập nhật kỷ niệm phòng...");
+
+    const memoriesCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/memories`);
+    const q = query(memoriesCollectionRef);
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetchedMemories = [];
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.uploadedAt && typeof data.uploadedAt.toDate === 'function') {
+          data.uploadedAt = data.uploadedAt.toDate();
+        }
+        // photoDate có thể là string nếu bạn lưu từ input type="date"
+        // Không cần chuyển đổi nếu nó đã là string.
+        fetchedMemories.push({ id: docSnap.id, ...data });
+      });
+      // Sắp xếp theo ngày đăng giảm dần
+      fetchedMemories.sort((a, b) => (b.uploadedAt || 0) - (a.uploadedAt || 0));
+      setMemories(fetchedMemories);
+      console.log("Đã cập nhật kỷ niệm phòng:", fetchedMemories);
+    }, (error) => {
+      console.error("Lỗi khi tải dữ liệu kỷ niệm:", error);
+    });
+
+    return () => {
+      console.log("Hủy đăng ký lắng nghe kỷ niệm.");
+      unsubscribe();
+    };
+  }, [db, isAuthReady, userId]);
+
+  // Mới: Lắng nghe cập nhật Thông tin tiền bối
+  useEffect(() => {
+      if (!db || !isAuthReady || userId === null) {
+          console.log("Lắng nghe tiền bối: Đang chờ DB, Auth hoặc User ID sẵn sàng.");
+          return;
+      }
+      console.log("Bắt đầu lắng nghe cập nhật thông tin tiền bối...");
+
+      const formerResidentsCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/formerResidents`);
+      const q = query(formerResidentsCollectionRef);
+
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+          const fetchedFormerResidents = [];
+          snapshot.forEach(docSnap => {
+              const data = docSnap.data();
+              // Chuyển đổi Timestamp thành Date nếu có
+              if (data.deactivatedAt && typeof data.deactivatedAt.toDate === 'function') {
+                  data.deactivatedAt = data.deactivatedAt.toDate();
+              }
+              fetchedFormerResidents.push({ id: docSnap.id, ...data });
+          });
+          setFormerResidents(fetchedFormerResidents);
+          console.log("Đã cập nhật thông tin tiền bối:", fetchedFormerResidents);
+      }, (error) => {
+          console.error("Lỗi khi tải dữ liệu tiền bối:", error);
+      });
+
+      return () => {
+          console.log("Hủy đăng ký lắng nghe thông tin tiền bối.");
+          unsubscribe();
+      };
+  }, [db, isAuthReady, userId]);
+
+  // Effect để reset lỗi và modals khi chuyển section
+  useEffect(() => {
+    setSelectedBillDetails(null);
+    setSelectedCostSharingDetails(null);
+    setShowGenerateScheduleModal(false);
+    setAuthError('');
+    setBillingError('');
+    setGeneratedReminder('');
+    setGeneratedCleaningTasks([]);
+    setIsGeneratingReminder(false);
+    setIsGeneratingSchedule(false);
+    setMemoryError(''); // Mới: reset lỗi kỷ niệm
+  }, [activeSection]);
+
 
   // Thêm một cư dân mới
   const handleAddResident = async () => {
@@ -889,7 +1231,7 @@ const handleSaveUserProfile = async () => {
     const waterRate = 4000;     // VND/m3
 
     const electricityConsumption = elecCurrent - lastElectricityReading;
-    const waterConsumption = currentWaterReading - lastWaterReading;
+    const waterConsumption = waterCurrent - lastWaterReading; // Sửa lỗi ở đây: dùng waterCurrent
 
     const currentElectricityCost = electricityConsumption * electricityRate;
     const currentWaterCost = waterConsumption * waterRate;
@@ -1077,16 +1419,18 @@ const handleSaveUserProfile = async () => {
 
     const prompt = `Bạn là một trợ lý quản lý phòng. Hãy viết một tin nhắn nhắc nhở thanh toán tiền điện nước lịch sự cho ${residentName}.
 Tổng tiền điện nước của cả phòng là ${formattedTotalCost} VND.
-Số tiền ${residentName} cần đóng là ${formattedTotalCost} VND cho kỳ từ ${period}.
+Số tiền ${residentName} cần đóng là ${individualCosts[selectedResidentForReminder]?.cost.toLocaleString('vi-VN')} VND cho kỳ từ ${period}.
 Hãy nhắc nhở họ về số tiền cần thanh toán và thời hạn nếu có (có thể mặc định là cuối tháng).
-Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
+Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dùng individualCosts của người được chọn
 
     let chatHistory = [];
     chatHistory.push({ role: "user", parts: [{ text: prompt }] });
     const payload = { contents: chatHistory };
     // API key cho Gemini được cung cấp bởi Canvas runtime khi triển khai.
     // Để kiểm tra cục bộ, bạn có thể cần đặt khóa thủ công tại đây hoặc thông qua biến môi trường.
-    const apiKey = "AIzaSyB7gk6mBzOKxnXmzemFWGttFq3UpM0lgMg"; // Placeholder: Replace with your actual Gemini API key
+    // LƯU Ý QUAN TRỌNG: KHÔNG ĐỂ API KEY TRỰC TIẾP TRONG MÃ NGUỒN CLIENT TRONG PRODUCTION.
+    const apiKey = process.env.REACT_APP_GEMINI_API_KEY; // <-- Sử dụng biến môi trường
+
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
     try {
@@ -1150,7 +1494,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
     try {
       await addDoc(cleaningTasksCollectionRef, {
         name: newCleaningTaskName.trim(),
-        date: newCleaningTaskDate, // Chuỗi,"%Y-%m-%d"
+        date: newCleaningTaskDate, // Chuỗi YYYY-MM-DD
         assignedToResidentId: selectedResidentForCleaning,
         assignedToResidentName: assignedResident ? assignedResident.name : 'Unknown',
         isCompleted: false,
@@ -1220,14 +1564,15 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
         if (updatedIndividualCosts[residentId]) {
           // Đảm bảo nó là một đối tượng trước khi đặt isPaid
           if (typeof updatedIndividualCosts[residentId] === 'number') {
-            updatedIndividualCosts[residentId] = { cost: updatedIndividualCosts[residentId], isPaid: !currentStatus };
+            // Trường hợp này có thể xảy ra nếu dữ liệu cũ chỉ lưu cost là number
+            updatedIndividualCosts[residentId] = { cost: updatedIndividualCosts[residentId], isPaid: !currentStatus, daysPresent: 0 };
           } else {
             updatedIndividualCosts[residentId].isPaid = !currentStatus;
           }
         } else { // Nếu residentId không tìm thấy hoặc dữ liệu là null/undefined
           // Trường hợp này lý tưởng là không xảy ra nếu individualCosts được điền đúng cách
           // nhưng được thêm vào để tăng tính mạnh mẽ.
-          updatedIndividualCosts[residentId] = { cost: 0, isPaid: !currentStatus };
+          updatedIndividualCosts[residentId] = { cost: 0, isPaid: !currentStatus, daysPresent: 0 };
         }
 
         await setDoc(costSharingDocRef, { individualCosts: updatedIndividualCosts }, { merge: true });
@@ -1302,7 +1647,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
   };
 
   // Mới: Hàm để xóa một phân công kệ giày
-  const handleClearShoeRackAssignment = async (shelfNumber) => { // eslint-disable-line no-unused-vars
+  const handleClearShoeRackAssignment = async (shelfNumber) => {
     setAuthError('');
     if (!db || !userId || userRole !== 'admin') { // Chỉ admin mới có thể xóa kệ giày
       setAuthError("Bạn không có quyền hoặc không có hồ sơ cư dân liên kết để thực hiện thao tác này.");
@@ -1385,7 +1730,8 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
         }
       }
     };
-    const apiKey = "AIzaSyB7gk6mBzOKxnXmzemFWGttFq3UpM0lgMg"; // Placeholder: Replace with your actual Gemini API key
+    const apiKey = process.env.REACT_APP_GEMINI_API_KEY; // <-- Sử dụng biến môi trường
+
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
     try {
@@ -1475,7 +1821,14 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
     const updatedIndividualCosts = JSON.parse(JSON.stringify(latestCostSharingRecord.individualCosts));
 
     // Đảm bảo chỉ cập nhật trạng thái của người dùng hiện tại
-    updatedIndividualCosts[loggedInResidentProfile.id].isPaid = true; // Đánh dấu là đã đóng
+    if (updatedIndividualCosts[loggedInResidentProfile.id]) {
+        if (typeof updatedIndividualCosts[loggedInResidentProfile.id] === 'number') {
+            updatedIndividualCosts[loggedInResidentProfile.id] = { cost: updatedIndividualCosts[loggedInResidentProfile.id], isPaid: true, daysPresent: 0 };
+        } else {
+            updatedIndividualCosts[loggedInResidentProfile.id].isPaid = true; // Đánh dấu là đã đóng
+        }
+    }
+
 
     try {
       await updateDoc(costSharingDocRef, { individualCosts: updatedIndividualCosts });
@@ -1502,42 +1855,19 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
     ? residents.filter(res => res.id === loggedInResidentProfile.id)
     : (showInactiveResidents ? residents : residents.filter(res => res.isActive !== false));
 
-  // Lắng nghe tất cả dữ liệu người dùng để hiển thị trong "Thông tin phòng chung"
-  useEffect(() => {
-    if (!db || !isAuthReady || userId === null) {
-      console.log("Lắng nghe tất cả người dùng: Đang chờ DB, Auth hoặc User ID sẵn sàng.");
-      return;
-    }
-    console.log("Bắt đầu lắng nghe cập nhật tất cả người dùng...");
-
-    const usersCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/users`);
-    const q = query(usersCollectionRef);
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const allUsers = [];
-      snapshot.forEach((doc) => {
-        const userData = doc.data();
-        // Chuyển đổi Timestamp thành Date nếu có
-        if (userData.createdAt && typeof userData.createdAt.toDate === 'function') {
-          userData.createdAt = userData.createdAt.toDate();
-        }
-        allUsers.push({ id: doc.id, ...userData });
-      });
-      setAllUsersData(allUsers);
-      console.log("Đã cập nhật tất cả dữ liệu người dùng:", allUsers);
-    }, (error) => {
-      console.error("Lỗi khi lấy tất cả dữ liệu người dùng:", error);
-    });
-
-    return () => {
-      console.log("Hủy đăng ký lắng nghe tất cả người dùng.");
-      unsubscribe();
-    };
-  }, [db, isAuthReady, userId]); // userId is still relevant for the collection path.
-
 
   // Hàm renderSection để hiển thị các phần giao diện dựa trên vai trò người dùng
   const renderSection = () => {
+    // Nếu chưa đăng nhập hoặc xác thực chưa sẵn sàng, hiển thị thông báo chung
+    if (!userId || !isAuthReady) {
+      return (
+        <div className="text-center p-8 bg-gray-100 dark:bg-gray-700 rounded-xl shadow-inner">
+          <p className="text-xl text-gray-700 dark:text-gray-300 font-semibold mb-4">Vui lòng đăng nhập để sử dụng ứng dụng.</p>
+        </div>
+      );
+    }
+
+    // Logic cho Admin
     if (userRole === 'admin') {
       switch (activeSection) {
         case 'residentManagement':
@@ -1610,6 +1940,14 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                           >
                             Kích hoạt lại
                           </button>
+                        )}
+                        {resident.isActive && resident.linkedUserId && (
+                            <button
+                                onClick={() => handleMoveToFormerResidents(resident.id, resident.linkedUserId)}
+                                className="ml-2 px-3 py-1 bg-indigo-500 text-white text-sm rounded-lg shadow-sm hover:bg-indigo-600 transition-colors duration-200"
+                            >
+                                Chuyển tiền bối
+                            </button>
                         )}
                       </li>
                     ))}
@@ -1912,7 +2250,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                       {billHistory.map(bill => (
                         <tr key={bill.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
                           <td className="py-3 px-6 text-left whitespace-nowrap">
-                            {bill.billDate && typeof bill.billDate.toDate === 'function' ? bill.billDate.toDate().toLocaleDateString('vi-VN') : 'N/A'}
+                            {bill.billDate && bill.billDate instanceof Date ? bill.billDate.toLocaleDateString('vi-VN') : 'N/A'}
                           </td>
                           <td className="py-3 px-6 text-right whitespace-nowrap font-bold text-blue-700 dark:text-blue-300">
                             {bill.totalCost?.toLocaleString('vi-VN') || 0} VND
@@ -2185,137 +2523,136 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
               )}
             </div>
           );
-          case 'memberProfileEdit': // Chỉnh sửa thông tin cá nhân (thành viên có thể tự chỉnh sửa)
+          case 'roomMemories': // <--- DI CHUYỂN TOÀN BỘ CASE NÀY LÊN TRÊN default
           return (
-            <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Chỉnh sửa thông tin cá nhân</h2>
-              {!loggedInResidentProfile ? (
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.</p>
-              ) : (
+            <div className="p-6 bg-indigo-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-indigo-800 dark:text-indigo-200 mb-5">Kỷ niệm phòng</h2>
+
+              {/* Phần đăng ảnh kỷ niệm */}
+              <form onSubmit={handleAddMemory} className="mb-8 p-4 bg-indigo-100 dark:bg-gray-800 rounded-xl shadow-inner border border-indigo-200 dark:border-gray-600">
+                <h3 className="text-xl font-bold text-indigo-700 dark:text-indigo-200 mb-4">Đăng ảnh kỷ niệm mới</h3>
                 <div className="space-y-4">
-                  {/* CÁC TRƯỜNG DỮ LIỆU CÁ NHÂN ĐỂ CHỈNH SỬA */}
                   <div>
-                    <label htmlFor="editFullName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Họ tên đầy đủ:</label>
+                    <label htmlFor="eventName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Sự kiện:</label>
                     <input
                       type="text"
-                      id="editFullName"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                      id="eventName"
+                      value={newMemoryEventName}
+                      onChange={(e) => setNewMemoryEventName(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700"
+                      placeholder="Ví dụ: Sinh nhật tháng 10"
                     />
                   </div>
                   <div>
-                    <label htmlFor="editPhoneNumber" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Số điện thoại:</label>
-                    <input
-                      type="text"
-                      id="editPhoneNumber"
-                      value={memberPhoneNumber}
-                      onChange={(e) => setMemberPhoneNumber(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="editStudentId" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Mã số sinh viên:</label>
-                    <input
-                      type="text"
-                      id="editStudentId"
-                      value={memberStudentId}
-                      onChange={(e) => setMemberStudentId(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="editBirthday" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày sinh:</label>
+                    <label htmlFor="photoDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày chụp:</label>
                     <input
                       type="date"
-                      id="editBirthday"
-                      value={memberBirthday}
-                      onChange={(e) => setMemberBirthday(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                      id="photoDate"
+                      value={newMemoryPhotoDate}
+                      onChange={(e) => setNewMemoryPhotoDate(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700"
                     />
                   </div>
                   <div>
-                    <label htmlFor="editDormEntryDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày nhập KTX:</label>
+                    <label htmlFor="imageFile" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Chọn ảnh:</label>
                     <input
-                      type="date"
-                      id="editDormEntryDate"
-                      value={memberDormEntryDate}
-                      onChange={(e) => setMemberDormEntryDate(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                      type="file"
+                      id="imageFile"
+                      accept="image/*"
+                      onChange={(e) => setNewMemoryImageFile(e.target.files[0])}
+                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
                     />
                   </div>
-                  <div>
-                    <label htmlFor="editAcademicLevel" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email trường:</label>
-                    <input
-                      type="text"
-                      id="editAcademicLevel"
-                      value={memberAcademicLevel}
-                      onChange={(e) => setMemberAcademicLevel(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    />
-                  </div>
-
-                  {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
-
+                  {isUploadingMemory && (
+                    <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                      <div className="bg-indigo-600 h-2.5 rounded-full" style={{ width: `${uploadProgress}%` }}></div>
+                    </div>
+                  )}
+                  {memoryError && <p className="text-red-500 text-sm text-center mt-4">{memoryError}</p>}
                   <button
-                    onClick={handleSaveUserProfile} // <-- Changed from handleSaveMemberProfile
-                    className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+                    type="submit"
+                    className="w-full px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl shadow-md hover:bg-indigo-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-75"
+                    disabled={isUploadingMemory}
                   >
-                    <i className="fas fa-save mr-2"></i> Lưu thông tin
+                    {isUploadingMemory ? <i className="fas fa-spinner fa-spin mr-2"></i> : <i className="fas fa-upload mr-2"></i>}
+                    Đăng kỷ niệm
                   </button>
-                  <button
-                    onClick={() => setEditProfileMode(false)}
-                    className="w-full mt-2 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
-                  >
-                    Hủy
-                  </button>
+                </div>
+              </form>
+
+              {/* Danh sách các kỷ niệm đã đăng */}
+              <h3 className="text-xl font-bold text-indigo-700 dark:text-indigo-200 mb-4">Các kỷ niệm đã đăng</h3>
+              {memories.length === 0 ? (
+                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có kỷ niệm nào được đăng.</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {memories.map(memory => (
+                    <div key={memory.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                      <img src={memory.imageUrl} alt={memory.eventName} className="w-full h-48 object-cover" />
+                      <div className="p-4">
+                        <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">{memory.eventName}</h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          <i className="fas fa-calendar-alt mr-2"></i>Ngày chụp: {memory.photoDate}
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          <i className="fas fa-upload mr-2"></i>Đăng bởi: {memory.uploadedByName || 'Ẩn danh'} vào {memory.uploadedAt?.toLocaleDateString('vi-VN')}
+                        </p>
+                        {userRole === 'admin' && ( // Chỉ admin mới có nút xóa
+                          <button
+                            onClick={() => handleDeleteMemory(memory.id, memory.imageUrl)}
+                            className="mt-4 px-4 py-2 bg-red-500 text-white rounded-lg shadow hover:bg-red-600 transition-colors duration-200"
+                          >
+                            <i className="fas fa-trash mr-2"></i>Xóa
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
           );
-        default:
+        case 'formerResidents': // <--- DI CHUYỂN TOÀN BỘ CASE NÀY LÊN TRÊN default
           return (
-            <div className="text-center p-8 bg-gray-100 dark:bg-gray-700 rounded-xl shadow-inner">
-              <p className="text-xl text-gray-700 dark:text-gray-300 font-semibold mb-4">
-                Vui lòng chọn một mục từ thanh điều hướng.
-              </p>
+            <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">Thông tin tiền bối</h2>
+              {/* Nút để Admin thêm/chuyển người dùng sang tiền bối */}
+              <button
+                onClick={() => { /* Logic chuyển người dùng sang tiền bối */ alert('Chức năng chuyển người dùng sang tiền bối sẽ được thêm sau.'); }}
+                className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 mb-6"
+              >
+                <i className="fas fa-exchange-alt mr-2"></i> Chuyển người dùng sang tiền bối
+              </button>
+
+              {formerResidents.length === 0 ? (
+                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có thông tin tiền bối nào được lưu.</p>
+              ) : (
+                <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                  <table className="min-w-full bg-white dark:bg-gray-800">
+                    <thead>
+                      <tr>
+                        <th className="py-3 px-4 text-left text-green-800 dark:text-green-200 uppercase text-sm leading-normal bg-green-100 dark:bg-gray-700">Họ tên</th>
+                        <th className="py-3 px-4 text-left text-green-800 dark:text-green-200 uppercase text-sm leading-normal bg-green-100 dark:bg-gray-700">Email</th>
+                        <th className="py-3 px-4 text-left text-green-800 dark:text-green-200 uppercase text-sm leading-normal bg-green-100 dark:bg-gray-700">Ngày vô hiệu hóa</th>
+                        {/* Thêm các cột thông tin khác của tiền bối nếu có */}
+                      </tr>
+                    </thead>
+                    <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
+                      {formerResidents.map(resident => (
+                        <tr key={resident.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                          <td className="py-3 px-4 whitespace-nowrap">{resident.name || resident.fullName || 'N/A'}</td>
+                          <td className="py-3 px-4 whitespace-nowrap">{resident.email || 'N/A'}</td>
+                          <td className="py-3 px-4 whitespace-nowrap">
+                              {resident.deactivatedAt && typeof resident.deactivatedAt.toLocaleDateString === 'function' ? resident.deactivatedAt.toLocaleDateString('vi-VN') : (resident.deactivatedAt || 'N/A')}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           );
-        case 'consumptionStats':
-        return (
-          <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-            <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Thống kê tiêu thụ theo tháng</h2>
-            {Object.keys(monthlyConsumptionStats).length === 0 ? (
-              <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có dữ liệu thống kê nào. Vui lòng tính toán hóa đơn.</p>
-            ) : (
-              <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-                <table className="min-w-full bg-white dark:bg-gray-800">
-                  <thead>
-                    <tr>
-                      <th className="py-3 px-6 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Tháng</th>
-                      <th className="py-3 px-6 text-right text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Điện (KW)</th>
-                      <th className="py-3 px-6 text-right text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Nước (m³)</th>
-                      <th className="py-3 px-6 text-right text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Tổng tiền (VND)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
-                    {Object.entries(monthlyConsumptionStats).map(([month, stats]) => (
-                      <tr key={month} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-                        <td className="py-3 px-6 text-left whitespace-nowrap">{month}</td>
-                        <td className="py-3 px-6 text-right whitespace-nowrap">{stats.electricity.toLocaleString('vi-VN')}</td>
-                        <td className="py-3 px-6 text-right whitespace-nowrap">{stats.water.toLocaleString('vi-VN')}</td>
-                        <td className="py-3 px-6 text-right whitespace-nowrap font-bold text-blue-700 dark:text-blue-300">
-                          {stats.total.toLocaleString('vi-VN')}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        );
-
         case 'adminProfileEdit': // Mới: Chỉnh sửa thông tin cá nhân cho Admin
           return (
             <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
@@ -2333,7 +2670,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                   />
                 </div>
                 <div>
-                  <label htmlFor="adminEditPhoneNumber" className="block text-700 dark:text-gray-300 text-sm font-bold mb-2">Số điện thoại:</label>
+                  <label htmlFor="adminEditPhoneNumber" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Số điện thoại:</label>
                   <input
                     type="text"
                     id="adminEditPhoneNumber"
@@ -2395,6 +2732,40 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
               </div>
             </div>
           );
+        case 'consumptionStats': //Thống kê tiêu thụ 
+        return (
+          <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+            <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Thống kê tiêu thụ theo tháng</h2>
+            {Object.keys(monthlyConsumptionStats).length === 0 ? (
+              <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có dữ liệu thống kê nào. Vui lòng tính toán hóa đơn.</p>
+            ) : (
+              <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                <table className="min-w-full bg-white dark:bg-gray-800">
+                  <thead>
+                    <tr>
+                      <th className="py-3 px-6 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Tháng</th>
+                      <th className="py-3 px-6 text-right text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Điện (KW)</th>
+                      <th className="py-3 px-6 text-right text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Nước (m³)</th>
+                      <th className="py-3 px-6 text-right text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Tổng tiền (VND)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
+                    {Object.entries(monthlyConsumptionStats).map(([month, stats]) => (
+                      <tr key={month} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                        <td className="py-3 px-6 text-left whitespace-nowrap">{month}</td>
+                        <td className="py-3 px-6 text-right whitespace-nowrap">{stats.electricity.toLocaleString('vi-VN')}</td>
+                        <td className="py-3 px-6 text-right whitespace-nowrap">{stats.water.toLocaleString('vi-VN')}</td>
+                        <td className="py-3 px-6 text-right whitespace-nowrap font-bold text-blue-700 dark:text-blue-300">
+                          {stats.total.toLocaleString('vi-VN')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        );
       }
     }
     // Logic cho Thành viên
@@ -2684,7 +3055,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                   {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
 
                   <button
-                    onClick={handleSaveUserProfile}
+                    onClick={handleSaveUserProfile} // <-- Đã đổi tên hàm
                     className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
                   >
                     <i className="fas fa-save mr-2"></i> Lưu thông tin
@@ -2695,6 +3066,121 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                   >
                     Hủy
                   </button>
+                </div>
+              )}
+            </div>
+          );
+          case 'roomMemories':    // <--- DI CHUYỂN TOÀN BỘ CASE NÀY LÊN TRÊN default
+          return (
+            <div className="p-6 bg-indigo-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-indigo-800 dark:text-indigo-200 mb-5">Kỷ niệm phòng</h2>
+
+              {/* Phần đăng ảnh kỷ niệm */}
+              <form onSubmit={handleAddMemory} className="mb-8 p-4 bg-indigo-100 dark:bg-gray-800 rounded-xl shadow-inner border border-indigo-200 dark:border-gray-600">
+                <h3 className="text-xl font-bold text-indigo-700 dark:text-indigo-200 mb-4">Đăng ảnh kỷ niệm mới</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="eventName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Sự kiện:</label>
+                    <input
+                      type="text"
+                      id="eventName"
+                      value={newMemoryEventName}
+                      onChange={(e) => setNewMemoryEventName(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700"
+                      placeholder="Ví dụ: Sinh nhật tháng 10"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="photoDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày chụp:</label>
+                    <input
+                      type="date"
+                      id="photoDate"
+                      value={newMemoryPhotoDate}
+                      onChange={(e) => setNewMemoryPhotoDate(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="imageFile" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Chọn ảnh:</label>
+                    <input
+                      type="file"
+                      id="imageFile"
+                      accept="image/*"
+                      onChange={(e) => setNewMemoryImageFile(e.target.files[0])}
+                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                    />
+                  </div>
+                  {isUploadingMemory && (
+                    <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                      <div className="bg-indigo-600 h-2.5 rounded-full" style={{ width: `${uploadProgress}%` }}></div>
+                    </div>
+                  )}
+                  {memoryError && <p className="text-red-500 text-sm text-center mt-4">{memoryError}</p>}
+                  <button
+                    type="submit"
+                    className="w-full px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl shadow-md hover:bg-indigo-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-75"
+                    disabled={isUploadingMemory}
+                  >
+                    {isUploadingMemory ? <i className="fas fa-spinner fa-spin mr-2"></i> : <i className="fas fa-upload mr-2"></i>}
+                    Đăng kỷ niệm
+                  </button>
+                </div>
+              </form>
+
+              {/* Danh sách các kỷ niệm đã đăng (giống admin) */}
+              <h3 className="text-xl font-bold text-indigo-700 dark:text-indigo-200 mb-4">Các kỷ niệm đã đăng</h3>
+              {memories.length === 0 ? (
+                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có kỷ niệm nào được đăng.</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {memories.map(memory => (
+                    <div key={memory.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                      <img src={memory.imageUrl} alt={memory.eventName} className="w-full h-48 object-cover" />
+                      <div className="p-4">
+                        <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">{memory.eventName}</h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          <i className="fas fa-calendar-alt mr-2"></i>Ngày chụp: {memory.photoDate}
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          <i className="fas fa-upload mr-2"></i>Đăng bởi: {memory.uploadedByName || 'Ẩn danh'} vào {memory.uploadedAt?.toLocaleDateString('vi-VN')}
+                        </p>
+                        {/* Thành viên không có nút xóa */}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        case 'formerResidents': // <--- DI CHUYỂN TOÀN BỘ CASE NÀY LÊN TRÊN default
+          return (
+            <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">Thông tin tiền bối</h2>
+              {formerResidents.length === 0 ? (
+                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có thông tin tiền bối nào được lưu.</p>
+              ) : (
+                <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                  <table className="min-w-full bg-white dark:bg-gray-800">
+                    <thead>
+                      <tr>
+                        <th className="py-3 px-4 text-left text-green-800 dark:text-green-200 uppercase text-sm leading-normal bg-green-100 dark:bg-gray-700">Họ tên</th>
+                        <th className="py-3 px-4 text-left text-green-800 dark:text-green-200 uppercase text-sm leading-normal bg-green-100 dark:bg-gray-700">Email</th>
+                        <th className="py-3 px-4 text-left text-green-800 dark:text-green-200 uppercase text-sm leading-normal bg-green-100 dark:bg-gray-700">Ngày vô hiệu hóa</th>
+                        {/* Thêm các cột thông tin khác của tiền bối nếu có */}
+                      </tr>
+                    </thead>
+                    <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
+                      {formerResidents.map(resident => (
+                        <tr key={resident.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                          <td className="py-3 px-4 whitespace-nowrap">{resident.name || resident.fullName || 'N/A'}</td>
+                          <td className="py-3 px-4 whitespace-nowrap">{resident.email || 'N/A'}</td>
+                          <td className="py-3 px-4 whitespace-nowrap">
+                              {resident.deactivatedAt && typeof resident.deactivatedAt.toLocaleDateString === 'function' ? resident.deactivatedAt.toLocaleDateString('vi-VN') : (resident.deactivatedAt || 'N/A')}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
@@ -2710,7 +3196,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
       }
     }
 
-    // Trường hợp không có vai trò hoặc không xác định
+    // Trường hợp không có vai trò hoặc không xác định (hiển thị khi chưa đăng nhập)
     return (
       <div className="text-center p-8 bg-gray-100 dark:bg-gray-700 rounded-xl shadow-inner">
         <p className="text-xl text-gray-700 dark:text-gray-300 font-semibold mb-4">Vui lòng đăng nhập để sử dụng ứng dụng.</p>
@@ -2838,7 +3324,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                   <i className="fas fa-shoe-prints mr-3"></i> Quản lý kệ giày
                 </button>
                 <button
-                  className={`w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${activeSection === 'commonRoomInfo' // New nav item
+                  className={`w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${activeSection === 'commonRoomInfo'
                     ? 'bg-blue-600 text-white shadow-md'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
@@ -2856,7 +3342,25 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                   <i className="fas fa-chart-bar mr-3"></i> Thống kê tiêu thụ
                 </button>
                 <button
-                  className={`w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${activeSection === 'adminProfileEdit' // Tên mới cho phần chỉnh sửa profile admin
+                  className={`w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${activeSection === 'roomMemories'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  onClick={() => { setActiveSection('roomMemories'); setIsSidebarOpen(false); }}
+                >
+                  <i className="fas fa-camera mr-3"></i> Kỷ niệm phòng
+                </button>
+                <button
+                    className={`w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${activeSection === 'formerResidents'
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                    onClick={() => { setActiveSection('formerResidents'); setIsSidebarOpen(false); }}
+                >
+                  <i className="fas fa-user-graduate mr-3"></i> Thông tin tiền bối
+                </button>
+                <button
+                  className={`w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${activeSection === 'adminProfileEdit'
                     ? 'bg-blue-600 text-white shadow-md'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
@@ -2914,7 +3418,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                   <i className="fas fa-shoe-prints mr-3"></i> Thông tin kệ giày
                 </button>
                 <button
-                  className={`w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${activeSection === 'commonRoomInfo' // New nav item
+                  className={`w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${activeSection === 'commonRoomInfo'
                     ? 'bg-blue-600 text-white shadow-md'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
@@ -2923,7 +3427,25 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                   <i className="fas fa-info-circle mr-3"></i> Thông tin phòng chung
                 </button>
                 <button
-                  className={`w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${activeSection === 'memberProfileEdit' // New nav item
+                  className={`w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${activeSection === 'roomMemories'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  onClick={() => { setActiveSection('roomMemories'); setIsSidebarOpen(false); }}
+                >
+                  <i className="fas fa-camera mr-3"></i> Kỷ niệm phòng
+                </button>
+                <button
+                    className={`w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${activeSection === 'formerResidents'
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                    onClick={() => { setActiveSection('formerResidents'); setIsSidebarOpen(false); }}
+                >
+                  <i className="fas fa-user-graduate mr-3"></i> Thông tin tiền bối
+                </button>
+                <button
+                  className={`w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${activeSection === 'memberProfileEdit'
                     ? 'bg-blue-600 text-white shadow-md'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
@@ -3045,7 +3567,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
             <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">Chi tiết hóa đơn</h3>
             <div className="space-y-3 text-gray-700 dark:text-gray-300">
               <p><strong>Tháng:</strong> {selectedBillDetails.billingMonth || 'N/A'}</p>
-              <p><strong>Ngày tính:</strong> {selectedBillDetails.billDate?.toDate().toLocaleDateString('vi-VN')}</p>
+              <p><strong>Ngày tính:</strong> {selectedBillDetails.billDate && selectedBillDetails.billDate instanceof Date ? selectedBillDetails.billDate.toLocaleDateString('vi-VN') : 'N/A'}</p>
               <p><strong>Người ghi nhận:</strong> {selectedBillDetails.recordedBy}</p>
               <p><strong>Điện (Đầu):</strong> {selectedBillDetails.electricityStartReading} KW</p>
               <p><strong>Điện (Cuối):</strong> {selectedBillDetails.electricityEndReading} KW</p>
@@ -3080,7 +3602,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
             <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">Chi tiết chia tiền</h3>
             <div className="space-y-3 text-gray-700 dark:text-gray-300">
               <p><strong>Kỳ tính:</strong> {selectedCostSharingDetails.periodStart} đến {selectedCostSharingDetails.periodEnd}</p>
-              <p><strong>Ngày tính:</strong> {selectedCostSharingDetails.calculatedDate && typeof selectedCostSharingDetails.calculatedDate.toDate === 'function' ? selectedCostSharingDetails.calculatedDate.toDate().toLocaleDateString('vi-VN') : 'N/A'}</p>
+              <p><strong>Ngày tính:</strong> {selectedCostSharingDetails.calculatedDate && selectedCostSharingDetails.calculatedDate instanceof Date ? selectedCostSharingDetails.calculatedDate.toLocaleDateString('vi-VN') : 'N/A'}</p>
               <p><strong>Tổng ngày có mặt:</strong> {selectedCostSharingDetails.totalCalculatedDaysAllResidents} ngày</p>
               <p><strong>Chi phí TB 1 ngày/người:</strong> {selectedCostSharingDetails.costPerDayPerPerson?.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} VND</p>
               <p className="text-xl font-bold border-t pt-3 mt-3 border-gray-300 dark:border-gray-600">
@@ -3092,7 +3614,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                   return (
                     <li key={residentId} className="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-2 rounded-lg">
                       <span>{residentName}:</span>
-                      <span className="font-bold mr-2">{data.cost?.toLocaleString('vi-VN')} VND</span>
+                      <span className="font-bold mr-2">{typeof data.cost === 'number' ? data.cost?.toLocaleString('vi-VN') : 'N/A'} VND</span>
                       <input
                         type="checkbox"
                         checked={data.isPaid || false}
@@ -3220,7 +3742,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
         </div>
       )}
 
-      //
+
       {/* Font Awesome for icons */}
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
     </div>
