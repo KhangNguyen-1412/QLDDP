@@ -5,7 +5,8 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
-  onAuthStateChanged
+  onAuthStateChanged,
+  sendPasswordResetEmail // Import sendPasswordResetEmail
 } from 'firebase/auth';
 import { getFirestore, doc, setDoc, collection, onSnapshot, query, addDoc, serverTimestamp, deleteDoc, getDocs, where, getDoc, updateDoc } from 'firebase/firestore';
 
@@ -63,6 +64,19 @@ function App() {
   const [fullName, setFullName] = useState(''); // New state for full name
   const [authError, setAuthError] = useState('');
   const [billingError, setBillingError] = useState('');
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false); // New state for forgot password modal
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState(''); // New state for forgot password email input
+  const [forgotPasswordMessage, setForgotPasswordMessage] = useState(''); // New state for forgot password message
+
+  // New states for member's editable profile
+  const [memberPhoneNumber, setMemberPhoneNumber] = useState('');
+  const [memberAcademicLevel, setMemberAcademicLevel] = useState('');
+  const [memberDormEntryDate, setMemberDormEntryDate] = useState('');
+  const [memberBirthday, setMemberBirthday] = useState('');
+  const [memberStudentId, setMemberStudentId] = useState('');
+  const [editProfileMode, setEditProfileMode] = useState(false); // Toggle edit mode for member profile
+
+  const [allUsersData, setAllUsersData] = useState([]); // To store all user data for common room info
 
   const [billHistory, setBillHistory] = useState([]);
   const [selectedBillDetails, setSelectedBillDetails] = useState(null);
@@ -169,6 +183,14 @@ function App() {
           let fetchedFullName = user.email; // Mặc định là email nếu không có fullName
           let linkedResidentId = null; // ID cư dân được liên kết
 
+          // New fields
+          let fetchedPhoneNumber = '';
+          let fetchedAcademicLevel = '';
+          let fetchedDormEntryDate = '';
+          let fetchedBirthday = '';
+          let fetchedStudentId = '';
+
+
           if (userDocSnap.exists()) {
             const userData = userDocSnap.data();
             if (userData.role) {
@@ -180,12 +202,27 @@ function App() {
             if (userData.linkedResidentId) {
               linkedResidentId = userData.linkedResidentId;
             }
+            // Fetch new fields
+            fetchedPhoneNumber = userData.phoneNumber || '';
+            fetchedAcademicLevel = userData.academicLevel || '';
+            fetchedDormEntryDate = userData.dormEntryDate || '';
+            fetchedBirthday = userData.birthday || '';
+            fetchedStudentId = userData.studentId || '';
+
           } else {
             // Nếu tài liệu người dùng không tồn tại, tạo nó với vai trò mặc định
             await setDoc(userDocRef, { email: user.email, fullName: user.email, role: 'member', createdAt: serverTimestamp() }, { merge: true });
           }
           setUserRole(fetchedRole);
           console.log("8. Vai trò người dùng:", fetchedRole);
+
+          // Set states for editable profile fields
+          setMemberPhoneNumber(fetchedPhoneNumber);
+          setMemberAcademicLevel(fetchedAcademicLevel);
+          setMemberDormEntryDate(fetchedDormEntryDate);
+          setMemberBirthday(fetchedBirthday);
+          setMemberStudentId(fetchedStudentId);
+
 
           // Tìm hồ sơ cư dân được liên kết
           const residentsCollectionRef = collection(firestoreDb, `artifacts/${currentAppId}/public/data/residents`);
@@ -287,7 +324,7 @@ function App() {
       // Lần này chỉ để cập nhật linkedUserId trong tài liệu cư dân nếu nó chưa được liên kết
       if (!residentSnapByNameCheck.empty) { // Nếu tìm thấy cư dân trùng tên
         const matchedResident = residentSnapByNameCheck.docs[0];
-        await updateDoc(doc(residentsCollectionRef, matchedResident.id), { linkedUserId: userCredential.user.uid });
+        await updateDoc(doc(db, `artifacts/${currentAppId}/public/data/users`, userCredential.user.uid), { linkedResidentId: matchedResident.id });
         console.log(`Đã liên kết cư dân "${fullName.trim()}" với người dùng mới đăng ký.`);
       } else {
         console.log(`Không tìm thấy cư dân có tên "${fullName.trim()}". Admin có thể cần thêm/liên kết thủ công.`);
@@ -333,6 +370,68 @@ function App() {
     } catch (error) {
       console.error("Lỗi đăng xuất:", error.code, error.message);
       setAuthError(`Lỗi đăng xuất: ${error.message}`);
+    }
+  };
+
+  // New: Handle forgot password
+  const handleForgotPassword = async () => {
+    setForgotPasswordMessage('');
+    if (!auth) {
+      setForgotPasswordMessage("Hệ thống xác thực chưa sẵn sàng.");
+      return;
+    }
+    if (forgotPasswordEmail.trim() === '') {
+      setForgotPasswordMessage("Vui lòng nhập Email của bạn.");
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(auth, forgotPasswordEmail.trim());
+      setForgotPasswordMessage("Đã gửi liên kết đặt lại mật khẩu đến email của bạn. Vui lòng kiểm tra hộp thư đến.");
+      setForgotPasswordEmail(''); // Clear email input
+    } catch (error) {
+      console.error("Lỗi quên mật khẩu:", error.code, error.message);
+      setForgotPasswordMessage(`Lỗi: ${error.message}`);
+    }
+  };
+
+  // New: Handle saving member profile
+  const handleSaveMemberProfile = async () => {
+    setAuthError('');
+    if (!db || !userId || !loggedInResidentProfile) {
+      setAuthError("Hệ thống chưa sẵn sàng hoặc bạn không có quyền.");
+      return;
+    }
+
+    const userDocRef = doc(db, `artifacts/${currentAppId}/public/data/users`, userId);
+    const residentDocRef = doc(db, `artifacts/${currentAppId}/public/data/residents`, loggedInResidentProfile.id);
+
+    try {
+      // Update user's personal details in their user document
+      await updateDoc(userDocRef, {
+        fullName: fullName.trim(),
+        phoneNumber: memberPhoneNumber.trim(),
+        academicLevel: memberAcademicLevel.trim(),
+        dormEntryDate: memberDormEntryDate.trim(),
+        birthday: memberBirthday.trim(),
+        studentId: memberStudentId.trim()
+      });
+
+      // Optionally, update the resident's name if it was changed in the profile
+      // This requires admin privileges for the 'residents' collection
+      // For simplicity, we'll only update if the name in residents is different
+      // and the user has admin role OR if it's the linked resident.
+      // However, Firestore rules already restrict this to admin, so this will only work for admin.
+      // If a member changes their name, it only changes in their user document, not the resident document.
+      if (userRole === 'admin' && loggedInResidentProfile.name !== fullName.trim()) {
+         await updateDoc(residentDocRef, { name: fullName.trim() });
+      }
+
+
+      setAuthError("Thông tin cá nhân đã được cập nhật thành công!");
+      setEditProfileMode(false); // Exit edit mode
+    } catch (error) {
+      console.error("Lỗi khi cập nhật thông tin cá nhân:", error);
+      setAuthError(`Lỗi khi cập nhật thông tin cá nhân: ${error.message}`);
     }
   };
   // --- Kết thúc các hàm xác thực ---
@@ -437,7 +536,7 @@ function App() {
 
     const meterReadingsDocRef = doc(db, `artifacts/${currentAppId}/public/data/meterReadings`, 'currentReadings');
 
-    const unsubscribe = onSnapshot(meterReadRef, (docSnap) => {
+    const unsubscribe = onSnapshot(meterReadingsDocRef, (docSnap) => { // Sửa lỗi ReferenceError: meterReadRef -> meterReadingsDocRef
       if (docSnap.exists()) {
         const data = docSnap.data();
         setLastElectricityReading(data.electricity || 0);
@@ -508,10 +607,15 @@ function App() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const history = [];
       snapshot.forEach(docSnap => {
-        history.push({ id: docSnap.id, ...docSnap.data() });
+        const data = docSnap.data();
+        // Chuyển đổi Timestamp thành Date nếu có
+        if (data.calculatedDate && typeof data.calculatedDate.toDate === 'function') {
+          data.calculatedDate = data.calculatedDate.toDate();
+        }
+        history.push({ id: docSnap.id, ...data });
       });
       // Sắp xếp phía client theo calculatedDate giảm dần
-      history.sort((a, b) => (b.calculatedDate?.toDate() || 0) - (a.calculatedDate?.toDate() || 0));
+      history.sort((a, b) => (b.calculatedDate || 0) - (a.calculatedDate || 0));
       setCostSharingHistory(history);
       console.log("Đã cập nhật lịch sử chia tiền:", history);
     }, (error) => {
@@ -539,7 +643,12 @@ function App() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const tasks = [];
       snapshot.forEach(docSnap => {
-        tasks.push({ id: docSnap.id, ...docSnap.data() });
+        const data = docSnap.data();
+        // Chuyển đổi Timestamp thành Date nếu có
+        if (data.createdAt && typeof data.createdAt.toDate === 'function') {
+          data.createdAt = data.createdAt.toDate();
+        }
+        tasks.push({ id: docSnap.id, ...data });
       });
       // Sắp xếp phía client theo ngày tăng dần, sau đó theo tên công việc
       tasks.sort((a, b) => {
@@ -574,6 +683,10 @@ function App() {
       const assignments = {};
       snapshot.forEach(docSnap => {
         const data = docSnap.data();
+        // Chuyển đổi Timestamp thành Date nếu có
+        if (data.assignedAt && typeof data.assignedAt.toDate === 'function') {
+          data.assignedAt = data.assignedAt.toDate();
+        }
         assignments[data.shelfNumber] = {
           residentId: data.residentId,
           residentName: data.residentName,
@@ -697,8 +810,7 @@ function App() {
     setAuthError('');
     setBillingError('');
     if (!db || !userId) {
-      console.error("Hệ thống chưa sẵn sàng. DB hoặc User ID không khả dụng.");
-      setAuthError("Vui lòng đăng nhập để thực hiện thao tác này.");
+      setAuthError("Hệ thống chưa sẵn sàng. DB hoặc User ID không khả dụng.");
       return;
     }
 
@@ -740,8 +852,7 @@ function App() {
     setAuthError('');
     setBillingError('');
     if (!db || !userId || userRole !== 'admin') { // Chỉ admin mới có thể tính hóa đơn
-      console.error("Hệ thống chưa sẵn sàng hoặc bạn không có quyền.");
-      setAuthError("Bạn không có quyền thực hiện thao tác này.");
+      setAuthError("Hệ thống chưa sẵn sàng hoặc bạn không có quyền.");
       return;
     }
     const elecCurrent = parseFloat(currentElectricityReading);
@@ -814,21 +925,18 @@ function App() {
     setAuthError('');
     setBillingError('');
     if (!db || !userId || userRole !== 'admin') { // Chỉ admin mới có thể tính toán điểm danh và chi phí
-      console.error("Hệ thống chưa sẵn sàng hoặc bạn không có quyền.");
-      setAuthError("Bạn không có quyền thực hiện thao tác này.");
+      setAuthError("Hệ thống chưa sẵn sàng hoặc bạn không có quyền.");
       return;
     }
     if (!startDate || !endDate) {
-      console.error("Vui lòng chọn ngày bắt đầu và ngày kết thúc để tính toán điểm danh.");
-      setBillingError("Vui lòng chọn ngày bắt đầu và ngày kết thúc để tính toán điểm danh.");
+      setAuthError("Vui lòng chọn ngày bắt đầu và ngày kết thúc để tính toán điểm danh.");
       return;
     }
 
     const start = new Date(startDate);
     const end = new Date(endDate);
     if (start > end) {
-      console.error("Ngày bắt đầu không được lớn hơn ngày kết thúc.");
-      setBillingError("Ngày bắt đầu không được lớn hơn ngày kết thúc.");
+      setAuthError("Ngày bắt đầu không được lớn hơn ngày kết thúc.");
       return;
     }
 
@@ -933,12 +1041,10 @@ function App() {
     setAuthError('');
     setBillingError('');
     if (!db || !userId || userRole !== 'admin') { // Chỉ admin mới có thể tạo nhắc nhở
-      console.error("Vui lòng đăng nhập hoặc bạn không có quyền để tạo nhắc nhở.");
       setGeneratedReminder("Bạn không có quyền để tạo nhắc nhở.");
       return;
     }
     if (!selectedResidentForReminder) {
-      console.error("Vui lòng chọn một người để tạo nhắc nhở.");
       setGeneratedReminder("Vui lòng chọn một người để tạo nhắc nhở.");
       return;
     }
@@ -998,8 +1104,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
   const handleToggleBillPaidStatus = async (billId, currentStatus) => {
     setAuthError('');
     if (!db || !userId || userRole !== 'admin') { // Chỉ admin mới có thể chuyển đổi trạng thái hóa đơn
-      console.error("Hệ thống chưa sẵn sàng hoặc bạn không có quyền.");
-      setAuthError("Bạn không có quyền thực hiện thao tác này.");
+      setAuthError("Bạn không có quyền hoặc không có hồ sơ cư dân liên kết để thực hiện thao tác này.");
       return;
     }
     const billDocRef = doc(db, `artifacts/${currentAppId}/public/data/billHistory`, billId);
@@ -1017,12 +1122,10 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
     setAuthError('');
     setBillingError(''); // Đặt lại billingError
     if (!db || !userId || userRole !== 'admin') { // Chỉ admin mới có thể thêm công việc vệ sinh
-      console.error("Hệ thống chưa sẵn sàng hoặc bạn không có quyền.");
-      setAuthError("Bạn không có quyền thực hiện thao tác này.");
+      setAuthError("Bạn không có quyền hoặc không có hồ sơ cư dân liên kết để thực hiện thao tác này.");
       return;
     }
     if (newCleaningTaskName.trim() === '' || !newCleaningTaskDate || !selectedResidentForCleaning) {
-      console.error("Vui lòng nhập đầy đủ thông tin công việc, ngày và người thực hiện.");
       setAuthError("Vui lòng nhập đầy đủ thông tin công việc, ngày và người thực hiện.");
       return;
     }
@@ -1054,8 +1157,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
   const handleToggleCleaningTaskCompletion = async (taskId, currentStatus) => {
     setAuthError('');
     if (!db || !userId || userRole !== 'admin') { // Chỉ admin mới có thể chuyển đổi trạng thái công việc vệ sinh
-      console.error("Hệ thống chưa sẵn sàng hoặc bạn không có quyền.");
-      setAuthError("Bạn không có quyền thực hiện thao tác này.");
+      setAuthError("Bạn không có quyền hoặc không có hồ sơ cư dân liên kết để thực hiện thao tác này.");
       return;
     }
     const taskDocRef = doc(db, `artifacts/${currentAppId}/public/data/cleaningTasks`, taskId);
@@ -1072,8 +1174,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
   const handleDeleteCleaningTask = async (taskId, taskName) => {
     setAuthError('');
     if (!db || !userId || userRole !== 'admin') { // Chỉ admin mới có thể xóa công việc vệ sinh
-      console.error("Hệ thống chưa sẵn sàng hoặc bạn không có quyền.");
-      setAuthError("Bạn không có quyền thực hiện thao tác này.");
+      setAuthError("Bạn không có quyền hoặc không có hồ sơ cư dân liên kết để thực hiện thao tác này.");
       return;
     }
     const taskDocRef = doc(db, `artifacts/${currentAppId}/public/data/cleaningTasks`, taskId);
@@ -1090,8 +1191,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
   const handleToggleIndividualPaymentStatus = async (costSharingId, residentId, currentStatus) => {
     setAuthError('');
     if (!db || !userId || userRole !== 'admin') { // Chỉ admin mới có thể chuyển đổi trạng thái thanh toán
-      console.error("Hệ thống chưa sẵn sàng hoặc bạn không có quyền.");
-      setAuthError("Bạn không có quyền thực hiện thao tác này.");
+      setAuthError("Bạn không có quyền hoặc không có hồ sơ cư dân liên kết để thực hiện thao tác này.");
       return;
     }
 
@@ -1142,12 +1242,10 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
     setAuthError('');
     setBillingError(''); // Đặt lại billingError
     if (!db || !userId || userRole !== 'admin') { // Chỉ admin mới có thể gán kệ giày
-      console.error("Hệ thống chưa sẵn sàng hoặc bạn không có quyền.");
-      setAuthError("Bạn không có quyền thực hiện thao tác này.");
+      setAuthError("Bạn không có quyền hoặc không có hồ sơ cư dân liên kết để thực hiện thao tác này.");
       return;
     }
     if (!selectedShelfNumber || !selectedResidentForShelf) {
-      console.error("Vui lòng chọn tầng kệ và người để gán.");
       setAuthError("Vui lòng chọn tầng kệ và người để gán.");
       return;
     }
@@ -1193,8 +1291,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
   const handleClearShoeRackAssignment = async (shelfNumber) => { // eslint-disable-line no-unused-vars
     setAuthError('');
     if (!db || !userId || userRole !== 'admin') { // Chỉ admin mới có thể xóa kệ giày
-      console.error("Hệ thống chưa sẵn sàng hoặc bạn không có quyền.");
-      setAuthError("Bạn không có quyền thực hiện thao tác này.");
+      setAuthError("Bạn không có quyền hoặc không có hồ sơ cư dân liên kết để thực hiện thao tác này.");
       return;
     }
     const shoeRackDocRef = doc(db, `artifacts/${currentAppId}/public/data/shoeRackAssignments`, String(shelfNumber));
@@ -1390,6 +1487,40 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
   const displayedResidents = userRole === 'member' && loggedInResidentProfile
     ? residents.filter(res => res.id === loggedInResidentProfile.id)
     : (showInactiveResidents ? residents : residents.filter(res => res.isActive !== false));
+
+  // Lắng nghe tất cả dữ liệu người dùng để hiển thị trong "Thông tin phòng chung"
+  useEffect(() => {
+    if (!db || !isAuthReady || userId === null) {
+      console.log("Lắng nghe tất cả người dùng: Đang chờ DB, Auth hoặc User ID sẵn sàng.");
+      return;
+    }
+    console.log("Bắt đầu lắng nghe cập nhật tất cả người dùng...");
+
+    const usersCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/users`);
+    const q = query(usersCollectionRef);
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const allUsers = [];
+      snapshot.forEach((doc) => {
+        const userData = doc.data();
+        // Chuyển đổi Timestamp thành Date nếu có
+        if (userData.createdAt && typeof userData.createdAt.toDate === 'function') {
+          userData.createdAt = userData.createdAt.toDate();
+        }
+        allUsers.push({ id: doc.id, ...userData });
+      });
+      setAllUsersData(allUsers);
+      console.log("Đã cập nhật tất cả dữ liệu người dùng:", allUsers);
+    }, (error) => {
+      console.error("Lỗi khi lấy tất cả dữ liệu người dùng:", error);
+    });
+
+    return () => {
+      console.log("Hủy đăng ký lắng nghe tất cả người dùng.");
+      unsubscribe();
+    };
+  }, [db, isAuthReady, userId]); // userId is still relevant for the collection path.
+
 
   // Hàm renderSection để hiển thị các phần giao diện dựa trên vai trò người dùng
   const renderSection = () => {
@@ -1804,7 +1935,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
           );
         case 'costSharingHistory':
           return (
-            <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+            <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg mt-8 max-w-5xl mx-auto">
               <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">Lịch sử chia tiền</h2>
               {costSharingHistory.length === 0 ? (
                 <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có lịch sử chia tiền nào được lưu.</p>
@@ -1993,24 +2124,136 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
               )}
             </div>
           );
-        case 'consumptionStats':
+        case 'commonRoomInfo': // New section for common room information
           return (
-            <div className="p-6 bg-purple-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-purple-800 dark:text-purple-200 mb-5">Thống kê tiêu thụ hàng tháng</h2>
-              {Object.keys(monthlyConsumptionStats).length === 0 ? (
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có dữ liệu thống kê.</p>
+            <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Thông tin phòng chung</h2>
+              {residents.length === 0 ? (
+                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có người ở nào trong danh sách.</p>
               ) : (
-                <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-inner border border-gray-200 dark:border-gray-700">
-                  <ul className="space-y-3">
-                    {Object.entries(monthlyConsumptionStats).map(([month, stats]) => (
-                      <li key={month} className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg shadow-sm border border-gray-200 dark:border-gray-600">
-                        <h4 className="font-bold text-lg text-purple-700 dark:text-purple-200 mb-2">Tháng {month}</h4>
-                        <p className="text-gray-700 dark:text-gray-300">Điện tiêu thụ: <span className="font-semibold">{stats.electricity.toLocaleString('vi-VN')} KW</span></p>
-                        <p className="text-700 dark:text-gray-300">Nước tiêu thụ: <span className="font-semibold">{stats.water.toLocaleString('vi-VN')} m³</span></p>
-                        <p className="text-gray-700 dark:text-gray-300">Tổng chi phí: <span className="font-semibold">{stats.total.toLocaleString('vi-VN')} VND</span></p>
-                      </li>
-                    ))}
-                  </ul>
+                <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                  <table className="min-w-full bg-white dark:bg-gray-800">
+                    <thead>
+                      <tr>
+                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Họ tên</th>
+                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Email</th>
+                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">SĐT</th>
+                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">MSSV</th>
+                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Ngày sinh</th>
+                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Ngày nhập KTX</th>
+                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Email trường</th>
+                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Trạng thái</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
+                      {residents.map(resident => {
+                        const linkedUser = allUsersData.find(user => user.linkedResidentId === resident.id);
+                        return (
+                          <tr key={resident.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.fullName || resident.name}</td>
+                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.email || 'N/A'}</td>
+                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.phoneNumber || 'N/A'}</td>
+                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.studentId || 'N/A'}</td>
+                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.birthday || 'N/A'}</td>
+                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.dormEntryDate || 'N/A'}</td>
+                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.academicLevel || 'N/A'}</td>
+                            <td className="py-3 px-4 whitespace-nowrap">
+                              <span className={`font-semibold ${resident.isActive ? 'text-green-600' : 'text-red-500'}`}>
+                                {resident.isActive ? 'Hoạt động' : 'Vô hiệu hóa'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          );
+        case 'memberProfileEdit': // New section for member profile editing
+          return (
+            <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Chỉnh sửa thông tin cá nhân</h2>
+              {!loggedInResidentProfile ? (
+                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.</p>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="editFullName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Họ tên đầy đủ:</label>
+                    <input
+                      type="text"
+                      id="editFullName"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="editPhoneNumber" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Số điện thoại:</label>
+                    <input
+                      type="text"
+                      id="editPhoneNumber"
+                      value={memberPhoneNumber}
+                      onChange={(e) => setMemberPhoneNumber(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="editStudentId" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Mã số sinh viên:</label>
+                    <input
+                      type="text"
+                      id="editStudentId"
+                      value={memberStudentId}
+                      onChange={(e) => setMemberStudentId(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="editBirthday" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày sinh:</label>
+                    <input
+                      type="date"
+                      id="editBirthday"
+                      value={memberBirthday}
+                      onChange={(e) => setMemberBirthday(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="editDormEntryDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày nhập KTX:</label>
+                    <input
+                      type="date"
+                      id="editDormEntryDate"
+                      value={memberDormEntryDate}
+                      onChange={(e) => setMemberDormEntryDate(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="editAcademicLevel" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email trường:</label>
+                    <input
+                      type="text"
+                      id="editAcademicLevel"
+                      value={memberAcademicLevel}
+                      onChange={(e) => setMemberAcademicLevel(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+
+                  {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
+
+                  <button
+                    onClick={handleSaveMemberProfile}
+                    className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+                  >
+                    <i className="fas fa-save mr-2"></i> Lưu thông tin
+                  </button>
+                  <button
+                    onClick={() => setEditProfileMode(false)}
+                    className="w-full mt-2 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
+                  >
+                    Hủy
+                  </button>
                 </div>
               )}
             </div>
@@ -2024,13 +2267,16 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
             </div>
           );
       }
-    } else if (userRole === 'member') {
-      // Member-specific sections
+    }
+    // Logic cho Thành viên
+    if (userRole === 'member') {
       switch (activeSection) {
-        case 'attendanceTracking':
+        case 'attendanceTracking': // Điểm danh của tôi
+          // Dùng lại phần điểm danh nhưng lọc chỉ của thành viên đang đăng nhập
           return (
             <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">Điểm danh của bạn</h2>
+              <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">Điểm danh của tôi</h2>
+              {/* Giữ nguyên phần chọn tháng */}
               <div className="mb-6 flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4">
                 <label htmlFor="monthSelector" className="font-semibold text-gray-700 dark:text-gray-300 text-lg">Chọn tháng:</label>
                 <input
@@ -2042,12 +2288,9 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                 />
               </div>
 
+              {/* Dùng lại phần hiển thị bảng điểm danh, nó đã được lọc qua `displayedResidents` */}
               {displayedResidents.length === 0 ? (
-                loggedInResidentProfile ? (
-                  <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Không có dữ liệu điểm danh cho bạn trong tháng này.</p>
-                ) : (
-                  <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.</p>
-                )
+                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa được liên kết với hồ sơ người ở hoặc không có dữ liệu điểm danh.</p>
               ) : (
                 <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
                   <table className="min-w-full bg-white dark:bg-gray-800">
@@ -2087,65 +2330,57 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
               )}
             </div>
           );
-        case 'memberCostSummary': // New section for member's cost summary
-          const myLatestCost = loggedInResidentProfile && costSharingHistory.length > 0
-            ? costSharingHistory.find(bill => bill.individualCosts && bill.individualCosts[loggedInResidentProfile.id])
-            : null;
-
+        case 'memberCostSummary': // Chi phí của tôi
+          // Hiển thị tóm tắt chi phí mới nhất và nút đánh dấu đã đóng
+          const latestCostSharingRecord = costSharingHistory[0];
           return (
             <div className="p-6 bg-orange-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
               <h2 className="text-2xl font-bold text-orange-800 dark:text-orange-200 mb-5">Chi phí của tôi</h2>
               {!loggedInResidentProfile ? (
                 <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.</p>
-              ) : !myLatestCost ? (
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có thông tin chi phí cho bạn.</p>
+              ) : !latestCostSharingRecord || !latestCostSharingRecord.individualCosts || !latestCostSharingRecord.individualCosts[loggedInResidentProfile.id] ? (
+                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có thông tin chi phí nào cho bạn.</p>
               ) : (
-                <div className="bg-orange-100 dark:bg-gray-800 p-4 rounded-xl shadow-inner border border-orange-200 dark:border-gray-700">
-                  <p className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                    Kỳ tính: <span className="font-bold">{myLatestCost.periodStart} đến {myLatestCost.periodEnd}</span>
-                  </p>
-                  <p className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                    Số ngày có mặt của bạn: <span className="font-bold">{(myLatestCost.individualCosts[loggedInResidentProfile.id]?.daysPresent || 0)} ngày</span>
-                  </p>
-                  <p className="text-xl font-bold border-t pt-3 mt-3 border-orange-300 dark:border-gray-600">
-                    Số tiền bạn cần đóng: <span className="text-orange-800 dark:text-orange-200">
-                      {(myLatestCost.individualCosts[loggedInResidentProfile.id]?.cost || 0).toLocaleString('vi-VN')} VND
+                <div className="bg-orange-100 dark:bg-gray-700 p-4 rounded-xl shadow-inner text-lg font-semibold text-orange-900 dark:text-orange-100 border border-orange-200 dark:border-gray-600">
+                  <p className="mb-2"><strong>Kỳ tính:</strong> {latestCostSharingRecord.periodStart} đến {latestCostSharingRecord.periodEnd}</p>
+                  <p className="mb-2"><strong>Số ngày có mặt:</strong> {latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.daysPresent || 0} ngày</p>
+                  <p className="mb-2 text-xl font-bold border-t pt-3 mt-3 border-orange-300 dark:border-gray-600">
+                    Số tiền cần đóng: <span className="text-orange-800 dark:text-orange-200">
+                      {(latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.cost || 0).toLocaleString('vi-VN')} VND
                     </span>
                   </p>
-                  <div className="flex items-center justify-between mt-4">
-                    <span className="text-lg font-bold">
-                      Trạng thái: <span className={myLatestCost.individualCosts[loggedInResidentProfile.id]?.isPaid ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}>
-                        {myLatestCost.individualCosts[loggedInResidentProfile.id]?.isPaid ? 'Đã đóng' : 'Chưa đóng'}
-                      </span>
+                  <p className="text-lg font-bold">
+                    Trạng thái: <span className={latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.isPaid ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}>
+                      {latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.isPaid ? 'Đã đóng' : 'Chưa đóng'}
                     </span>
-                    {!myLatestCost.individualCosts[loggedInResidentProfile.id]?.isPaid && (
-                      <button
-                        onClick={handleMarkMyPaymentAsPaid}
-                        className="px-4 py-2 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all duration-300"
-                      >
-                        <i className="fas fa-check-circle mr-2"></i> Đánh dấu đã đóng
-                      </button>
-                    )}
-                  </div>
-                  {authError && <p className="text-red-500 text-sm text-center mt-2">{authError}</p>}
+                  </p>
+                  {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
+                  {!latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.isPaid && (
+                    <button
+                      onClick={handleMarkMyPaymentAsPaid}
+                      className="w-full mt-4 px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all duration-300"
+                    >
+                      <i className="fas fa-check-circle mr-2"></i> Đánh dấu đã đóng
+                    </button>
+                  )}
                 </div>
               )}
             </div>
           );
-        case 'memberCleaningSchedule': // New section for member's cleaning schedule
+        case 'memberCleaningSchedule': // Lịch trực của tôi
+          // Hiển thị lịch trực nhưng chỉ những nhiệm vụ được giao cho thành viên đó
           const myCleaningTasks = cleaningSchedule.filter(task =>
             loggedInResidentProfile && task.assignedToResidentId === loggedInResidentProfile.id
           );
           return (
-            <div className="p-6 bg-purple-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+            <div className="p-6 bg-purple-50 dark:bg-gray-700 rounded-2xl shadow-lg mt-8 max-w-5xl mx-auto">
               <h2 className="text-2xl font-bold text-purple-800 dark:text-purple-200 mb-5">Lịch trực của tôi</h2>
               {!loggedInResidentProfile ? (
                 <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.</p>
               ) : myCleaningTasks.length === 0 ? (
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn không có công việc lau dọn nào được phân công.</p>
+                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa có công việc lau dọn nào được giao.</p>
               ) : (
                 <div className="max-h-60 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-xl p-3 bg-gray-50 dark:bg-gray-700">
-                  <h3 className="text-xl font-semibold text-purple-700 dark:text-purple-200 mb-3">Lịch trực hiện có:</h3>
                   <ul className="space-y-2">
                     {myCleaningTasks.map((task) => (
                       <li key={task.id} className="flex items-center justify-between bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
@@ -2155,9 +2390,12 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                             Ngày: {task.date}
                           </span>
                         </div>
-                        <span className={`font-semibold ${task.isCompleted ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
-                          {task.isCompleted ? 'Đã hoàn thành' : 'Chưa hoàn thành'}
-                        </span>
+                        <div className="flex items-center space-x-2">
+                          <span className={`ml-2 text-sm font-semibold ${task.isCompleted ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
+                            {task.isCompleted ? 'Đã hoàn thành' : 'Chưa hoàn thành'}
+                          </span>
+                          {/* Thành viên chỉ xem, không được chỉnh sửa trạng thái trực tiếp */}
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -2165,37 +2403,29 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
               )}
             </div>
           );
-        case 'shoeRackManagement':
+        case 'shoeRackManagement': // Thông tin kệ giày (chỉ hiển thị kệ của mình nếu có)
           return (
             <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
               <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">Thông tin kệ giày</h2>
-              {Object.keys(shoeRackAssignments).length === 0 ? (
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có kệ giày nào được gán.</p>
+              {!loggedInResidentProfile ? (
+                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.</p>
               ) : (
                 <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-inner border border-gray-200 dark:border-gray-700">
-                  <h3 className="text-xl font-semibold text-yellow-700 dark:text-yellow-200 mb-3">Phân công kệ giày hiện tại:</h3>
+                  <h3 className="text-xl font-semibold text-yellow-700 dark:text-yellow-200 mb-3">Phân công kệ giày của bạn:</h3>
                   <ul className="space-y-3">
                     {[...Array(8)].map((_, i) => {
                       const shelfNum = i + 1;
                       const assignment = shoeRackAssignments[shelfNum];
-                      const isMyShelf = loggedInResidentProfile && assignment && assignment.residentId === loggedInResidentProfile.id;
+                      const isMyShelf = assignment && assignment.residentId === loggedInResidentProfile.id;
                       return (
                         <li key={shelfNum} className={`flex items-center justify-between p-3 rounded-lg shadow-sm border ${isMyShelf ? 'bg-yellow-200 dark:bg-yellow-900 border-yellow-400' : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600'}`}>
                           <span className={`font-medium ${isMyShelf ? 'text-yellow-900 dark:text-yellow-100' : 'text-gray-700 dark:text-gray-300'}`}>Tầng {shelfNum}:</span>
-                          {assignment ? (
+                          {isMyShelf ? (
                             <span className={`font-bold ${isMyShelf ? 'text-yellow-800 dark:text-yellow-200' : 'text-yellow-700 dark:text-yellow-300'}`}>
-                              {assignment.residentName}
-                              {userRole === 'admin' && ( // Chỉ hiển thị nút xóa cho admin
-                                <button
-                                  onClick={() => handleClearShoeRackAssignment(shelfNum)}
-                                  className="ml-3 px-2 py-1 bg-red-500 text-white text-xs rounded-lg shadow-sm hover:bg-red-600 transition-colors"
-                                >
-                                  Xóa
-                                </button>
-                              )}
+                              {assignment.residentName} (Kệ của bạn)
                             </span>
                           ) : (
-                            <span className="text-gray-500 dark:text-gray-400 italic">Trống</span>
+                            <span className="text-gray-500 dark:text-gray-400 italic">Trống / Người khác</span>
                           )}
                         </li>
                       );
@@ -2205,16 +2435,153 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
               )}
             </div>
           );
+        case 'commonRoomInfo': // Thông tin phòng chung (thành viên có thể xem)
+          return (
+            <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Thông tin phòng chung</h2>
+              {residents.length === 0 ? (
+                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có người ở nào trong danh sách.</p>
+              ) : (
+                <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                  <table className="min-w-full bg-white dark:bg-gray-800">
+                    <thead>
+                      <tr>
+                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Họ tên</th>
+                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Email</th>
+                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">SĐT</th>
+                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">MSSV</th>
+                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Ngày sinh</th>
+                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Ngày nhập KTX</th>
+                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Email trường</th>
+                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Trạng thái</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
+                      {residents.map(resident => {
+                        const linkedUser = allUsersData.find(user => user.linkedResidentId === resident.id);
+                        return (
+                          <tr key={resident.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.fullName || resident.name}</td>
+                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.email || 'N/A'}</td>
+                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.phoneNumber || 'N/A'}</td>
+                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.studentId || 'N/A'}</td>
+                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.birthday || 'N/A'}</td>
+                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.dormEntryDate || 'N/A'}</td>
+                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.academicLevel || 'N/A'}</td>
+                            <td className="py-3 px-4 whitespace-nowrap">
+                              <span className={`font-semibold ${resident.isActive ? 'text-green-600' : 'text-red-500'}`}>
+                                {resident.isActive ? 'Hoạt động' : 'Vô hiệu hóa'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          );
+        case 'memberProfileEdit': // Chỉnh sửa thông tin cá nhân (thành viên có thể tự chỉnh sửa)
+          return (
+            <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Chỉnh sửa thông tin cá nhân</h2>
+              {!loggedInResidentProfile ? (
+                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.</p>
+              ) : (
+                <div className="space-y-4">
+                  {/* CÁC TRƯỜNG DỮ LIỆU CÁ NHÂN ĐỂ CHỈNH SỬA */}
+                  <div>
+                    <label htmlFor="editFullName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Họ tên đầy đủ:</label>
+                    <input
+                      type="text"
+                      id="editFullName"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="editPhoneNumber" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Số điện thoại:</label>
+                    <input
+                      type="text"
+                      id="editPhoneNumber"
+                      value={memberPhoneNumber}
+                      onChange={(e) => setMemberPhoneNumber(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="editStudentId" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Mã số sinh viên:</label>
+                    <input
+                      type="text"
+                      id="editStudentId"
+                      value={memberStudentId}
+                      onChange={(e) => setMemberStudentId(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="editBirthday" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày sinh:</label>
+                    <input
+                      type="date"
+                      id="editBirthday"
+                      value={memberBirthday}
+                      onChange={(e) => setMemberBirthday(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="editDormEntryDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày nhập KTX:</label>
+                    <input
+                      type="date"
+                      id="editDormEntryDate"
+                      value={memberDormEntryDate}
+                      onChange={(e) => setMemberDormEntryDate(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="editAcademicLevel" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email trường:</label>
+                    <input
+                      type="text"
+                      id="editAcademicLevel"
+                      value={memberAcademicLevel}
+                      onChange={(e) => setMemberAcademicLevel(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+
+                  {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
+
+                  <button
+                    onClick={handleSaveMemberProfile}
+                    className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+                  >
+                    <i className="fas fa-save mr-2"></i> Lưu thông tin
+                  </button>
+                  <button
+                    onClick={() => setEditProfileMode(false)}
+                    className="w-full mt-2 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
+                  >
+                    Hủy
+                  </button>
+                </div>
+              )}
+            </div>
+          );
         default:
           return (
             <div className="text-center p-8 bg-gray-100 dark:bg-gray-700 rounded-xl shadow-inner">
               <p className="text-xl text-gray-700 dark:text-gray-300 font-semibold mb-4">
-                Vui lòng chọn một mục từ thanh điều hướng.
+                Chào mừng Thành viên! Vui lòng chọn một mục từ thanh điều hướng.
               </p>
             </div>
           );
       }
     }
+
+    // Trường hợp không có vai trò hoặc không xác định
     return (
       <div className="text-center p-8 bg-gray-100 dark:bg-gray-700 rounded-xl shadow-inner">
         <p className="text-xl text-gray-700 dark:text-gray-300 font-semibold mb-4">Vui lòng đăng nhập để sử dụng ứng dụng.</p>
@@ -2342,6 +2709,15 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                   <i className="fas fa-shoe-prints mr-3"></i> Quản lý kệ giày
                 </button>
                 <button
+                  className={`w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${activeSection === 'commonRoomInfo' // New nav item
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  onClick={() => { setActiveSection('commonRoomInfo'); setIsSidebarOpen(false); }}
+                >
+                  <i className="fas fa-info-circle mr-3"></i> Thông tin phòng chung
+                </button>
+                <button
                   className={`w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${activeSection === 'consumptionStats'
                     ? 'bg-blue-600 text-white shadow-md'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
@@ -2373,7 +2749,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                   <i className="fas fa-calendar-alt mr-3"></i> Điểm danh của tôi
                 </button>
                 <button
-                  className={`w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${activeSection === 'memberCostSummary' // New nav item
+                  className={`w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${activeSection === 'memberCostSummary'
                     ? 'bg-blue-600 text-white shadow-md'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
@@ -2382,7 +2758,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                   <i className="fas fa-money-bill-wave mr-3"></i> Chi phí của tôi
                 </button>
                 <button
-                  className={`w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${activeSection === 'memberCleaningSchedule' // New nav item
+                  className={`w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${activeSection === 'memberCleaningSchedule'
                     ? 'bg-blue-600 text-white shadow-md'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
@@ -2399,6 +2775,24 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                 >
                   <i className="fas fa-shoe-prints mr-3"></i> Thông tin kệ giày
                 </button>
+                <button
+                  className={`w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${activeSection === 'commonRoomInfo' // New nav item
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  onClick={() => { setActiveSection('commonRoomInfo'); setIsSidebarOpen(false); }}
+                >
+                  <i className="fas fa-info-circle mr-3"></i> Thông tin phòng chung
+                </button>
+                <button
+                  className={`w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${activeSection === 'memberProfileEdit' // New nav item
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  onClick={() => { setActiveSection('memberProfileEdit'); setIsSidebarOpen(false); }}
+                >
+                  <i className="fas fa-user-edit mr-3"></i> Chỉnh sửa thông tin cá nhân
+                </button>
                 <div className="border-t border-gray-200 dark:border-gray-600 pt-2 mt-2">
                   <button
                     onClick={handleSignOut}
@@ -2410,6 +2804,10 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
               </>
             )}
           </nav>
+          {/* Copyright Information */}
+          <div className="mt-auto pt-4 text-center text-gray-500 dark:text-gray-400 text-xs">
+            © Bản quyền thuộc về Nguyễn Huỳnh Phúc Khang 2025
+          </div>
         </aside>
 
         {/* Content Area */}
@@ -2479,6 +2877,12 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                         <i className="fas fa-user-plus mr-2"></i> Đăng ký
                       </button>
                     </div>
+                    <button
+                      onClick={() => { setShowForgotPasswordModal(true); setAuthError(''); setForgotPasswordMessage(''); }}
+                      className="w-full mt-4 text-blue-600 dark:text-blue-400 hover:underline text-sm font-semibold"
+                    >
+                      Quên mật khẩu?
+                    </button>
                   </div>
                 )}
               </>
@@ -2637,6 +3041,43 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                 Hủy
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+
+      {/* Forgot Password Modal */}
+      {showForgotPasswordModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md">
+            <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">Quên mật khẩu</h3>
+            <p className="text-gray-700 dark:text-gray-300 mb-4 text-center">
+              Nhập email của bạn để nhận liên kết đặt lại mật khẩu.
+            </p>
+            <input
+              type="email"
+              placeholder="Email của bạn"
+              value={forgotPasswordEmail}
+              onChange={(e) => setForgotPasswordEmail(e.target.value)}
+              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 mb-4"
+            />
+            {forgotPasswordMessage && (
+              <p className={`text-sm text-center mb-4 ${forgotPasswordMessage.includes('Lỗi') ? 'text-red-500' : 'text-green-600'}`}>
+                {forgotPasswordMessage}
+              </p>
+            )}
+            <button
+              onClick={handleForgotPassword}
+              className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 mb-4"
+            >
+              Gửi liên kết đặt lại
+            </button>
+            <button
+              onClick={() => { setShowForgotPasswordModal(false); setForgotPasswordMessage(''); setForgotPasswordEmail(''); }}
+              className="w-full px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
+            >
+              Hủy
+            </button>
           </div>
         </div>
       )}
