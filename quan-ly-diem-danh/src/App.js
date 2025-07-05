@@ -2247,7 +2247,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 </button>
               </div>
               {residents.length > 0 && (
-                <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-inner max-h-60 overflow-y-auto border border-gray-200 dark:border-gray-700">
+                <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-inner max-h-screen-1/2 overflow-y-auto border border-gray-200 dark:border-gray-700">
                   <h3 className="text-xl font-semibold text-purple-700 dark:text-purple-200 mb-3">Danh sách người trong phòng:</h3>
                   <div className="mb-4">
                     <label className="inline-flex items-center">
