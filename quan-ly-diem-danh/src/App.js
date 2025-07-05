@@ -326,6 +326,49 @@ function App() {
     }
   }, []); // Không cần userRole trong dependency array này vì nó được xử lý nội bộ
 
+  // ... (các hàm xử lý khác của bạn, ví dụ: createNotification) ...
+
+// Mới: Hàm để admin gửi thông báo tùy chỉnh
+const handleSendCustomNotification = async (e) => {
+  e.preventDefault(); // Ngăn form submit mặc định
+  setCustomNotificationError('');
+  setCustomNotificationSuccess('');
+
+  if (!db || !userId || userRole !== 'admin') {
+      setCustomNotificationError("Bạn không có quyền gửi thông báo tùy chỉnh.");
+      return;
+  }
+  if (!newNotificationMessage.trim()) {
+      setCustomNotificationError("Nội dung thông báo không được để trống.");
+      return;
+  }
+  if (newNotificationRecipient !== 'all' && !allUsersData.find(u => u.id === newNotificationRecipient)) {
+      setCustomNotificationError("Người nhận không hợp lệ. Vui lòng chọn lại.");
+      return;
+  }
+
+  try {
+      const messageToSend = newNotificationMessage.trim();
+      const notificationTitle = newNotificationTitle.trim() || 'Thông báo'; // Sử dụng tiêu đề hoặc mặc định
+
+      await createNotification(
+          newNotificationRecipient,
+          newNotificationType, // Loại thông báo đã chọn
+          messageToSend,
+          userId // Người tạo là admin hiện tại
+          // relatedId có thể thêm nếu thông báo liên quan đến một đối tượng cụ thể
+      );
+
+      setCustomNotificationSuccess("Thông báo đã được gửi thành công!");
+      setNewNotificationTitle('');
+      setNewNotificationMessage('');
+      setNewNotificationRecipient('all'); // Đặt lại về mặc định
+      setNewNotificationType('general'); // Đặt lại về mặc định
+  } catch (error) {
+      console.error("Lỗi khi gửi thông báo tùy chỉnh:", error);
+      setCustomNotificationError(`Lỗi khi gửi thông báo: ${error.message}`);
+  }
+};
 
   // --- Các hàm xác thực ---
   const handleSignUp = async () => {
@@ -815,7 +858,13 @@ const deleteNotification = async (notificationId) => {
   }
 };
 
-  // ... (các hàm xử lý khác của bạn, ví dụ: handleSaveUserProfile) ...
+// States for Custom Notification Design (Admin)
+const [newNotificationRecipient, setNewNotificationRecipient] = useState('all'); // 'all' or a specific userId
+const [newNotificationType, setNewNotificationType] = useState('general'); // e.g., 'general', 'custom', 'urgent'
+const [newNotificationMessage, setNewNotificationMessage] = useState('');
+const [newNotificationTitle, setNewNotificationTitle] = useState(''); // Optional title/subject
+const [customNotificationError, setCustomNotificationError] = useState('');
+const [customNotificationSuccess, setCustomNotificationSuccess] = useState('');
 
 // Mới: Hàm đổi mật khẩu
 const handleChangePassword = async () => {
@@ -3096,6 +3145,91 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               </p>
             </div>
         );
+
+        case 'customNotificationDesign': // Mới: Thiết kế thông báo
+        return (
+          <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+            <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Thiết kế thông báo tùy chỉnh</h2>
+
+            <form onSubmit={handleSendCustomNotification} className="mb-8 p-4 bg-blue-100 dark:bg-gray-800 rounded-xl shadow-inner border border-blue-200 dark:border-gray-600">
+              <h3 className="text-xl font-bold text-blue-700 dark:text-blue-200 mb-4">Soạn thông báo mới</h3>
+              <div className="space-y-4">
+                {/* Tiêu đề thông báo (Tùy chọn) */}
+                <div>
+                  <label htmlFor="notificationTitle" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Tiêu đề (Tùy chọn):</label>
+                  <input
+                    type="text"
+                    id="notificationTitle"
+                    value={newNotificationTitle}
+                    onChange={(e) => setNewNotificationTitle(e.target.value)}
+                    className="shadow-sm appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Ví dụ: Thông báo khẩn về tiền điện"
+                  />
+                </div>
+
+                {/* Người nhận */}
+                <div>
+                  <label htmlFor="notificationRecipient" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Gửi đến:</label>
+                  <select
+                    id="notificationRecipient"
+                    value={newNotificationRecipient}
+                    onChange={(e) => setNewNotificationRecipient(e.target.value)}
+                    className="shadow-sm appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="all">Tất cả thành viên</option>
+                    {residents.filter(res => res.isActive).map(resident => { // Chỉ hiển thị cư dân đang hoạt động
+                        const linkedUser = allUsersData.find(user => user.linkedResidentId === resident.id);
+                        if (linkedUser) { // Chỉ hiển thị người dùng có tài khoản liên kết
+                          return <option key={linkedUser.id} value={linkedUser.id}>{linkedUser.fullName || resident.name}</option>;
+                        }
+                        return null;
+                    })}
+                  </select>
+                </div>
+
+                {/* Loại thông báo */}
+                <div>
+                  <label htmlFor="notificationType" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Loại thông báo:</label>
+                  <select
+                    id="notificationType"
+                    value={newNotificationType}
+                    onChange={(e) => setNewNotificationType(e.target.value)}
+                    className="shadow-sm appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="general">Thông báo chung</option>
+                    <option value="urgent">Thông báo khẩn</option>
+                    <option value="custom">Thông báo tùy chỉnh</option>
+                    {/* Có thể thêm các loại khác nếu cần */}
+                  </select>
+                </div>
+
+                {/* Nội dung thông báo */}
+                <div>
+                  <label htmlFor="notificationMessage" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Nội dung thông báo:</label>
+                  <textarea
+                    id="notificationMessage"
+                    value={newNotificationMessage}
+                    onChange={(e) => setNewNotificationMessage(e.target.value)}
+                    rows="5"
+                    className="shadow-sm appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500 resize-y"
+                    placeholder="Nhập nội dung thông báo..."
+                  ></textarea>
+                </div>
+
+                {customNotificationError && <p className="text-red-500 text-sm text-center mt-4">{customNotificationError}</p>}
+                {customNotificationSuccess && <p className="text-green-600 text-sm text-center mt-4">{customNotificationSuccess}</p>}
+
+                <button
+                  type="submit"
+                  className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75"
+                >
+                  <i className="fas fa-paper-plane mr-2"></i> Gửi thông báo
+                </button>
+              </div>
+            </form>
+          </div>
+        );
+
         case 'adminProfileEdit': // Mới: Chỉnh sửa thông tin cá nhân cho Admin
           return (
             <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
@@ -4084,6 +4218,17 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                     }`}
                   onClick={() => { setActiveSection('roomMemories'); setIsSidebarOpen(false); }}
                 >
+
+                <button
+                  className={`w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${activeSection === 'customNotificationDesign' // Tên mới cho phần này
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  onClick={() => { setActiveSection('customNotificationDesign'); setIsSidebarOpen(false); }}
+                >
+                  <i className="fas fa-bullhorn mr-3"></i> Thiết kế thông báo
+                </button>
+
                   <i className="fas fa-camera mr-3"></i> Kỷ niệm phòng
                 </button>
                 <button
