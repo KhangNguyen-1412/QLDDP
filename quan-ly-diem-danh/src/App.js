@@ -2286,7 +2286,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
 
           return (
             <div className="p-6 bg-gray-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-5">Dashboard Tổng quan (Admin)</h2>
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-5">Dashboard Tổng quan</h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {/* Widget: Số người ở hiện tại */}
@@ -3588,7 +3588,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
         case 'dashboard': // MỚI: Dashboard cho Thành viên
           return (
             <div className="p-6 bg-gray-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-5">Dashboard Tổng quan (Thành viên)</h2>
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-5">Dashboard Tổng quan</h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {/* Widget: Thông báo chưa đọc */}
