@@ -11,7 +11,7 @@ import {
 } from 'firebase/auth';
 import { getFirestore, doc, setDoc, collection, onSnapshot, query, addDoc, serverTimestamp, deleteDoc, getDocs, where, getDoc, updateDoc, orderBy  } from 'firebase/firestore';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage'; // Thêm imports cho Firebase Storage
-// import imageCompression from 'browser-image-compression'; // <-- Đã xóa import này
+import axios from 'axios';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 // Firebase Config - Moved outside the component to be a constant
@@ -540,107 +540,116 @@ const handleSendCustomNotification = async (e) => {
   };
 
   // Mới: Hàm để thêm một kỷ niệm mới
-  const handleAddMemory = async (e) => {
-    e.preventDefault(); // Ngăn form submit mặc định
-    setMemoryError('');
-    if (!db || !auth || !newMemoryEventName || !newMemoryPhotoDate || !newMemoryImageFile) {
-      setMemoryError("Vui lòng điền đầy đủ thông tin và chọn ảnh.");
-      return;
-    }
-    if (!userId) {
-      setMemoryError("Bạn cần đăng nhập để đăng kỷ niệm.");
-      return;
-    }
-  
-    setIsUploadingMemory(true); // Bắt đầu trạng thái đang tải lên
-    setUploadProgress(0); // Đặt lại tiến trình
-  
-    try {
-      // ===============================================
-      // BỎ QUA HOÀN TOÀN LOGIC NÉN ẢNH VÌ THƯ VIỆN ĐÃ ĐƯỢC XÓA IMPORT
-      // ===============================================
-    
-      const storage = getStorage();
-      // Sử dụng `newMemoryImageFile` trực tiếp (không nén)
-      const uniqueFileName = `${Date.now()}-${newMemoryImageFile.name}`;
-      const storageRef = ref(storage, `memories/${uniqueFileName}`);
-      const uploadTask = uploadBytesResumable(storageRef, newMemoryImageFile); // <-- Upload ảnh GỐC
-    
-      uploadTask.on('state_changed',
-        (snapshot) => {
-          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setUploadProgress(progress);
-          console.log('Upload is ' + progress + '% done');
-        },
-        (error) => {
-          console.error("Lỗi tải ảnh lên Storage:", error);
-          setMemoryError(`Lỗi tải ảnh lên: ${error.message}`);
-          setIsUploadingMemory(false);
-        },
-        async () => {
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          console.log('File available at', downloadURL);
-  
-          const memoriesCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/memories`);
-          await addDoc(memoriesCollectionRef, {
-            eventName: newMemoryEventName.trim(),
-            photoDate: newMemoryPhotoDate,
-            imageUrl: downloadURL,
-            uploadedBy: userId,
-            uploadedAt: serverTimestamp(),
-            uploadedByName: loggedInResidentProfile ? loggedInResidentProfile.name : (allUsersData.find(u => u.id === userId)?.fullName || 'Người dùng ẩn danh')
-          });
-  
-          // Reset form và trạng thái
-          setNewMemoryEventName('');
-          setNewMemoryPhotoDate('');
-          setNewMemoryImageFile(null);
-          setUploadProgress(0);
-          setIsUploadingMemory(false);
-          setMemoryError(''); // Xóa lỗi sau khi thành công
-          console.log("Đã thêm kỷ niệm mới thành công!");
-        }
-      );
-    } catch (error) {
-      console.error("Lỗi khi thêm kỷ niệm (tổng thể):", error);
-      setMemoryError(`Lỗi khi thêm kỷ niệm: ${error.message}`);
-      setIsUploadingMemory(false);
-    }
-  };
+// Trong hàm handleAddMemory
+const handleAddMemory = async (e) => {
+  e.preventDefault();
+  setMemoryError('');
+  if (!db || !auth || !newMemoryEventName || !newMemoryPhotoDate || !newMemoryImageFile) {
+    setMemoryError("Vui lòng điền đầy đủ thông tin và chọn ảnh.");
+    return;
+  }
+  if (!userId) {
+    setMemoryError("Bạn cần đăng nhập để đăng kỷ niệm.");
+    return;
+  }
+
+  setIsUploadingMemory(true); // Bắt đầu trạng thái đang tải lên
+  setUploadProgress(0); // Đặt lại tiến trình
+
+  try {
+    // ===============================================
+    // BẮT ĐẦU: UPLOAD LÊN CLOUDINARY BẰNG AXIOS
+    // ===============================================
+    const CLOUDINARY_CLOUD_NAME = "do9t1e97o"; // Thay bằng Cloud Name của bạn
+    const CLOUDINARY_UPLOAD_PRESET = "qun_ly_phong"; // Thay bằng Upload Preset của bạn
+    const CLOUDINARY_API_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
+
+    const formData = new FormData();
+    formData.append('file', newMemoryImageFile); // newMemoryImageFile là File object
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+    const response = await axios.post(CLOUDINARY_API_URL, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      onUploadProgress: (progressEvent) => {
+        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        setUploadProgress(percentCompleted);
+      },
+    });
+
+    const imageUrl = response.data.secure_url; // URL ảnh từ Cloudinary
+    const publicId = response.data.public_id; // Public ID từ Cloudinary (quan trọng để xóa)
+    console.log('Ảnh có sẵn tại:', imageUrl, 'Public ID:', publicId);
+    // ===============================================
+    // KẾT THÚC: UPLOAD LÊN CLOUDINARY BẰNG AXIOS
+    // ===============================================
+
+    // Tiếp tục lưu metadata vào Firestore như cũ
+    const memoriesCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/memories`);
+    await addDoc(memoriesCollectionRef, {
+      eventName: newMemoryEventName.trim(),
+      photoDate: newMemoryPhotoDate,
+      imageUrl: imageUrl, // Sử dụng URL từ Cloudinary
+      publicId: publicId, // LƯU publicId VÀO FIRESTORE
+      uploadedBy: userId,
+      uploadedAt: serverTimestamp(),
+      uploadedByName: loggedInResidentProfile ? loggedInResidentProfile.name : (allUsersData.find(u => u.id === userId)?.fullName || 'Người dùng ẩn danh')
+    });
+
+    // Reset form và trạng thái
+    setNewMemoryEventName('');
+    setNewMemoryPhotoDate('');
+    setNewMemoryImageFile(null);
+    setUploadProgress(0);
+    setIsUploadingMemory(false);
+    setMemoryError(''); // Xóa lỗi sau khi thành công
+    alert("Đã thêm kỷ niệm mới thành công!");
+    console.log("Đã thêm kỷ niệm mới thành công!");
+
+  } catch (error) {
+    console.error("Lỗi khi thêm kỷ niệm (tổng thể):", error);
+    setMemoryError(`Lỗi khi thêm kỷ niệm: ${error.message}`);
+    setIsUploadingMemory(false);
+  }
+};
 
   // Mới: Hàm để xóa một kỷ niệm (chỉ admin)
-  const handleDeleteMemory = async (memoryId, imageUrl) => {
-    setMemoryError('');
-    if (!db || !userId || userRole !== 'admin') {
-        setMemoryError("Bạn không có quyền xóa kỷ niệm.");
-        return;
-    }
+// Trong hàm handleDeleteMemory
+const handleDeleteMemory = async (memoryId, imageUrl, publicId) => { // Giữ publicId
+  setMemoryError('');
+  if (!db || !userId || userRole !== 'admin') {
+      setMemoryError("Bạn không có quyền xóa kỷ niệm.");
+      return;
+  }
+  if (!window.confirm("Bạn có chắc chắn muốn xóa kỷ niệm này không?")) {
+      return;
+  }
 
-    if (!window.confirm("Bạn có chắc chắn muốn xóa kỷ niệm này không?")) {
-        return;
-    }
+  try {
+      // Xóa tài liệu Firestore trước
+      await deleteDoc(doc(db, `artifacts/${currentAppId}/public/data/memories`, memoryId));
 
-    try {
-        // Xóa tài liệu Firestore
-        await deleteDoc(doc(db, `artifacts/${currentAppId}/public/data/memories`, memoryId));
+      // ===============================================
+      // BẮT ĐẦU: XÓA ẢNH TỪ CLOUDINARY QUA CLOUD FUNCTION (KHUYẾN NGHỊ)
+      // ===============================================
+      if (publicId) {
+          console.log(`Đang cố gắng xóa ảnh Cloudinary với publicId: ${publicId}`);
+          // Đây là placeholder cho việc gọi Cloud Function của bạn
+          // Bạn cần tạo một Cloud Function để xử lý việc xóa ảnh Cloudinary an toàn
+          // Ví dụ: await axios.post('/api/deleteCloudinaryImage', { publicId: publicId, userId: userId });
+          alert("Chức năng xóa ảnh trên Cloudinary yêu cầu triển khai Cloud Function. Ảnh đã được xóa khỏi danh sách.");
+      }
+      // ===============================================
+      // KẾT THÚC: XÓA ẢNH TỪ CLOUDINARY QUA CLOUD FUNCTION
+      // ===============================================
 
-        // Xóa ảnh từ Firebase Storage
-        const storage = getStorage();
-        // Lấy đường dẫn từ URL đầy đủ để xóa
-        const pathStartIndex = imageUrl.indexOf('/o/') + 3;
-        const pathEndIndex = imageUrl.indexOf('?');
-        let imagePath = imageUrl.substring(pathStartIndex, pathEndIndex !== -1 ? pathEndIndex : imageUrl.length);
-        imagePath = decodeURIComponent(imagePath); // Giải mã URL nếu cần
-
-        const imageRef = ref(storage, imagePath);
-        await deleteObject(imageRef);
-
-        console.log(`Đã xóa kỷ niệm ${memoryId} và ảnh liên quan.`);
-    } catch (error) {
-        console.error("Lỗi khi xóa kỷ niệm:", error);
-        setMemoryError(`Lỗi khi xóa kỷ niệm: ${error.message}`);
-    }
-  };
+      console.log(`Đã xóa kỷ niệm ${memoryId} và ảnh liên quan (nếu có).`);
+  } catch (error) {
+      console.error("Lỗi khi xóa kỷ niệm:", error);
+      setMemoryError(`Lỗi khi xóa kỷ niệm: ${error.message}`);
+  }
+};
 
   // Mới: Hàm để chuyển một người dùng/cư dân sang danh sách tiền bối (chỉ admin)
   const handleMoveToFormerResidents = async (residentId, userIdToDeactivate) => {
@@ -2381,7 +2390,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
 
                 {/* Các biểu đồ/thống kê trực quan (placeholder) */}
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md col-span-full text-center text-gray-500 dark:text-gray-400">
-                  <h3 className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-3">Biểu đồ tiêu thụ điện nước</h3>
+                  <h3 className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-3">Biểu đồ tiêu thụ điện nước (Cần thư viện biểu đồ)</h3>
                   {Object.keys(monthlyConsumptionStats).length > 0 ? (
                   <ResponsiveContainer width="100%" height={300}>
                     <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
