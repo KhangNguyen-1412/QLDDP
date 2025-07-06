@@ -2279,10 +2279,12 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
   const daysInSelectedMonth = getDaysInMonth(currentYear, currentMonth);
 
   // Lọc cư dân dựa trên showInactiveResidents và loggedInResidentProfile
-  const displayedResidents = userRole === 'member' && loggedInResidentProfile
-    ? residents.filter(res => res.id === loggedInResidentProfile.id)
-    : (showInactiveResidents ? residents : residents.filter(res => res.isActive !== false));
+  const displayedResidents = showInactiveResidents // Lọc theo trạng thái vô hiệu hóa (chỉ admin dùng)
+    ? residents
+    : residents.filter(res => res.isActive !== false);
 
+  // Lưu ý: Đối với thành viên, chúng ta sẽ hiển thị tất cả cư dân đang hoạt động
+  // và điều khiển quyền sửa trên giao diện (disabled checkbox).
 
   // Hàm renderSection để hiển thị các phần giao diện dựa trên vai trò người dùng
   const renderSection = () => {
@@ -3689,7 +3691,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               </div>
             </div>
           );
-        case 'attendanceTracking': // Điểm danh của tôi
+          case 'attendanceTracking': // Điểm danh của tôi
           return (
             <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
               <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">Điểm danh của tôi</h2>
@@ -3705,13 +3707,9 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 />
               </div>
 
-              {/* Dùng lại phần hiển thị bảng điểm danh, nó đã được lọc qua `displayedResidents` */}
               {displayedResidents.length === 0 ? (
-                userRole === 'member' && !loggedInResidentProfile ? (
-                  <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.</p>
-                ) : (
-                  <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Vui lòng thêm người trong phòng vào danh sách để bắt đầu điểm danh.</p>
-                )
+                // Thông báo này sẽ ít khi xuất hiện vì displayedResidents giờ chứa tất cả cư dân hoạt động
+                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có người ở nào trong danh sách hoạt động.</p>
               ) : (
                 <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
                   <table className="min-w-full bg-white dark:bg-gray-800">
@@ -3724,34 +3722,41 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                       ))}
                     </tr></thead>
                     <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
-                      {displayedResidents.map(resident => (
-                        <tr key={resident.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-                          <td className="py-3 px-6 text-left whitespace-nowrap font-medium sticky left-0 bg-white dark:bg-gray-800 z-10 border-r border-gray-200 dark:border-gray-700">
-                            {resident.name}
-                          </td>
-                          {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map(day => {
-                            const dayString = String(day).padStart(2, '0');
-                            const isPresent = monthlyAttendanceData[resident.id]?.[dayString] === 1;
-                            return (
-                              <td key={day} className="py-3 px-2 text-center border-l border-gray-200 dark:border-gray-700">
-                                <input
-                                  type="checkbox"
-                                  checked={isPresent}
-                                  onChange={() => handleToggleDailyPresence(resident.id, day)}
-                                  className="form-checkbox h-5 w-5 text-green-600 dark:text-green-400 rounded focus:ring-green-500 cursor-pointer"
-                                />
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      ))}
+                      {displayedResidents.map(resident => {
+                        // MỚI: Xác định xem hàng này có phải của người dùng đang đăng nhập không
+                        const isMyRow = userRole === 'member' && loggedInResidentProfile && resident.id === loggedInResidentProfile.id;
+
+                        return (
+                          <tr key={resident.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                            <td className="py-3 px-6 text-left whitespace-nowrap font-medium sticky left-0 bg-white dark:bg-gray-800 z-10 border-r border-gray-200 dark:border-gray-700">
+                              {resident.name}
+                              {!isMyRow && <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">(Người khác)</span>} {/* Thêm nhãn để phân biệt */}
+                            </td>
+                            {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map(day => {
+                              const dayString = String(day).padStart(2, '0');
+                              const isPresent = monthlyAttendanceData[resident.id]?.[dayString] === 1;
+                              return (
+                                <td key={day} className="py-3 px-2 text-center border-l border-gray-200 dark:border-gray-700">
+                                  <input
+                                    type="checkbox"
+                                    checked={isPresent}
+                                    onChange={() => handleToggleDailyPresence(resident.id, day)}
+                                    disabled={userRole === 'member' && !isMyRow} // MỚI: Vô hiệu hóa nếu là member và không phải hàng của mình
+                                    className="form-checkbox h-5 w-5 text-green-600 dark:text-green-400 rounded focus:ring-green-500 cursor-pointer"
+                                  />
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
               )}
             </div>
           );
-        case 'memberCostSummary': // Chi phí của tôi
+          case 'memberCostSummary': // Chi phí của tôi
           // Hiển thị tóm tắt chi phí mới nhất và nút đánh dấu đã đóng
           const latestCostSharingRecord = costSharingHistory[0];
           return (
