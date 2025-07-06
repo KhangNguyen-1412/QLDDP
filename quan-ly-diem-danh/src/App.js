@@ -303,7 +303,7 @@ function App() {
           setUserId(null);
           setUserRole(null); // Xóa vai trò khi đăng xuất
           setLoggedInResidentProfile(null); // Xóa hồ sơ cư dân liên kết
-          setActiveSection('residentManagement'); // Đặt lại phần hoạt động
+          setActiveSection('dashboard'); // Đặt lại phần hoạt động
           // Reset profile edit states
           setFullName('');
           setEmail('');
