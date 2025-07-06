@@ -3159,9 +3159,68 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
             <form onSubmit={handleSendCustomNotification} className="mb-8 p-4 bg-blue-100 dark:bg-gray-800 rounded-xl shadow-inner border border-blue-200 dark:border-gray-600">
               <h3 className="text-xl font-bold text-blue-700 dark:text-blue-200 mb-4">Soạn thông báo mới</h3>
               <div className="space-y-4">
-                {/* ... các input và textarea cho tiêu đề, người nhận, loại, nội dung thông báo ... */}
+                {/* Tiêu đề thông báo (Tùy chọn) */}
+                <div>
+                  <label htmlFor="notificationTitle" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Tiêu đề (Tùy chọn):</label>
+                  <input
+                    type="text"
+                    id="notificationTitle"
+                    value={newNotificationTitle}
+                    onChange={(e) => setNewNotificationTitle(e.target.value)}
+                    className="shadow-sm appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Ví dụ: Thông báo khẩn về tiền điện"
+                  />
+                </div>
 
-                {/* Phần hiển thị lỗi/thành công */}
+                {/* Người nhận */}
+                <div>
+                  <label htmlFor="notificationRecipient" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Gửi đến:</label>
+                  <select
+                    id="notificationRecipient"
+                    value={newNotificationRecipient}
+                    onChange={(e) => setNewNotificationRecipient(e.target.value)}
+                    className="shadow-sm appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="all">Tất cả thành viên</option>
+                    {residents.filter(res => res.isActive).map(resident => { // Chỉ hiển thị cư dân đang hoạt động
+                        const linkedUser = allUsersData.find(user => user.linkedResidentId === resident.id);
+                        if (linkedUser) { // Chỉ hiển thị người dùng có tài khoản liên kết
+                          return <option key={linkedUser.id} value={linkedUser.id}>{linkedUser.fullName || resident.name}</option>;
+                        }
+                        return null;
+                    })}
+                  </select>
+                </div>
+
+                {/* Loại thông báo */}
+                <div>
+                  <label htmlFor="notificationType" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Loại thông báo:</label>
+                  <select
+                    id="notificationType"
+                    value={newNotificationType}
+                    onChange={(e) => setNewNotificationType(e.target.value)}
+                    className="shadow-sm appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="general">Thông báo chung</option>
+                    <option value="urgent">Thông báo khẩn</option>
+                    <option value="custom">Thông báo tiền điện nước</option>
+                    {/* Có thể thêm các loại khác nếu cần */}
+                  </select>
+                </div>
+
+                {/* Nội dung thông báo */}
+                <div>
+                  <label htmlFor="notificationMessage" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Nội dung thông báo:</label>
+                  <textarea
+                    id="notificationMessage"
+                    value={newNotificationMessage}
+                    onChange={(e) => setNewNotificationMessage(e.target.value)}
+                    rows="5"
+                    className="shadow-sm appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500 resize-y"
+                    placeholder="Nhập nội dung thông báo..."
+                  ></textarea>
+                </div>
+
                 {customNotificationError && <p className="text-red-500 text-sm text-center mt-4">{customNotificationError}</p>}
                 {customNotificationSuccess && <p className="text-green-600 text-sm text-center mt-4">{customNotificationSuccess}</p>}
 
