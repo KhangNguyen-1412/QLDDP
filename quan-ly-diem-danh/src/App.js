@@ -1116,6 +1116,12 @@ const handleChangePassword = async () => {
       history.sort((a, b) => (b.calculatedDate || 0) - (a.calculatedDate || 0));
       setCostSharingHistory(history);
       console.log("Đã cập nhật lịch sử chia tiền:", history);
+      // MỚI: CẬP NHẬT remainingFund TỪ BẢN GHI MỚI NHẤT
+      if (history.length > 0) {
+        setRemainingFund(history[0].remainingFund || 0);
+      } else {
+        setRemainingFund(0); // Nếu không có bản ghi nào, quỹ phòng là 0
+      }
     }, (error) => {
       console.error("Lỗi khi lấy lịch sử chia tiền:", error);
     });
