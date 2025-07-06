@@ -560,7 +560,7 @@ const handleAddMemory = async (e) => {
     // ===============================================
     // BẮT ĐẦU: UPLOAD LÊN CLOUDINARY BẰNG AXIOS
     // ===============================================
-    const CLOUDINARY_CLOUD_NAME = "do9t1e97o"; // Thay bằng Cloud Name của bạn
+    const CLOUDINARY_CLOUD_NAME = "dzvcgfkxs"; // Thay bằng Cloud Name của bạn
     const CLOUDINARY_UPLOAD_PRESET = "qun_ly_phong"; // Thay bằng Upload Preset của bạn
     const CLOUDINARY_API_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
 
