@@ -3730,7 +3730,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                           <tr key={resident.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
                             <td className="py-3 px-6 text-left whitespace-nowrap font-medium sticky left-0 bg-white dark:bg-gray-800 z-10 border-r border-gray-200 dark:border-gray-700">
                               {resident.name}
-                              {!isMyRow && <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">(Người khác)</span>} {/* Thêm nhãn để phân biệt */}
+                              {!isMyRow && <span className="ml-2 text-xs text-gray-500 dark:text-gray-400"></span>} {/* Thêm nhãn để phân biệt */}
                             </td>
                             {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map(day => {
                               const dayString = String(day).padStart(2, '0');
