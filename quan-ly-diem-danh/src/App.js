@@ -2381,7 +2381,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
 
                 {/* Các biểu đồ/thống kê trực quan (placeholder) */}
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md col-span-full text-center text-gray-500 dark:text-gray-400">
-                  <h3 className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-3">Biểu đồ tiêu thụ điện nước (Cần thư viện biểu đồ)</h3>
+                  <h3 className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-3">Biểu đồ tiêu thụ điện nước</h3>
                   {Object.keys(monthlyConsumptionStats).length > 0 ? (
                   <ResponsiveContainer width="100%" height={300}>
                     <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
