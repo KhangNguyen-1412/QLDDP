@@ -455,7 +455,7 @@ const handleSendCustomNotification = async (e) => {
       setUserId(null); // Đảm bảo userId cũng được đặt lại
       setUserRole(null); // Xóa vai trò khi đăng xuất
       setLoggedInResidentProfile(null); // Xóa hồ sơ cư dân liên kết
-      setActiveSection('residentManagement'); // Đặt lại phần hoạt động
+      setActiveSection('dashboard'); // Đặt lại phần hoạt động
     } catch (error) {
       console.error("Lỗi đăng xuất:", error.code, error.message);
       setAuthError(`Lỗi đăng xuất: ${error.message}`);
