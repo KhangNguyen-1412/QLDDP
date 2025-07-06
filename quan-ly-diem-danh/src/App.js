@@ -148,6 +148,10 @@ function App() {
 
   const [selectedNotificationDetails, setSelectedNotificationDetails] = useState(null); // Mới: Để hiển thị chi tiết thông báo
 
+  // New state for Image Lightbox/Zoom
+  const [selectedImageToZoom, setSelectedImageToZoom] = useState(null); // Lưu URL của ảnh muốn phóng to
+
+
   // Effect để áp dụng lớp chủ đề cho phần tử HTML và lưu vào bộ nhớ cục bộ
   useEffect(() => {
     if (theme === 'dark') {
@@ -3128,7 +3132,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {memories.map(memory => (
-                    <div key={memory.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                    <div key={memory.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer" onClick={() => setSelectedImageToZoom(memory.imageUrl)}>
                       <img src={memory.imageUrl} alt={memory.eventName} className="w-full h-48 object-cover" />
                       <div className="p-4">
                         <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">{memory.eventName}</h4>
@@ -5021,6 +5025,28 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               className="mt-6 w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
             >
               Đóng
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/*  Modal hiển thị ảnh phóng to (Lightbox) */}
+      {selectedImageToZoom && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
+          onClick={() => setSelectedImageToZoom(null)} // Đóng modal khi nhấp ra ngoài ảnh
+        >
+          <div className="relative max-w-full max-h-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}> {/* Ngăn chặn sự kiện nổi bọt trên ảnh */}
+            <img
+              src={selectedImageToZoom}
+              alt="Phóng to kỷ niệm"
+              className="max-w-full max-h-[90vh] object-contain shadow-lg rounded-lg"
+            />
+            <button
+              onClick={() => setSelectedImageToZoom(null)}
+              className="absolute top-4 right-4 text-white text-3xl bg-gray-800 bg-opacity-50 rounded-full w-10 h-10 flex items-center justify-center hover:bg-opacity-75 transition-colors"
+            >
+              &times; {/* Dấu X để đóng */}
             </button>
           </div>
         </div>
