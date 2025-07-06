@@ -2278,6 +2278,100 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
     // Logic cho Admin
     if (userRole === 'admin') {
       switch (activeSection) {
+        case 'dashboard': // MỚI: Dashboard cho Admin
+          // Lọc các nhiệm vụ trực phòng sắp tới cho Admin (tất cả các nhiệm vụ chưa hoàn thành)
+          const upcomingAdminCleaningTasks = cleaningSchedule.filter(task =>
+            !task.isCompleted && new Date(task.date) >= new Date()
+          ).sort((a, b) => new Date(a.date) - new Date(b.date)); // Sắp xếp theo ngày tăng dần
+
+          return (
+            <div className="p-6 bg-gray-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-5">Dashboard Tổng quan (Admin)</h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* Widget: Số người ở hiện tại */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md flex flex-col items-center justify-center">
+                  <i className="fas fa-users text-4xl text-blue-500 mb-3"></i>
+                  <p className="text-lg text-gray-700 dark:text-gray-300">Người ở hiện tại</p>
+                  <p className="text-3xl font-bold text-blue-600 dark:text-blue-300">
+                    {residents.filter(res => res.isActive).length} / 8
+                  </p>
+                </div>
+
+                {/* Widget: Tổng tiền quỹ */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md flex flex-col items-center justify-center">
+                  <i className="fas fa-wallet text-4xl text-green-500 mb-3"></i>
+                  <p className="text-lg text-gray-700 dark:text-gray-300">Tổng tiền quỹ</p>
+                  <p className={`text-3xl font-bold ${remainingFund >= 0 ? 'text-green-600' : 'text-red-500'} dark:text-green-300`}>
+                    {remainingFund.toLocaleString('vi-VN')} VND
+                  </p>
+                </div>
+
+                {/* Widget: Thông báo chưa đọc */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md flex flex-col items-center justify-center">
+                  <i className="fas fa-bell text-4xl text-yellow-500 mb-3"></i>
+                  <p className="text-lg text-gray-700 dark:text-gray-300">Thông báo chưa đọc</p>
+                  <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-300">
+                    {unreadNotificationsCount}
+                  </p>
+                </div>
+
+                {/* Widget: Hóa đơn gần nhất */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md col-span-full">
+                    <h3 className="text-xl font-bold text-blue-700 dark:text-blue-200 mb-3">Hóa đơn gần nhất</h3>
+                    {billHistory.length > 0 ? (
+                        <p className="text-gray-700 dark:text-gray-300">
+                            <strong>Kỳ tính:</strong> {billHistory[0].billingMonth} - <strong>Tổng:</strong> {billHistory[0].totalCost?.toLocaleString('vi-VN')} VND
+                            <span className={`ml-2 font-semibold ${billHistory[0].isPaid ? 'text-green-600' : 'text-red-500'}`}>
+                                ({billHistory[0].isPaid ? 'Đã trả' : 'Chưa trả'})
+                            </span>
+                        </p>
+                    ) : (
+                        <p className="text-gray-600 dark:text-gray-400 italic">Chưa có hóa đơn nào.</p>
+                    )}
+                </div>
+
+                {/* Widget: Các nhiệm vụ trực phòng sắp tới (Admin thấy tất cả) */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md col-span-full">
+                  <h3 className="text-xl font-bold text-purple-700 dark:text-purple-200 mb-3">Nhiệm vụ trực phòng sắp tới</h3>
+                  {upcomingAdminCleaningTasks.length > 0 ? (
+                    <ul className="space-y-2">
+                      {upcomingAdminCleaningTasks.slice(0, 5).map(task => ( // Chỉ hiển thị 5 nhiệm vụ đầu
+                        <li key={task.id} className="text-gray-700 dark:text-gray-300">
+                          <i className="fas fa-check-circle mr-2 text-purple-500"></i>
+                          {task.name} ({task.assignedToResidentName}) vào ngày {task.date}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-gray-600 dark:text-gray-400 italic">Không có nhiệm vụ sắp tới.</p>
+                  )}
+                </div>
+
+                {/* Widget: Tóm tắt tiền quỹ (Nếu muốn hiển thị chi tiết hơn) */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md col-span-full">
+                    <h3 className="text-xl font-bold text-orange-700 dark:text-orange-200 mb-3">Tóm tắt chia tiền gần nhất</h3>
+                    {costSharingHistory.length > 0 ? (
+                        <div>
+                            <p className="text-gray-700 dark:text-gray-300"><strong>Kỳ:</strong> {costSharingHistory[0].periodStart} - {costSharingHistory[0].periodEnd}</p>
+                            <p className="text-gray-700 dark:text-gray-300"><strong>Tổng ngày có mặt:</strong> {costSharingHistory[0].totalCalculatedDaysAllResidents} ngày</p>
+                            <p className="text-gray-700 dark:text-gray-300"><strong>Tiền/ngày/người:</strong> {costSharingHistory[0].costPerDayPerPerson?.toLocaleString('vi-VN', {maximumFractionDigits: 0})} VND</p>
+                            <p className="text-gray-700 dark:text-gray-300"><strong>Quỹ còn lại:</strong> {costSharingHistory[0].remainingFund?.toLocaleString('vi-VN')} VND</p>
+                        </div>
+                    ) : (
+                        <p className="text-gray-600 dark:text-gray-400 italic">Chưa có bản chia tiền nào.</p>
+                    )}
+                </div>
+
+                {/* Các biểu đồ/thống kê trực quan (placeholder) */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md col-span-full text-center text-gray-500 dark:text-gray-400">
+                  <h3 className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-3">Biểu đồ tiêu thụ điện nước (Cần thư viện biểu đồ)</h3>
+                  <p>Bạn có thể tích hợp thư viện như Chart.js hoặc Recharts để hiển thị biểu đồ từ dữ liệu thống kê tiêu thụ.</p>
+                </div>
+
+              </div>
+            </div>
+          );
         case 'residentManagement':
           return (
             <div className="p-6 bg-purple-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
@@ -2350,12 +2444,12 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                           </button>
                         )}
                         {resident.isActive && resident.linkedUserId && (
-                            <button
-                                onClick={() => handleMoveToFormerResidents(resident.id, resident.linkedUserId)}
-                                className="ml-2 px-3 py-1 bg-indigo-500 text-white text-sm rounded-lg shadow-sm hover:bg-indigo-600 transition-colors duration-200"
-                            >
-                                Chuyển tiền bối
-                            </button>
+                          <button
+                              onClick={() => handleMoveToFormerResidents(resident.id, resident.linkedUserId)}
+                              className="ml-2 px-3 py-1 bg-indigo-500 text-white text-sm rounded-lg shadow-sm hover:bg-indigo-600 transition-colors duration-200"
+                          >
+                              Chuyển tiền bối
+                          </button>
                         )}
                       </li>
                     ))}
@@ -3473,7 +3567,85 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
     }
     // Logic cho Thành viên
     if (userRole === 'member') {
+      // Lọc các nhiệm vụ trực phòng sắp tới của riêng thành viên
+      const upcomingMyCleaningTasks = cleaningSchedule.filter(task =>
+        loggedInResidentProfile && !task.isCompleted &&
+        task.assignedToResidentId === loggedInResidentProfile.id &&
+        new Date(task.date) >= new Date()
+      ).sort((a, b) => new Date(a.date) - new Date(b.date)); // Sắp xếp theo ngày tăng dần
+
+      // Lấy chi phí cá nhân gần nhất của thành viên
+      const myLatestCost = costSharingHistory.length > 0 && loggedInResidentProfile
+          ? costSharingHistory[0].individualCosts?.[loggedInResidentProfile.id]?.cost || 0
+          : 0;
+      const myLatestCostIsPaid = costSharingHistory.length > 0 && loggedInResidentProfile
+          ? costSharingHistory[0].individualCosts?.[loggedInResidentProfile.id]?.isPaid || false
+          : false;
+      const myLatestCostPeriod = costSharingHistory.length > 0
+          ? `${costSharingHistory[0].periodStart} - ${costSharingHistory[0].periodEnd}`
+          : 'N/A';
       switch (activeSection) {
+        case 'dashboard': // MỚI: Dashboard cho Thành viên
+          return (
+            <div className="p-6 bg-gray-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-5">Dashboard Tổng quan (Thành viên)</h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* Widget: Thông báo chưa đọc */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md flex flex-col items-center justify-center">
+                  <i className="fas fa-bell text-4xl text-yellow-500 mb-3"></i>
+                  <p className="text-lg text-gray-700 dark:text-gray-300">Thông báo chưa đọc</p>
+                  <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-300">
+                    {unreadNotificationsCount}
+                  </p>
+                </div>
+
+                {/* Widget: Chi phí cần đóng gần nhất */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md flex flex-col items-center justify-center">
+                  <i className="fas fa-money-bill-wave text-4xl text-orange-500 mb-3"></i>
+                  <p className="text-lg text-gray-700 dark:text-gray-300">Tiền cần đóng</p>
+                  <p className={`text-3xl font-bold ${myLatestCostIsPaid ? 'text-green-600' : 'text-red-500'} dark:text-green-300`}>
+                    {myLatestCost.toLocaleString('vi-VN')} VND
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    {myLatestCostIsPaid ? 'Đã đóng' : `Chưa đóng (Kỳ: ${myLatestCostPeriod})`}
+                  </p>
+                </div>
+
+                {/* Widget: Nhiệm vụ trực phòng sắp tới của tôi */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md col-span-full">
+                  <h3 className="text-xl font-bold text-purple-700 dark:text-purple-200 mb-3">Nhiệm vụ trực phòng sắp tới</h3>
+                  {upcomingMyCleaningTasks.length > 0 ? (
+                    <ul className="space-y-2">
+                      {upcomingMyCleaningTasks.slice(0, 3).map(task => ( // Chỉ hiển thị 3 nhiệm vụ đầu
+                        <li key={task.id} className="text-gray-700 dark:text-gray-300">
+                          <i className="fas fa-check-circle mr-2 text-purple-500"></i>
+                          {task.name} vào ngày {task.date}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-gray-600 dark:text-gray-400 italic">Bạn không có nhiệm vụ trực phòng sắp tới.</p>
+                  )}
+                </div>
+
+                {/* Widget: Tổng số ngày có mặt của tôi trong tháng này */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md col-span-full">
+                    <h3 className="text-xl font-bold text-green-700 dark:text-green-200 mb-3">Điểm danh tháng này ({selectedMonth})</h3>
+                    {loggedInResidentProfile && monthlyAttendanceData[loggedInResidentProfile.id] ? (
+                        <p className="text-gray-700 dark:text-gray-300 text-lg">
+                            Bạn đã có mặt: <span className="font-bold text-green-600">
+                                {Object.values(monthlyAttendanceData[loggedInResidentProfile.id]).filter(status => status === 1).length}
+                            </span> / {daysInSelectedMonth} ngày
+                        </p>
+                    ) : (
+                        <p className="text-gray-600 dark:text-gray-400 italic">Chưa có dữ liệu điểm danh tháng này.</p>
+                    )}
+                </div>
+
+              </div>
+            </div>
+          );
         case 'attendanceTracking': // Điểm danh của tôi
           return (
             <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
@@ -4251,6 +4423,17 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
             <h3 className="text-xl font-bold text-gray-700 dark:text-gray-200 mb-4">Điều hướng</h3>
             {userId && userRole === 'admin' && ( // Điều hướng Admin
               <>
+                <div>
+                  <button
+                    className={`block w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${activeSection === 'dashboard'
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                      }`}
+                    onClick={() => { setActiveSection('dashboard'); setIsSidebarOpen(false); }}
+                  >
+                    <i className="fas fa-tachometer-alt mr-3"></i> Dashboard
+                  </button>
+                </div>
                 <button
                   className={`block mb-1 w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${activeSection === 'residentManagement'
                     ? 'bg-blue-600 text-white shadow-md'
@@ -4392,6 +4575,17 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
 
             {userId && userRole === 'member' && ( // Điều hướng Thành viên
               <>
+                <div>
+                  <button
+                    className={`block w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${activeSection === 'dashboard'
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                      }`}
+                    onClick={() => { setActiveSection('dashboard'); setIsSidebarOpen(false); }}
+                  >
+                    <i className="fas fa-tachometer-alt mr-3"></i> Dashboard
+                  </button>
+                </div>
                 <button
                   className={`w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${activeSection === 'attendanceTracking'
                     ? 'bg-blue-600 text-white shadow-md'
