@@ -12,6 +12,7 @@ import {
 import { getFirestore, doc, setDoc, collection, onSnapshot, query, addDoc, serverTimestamp, deleteDoc, getDocs, where, getDoc, updateDoc, orderBy  } from 'firebase/firestore';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage'; // Thêm imports cho Firebase Storage
 // import imageCompression from 'browser-image-compression'; // <-- Đã xóa import này
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 // Firebase Config - Moved outside the component to be a constant
 const firebaseConfig = {
@@ -2290,6 +2291,15 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
             !task.isCompleted && new Date(task.date) >= new Date()
           ).sort((a, b) => new Date(a.date) - new Date(b.date)); // Sắp xếp theo ngày tăng dần
 
+          // MỚI: CHUẨN BỊ DỮ LIỆU CHO BIỂU ĐỒ TIÊU THỤ ĐIỆN NƯỚC
+          const chartData = Object.entries(monthlyConsumptionStats).map(([month, stats]) => ({
+            month: month, // Ví dụ: "2025-06"
+            điện: stats.electricity, // Dữ liệu điện
+            nước: stats.water,   // Dữ liệu nước
+            tổng: stats.total    // Dữ liệu tổng tiền
+          }));
+          // KẾT THÚC: CHUẨN BỊ DỮ LIỆU CHO BIỂU ĐỒ
+
           return (
             <div className="p-6 bg-gray-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
               <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-5">Dashboard Tổng quan</h2>
@@ -2372,9 +2382,23 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 {/* Các biểu đồ/thống kê trực quan (placeholder) */}
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md col-span-full text-center text-gray-500 dark:text-gray-400">
                   <h3 className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-3">Biểu đồ tiêu thụ điện nước (Cần thư viện biểu đồ)</h3>
-                  <p>Bạn có thể tích hợp thư viện như Chart.js hoặc Recharts để hiển thị biểu đồ từ dữ liệu thống kê tiêu thụ.</p>
+                  {Object.keys(monthlyConsumptionStats).length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#444' : '#ccc'} />
+                      <XAxis dataKey="month" stroke={theme === 'dark' ? '#ddd' : '#333'} />
+                      <YAxis stroke={theme === 'dark' ? '#ddd' : '#333'} />
+                      <Tooltip />
+                      <Legend />
+                      <Line type="monotone" dataKey="điện" stroke="#8884d8" name="Điện (KW)" />
+                      <Line type="monotone" dataKey="nước" stroke="#82ca9d" name="Nước (m³)" />
+                      <Line type="monotone" dataKey="tổng" stroke="#ffc658" name="Tổng tiền (VND)" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có dữ liệu thống kê nào để tạo biểu đồ. Vui lòng tính toán hóa đơn.</p>
+                )}                
                 </div>
-
               </div>
             </div>
           );
