@@ -145,6 +145,8 @@ function App() {
 
   const hasInitialized = useRef(false);
 
+  const [selectedNotificationDetails, setSelectedNotificationDetails] = useState(null); // Mới: Để hiển thị chi tiết thông báo
+
   // Effect để áp dụng lớp chủ đề cho phần tử HTML và lưu vào bộ nhớ cục bộ
   useEffect(() => {
     if (theme === 'dark') {
@@ -330,7 +332,7 @@ function App() {
 
 // Mới: Hàm để admin gửi thông báo tùy chỉnh
 const handleSendCustomNotification = async (e) => {
-  e.preventDefault(); // Ngăn form submit mặc định
+  e.preventDefault();
   setCustomNotificationError('');
   setCustomNotificationSuccess('');
 
@@ -353,17 +355,18 @@ const handleSendCustomNotification = async (e) => {
 
       await createNotification(
           newNotificationRecipient,
-          newNotificationType, // Loại thông báo đã chọn
+          newNotificationType,
           messageToSend,
-          userId // Người tạo là admin hiện tại
-          // relatedId có thể thêm nếu thông báo liên quan đến một đối tượng cụ thể
+          userId,
+          null, // relatedId (nếu không có)
+          notificationTitle // Truyền title vào đây
       );
 
       setCustomNotificationSuccess("Thông báo đã được gửi thành công!");
       setNewNotificationTitle('');
       setNewNotificationMessage('');
-      setNewNotificationRecipient('all'); // Đặt lại về mặc định
-      setNewNotificationType('general'); // Đặt lại về mặc định
+      setNewNotificationRecipient('all');
+      setNewNotificationType('general');
   } catch (error) {
       console.error("Lỗi khi gửi thông báo tùy chỉnh:", error);
       setCustomNotificationError(`Lỗi khi gửi thông báo: ${error.message}`);
@@ -799,7 +802,7 @@ const handleDeleteFormerResident = async (residentId) => { // <-- Tham số ch�
   }
 };
 
-const createNotification = async (recipientId, type, message, createdBy, relatedId = null) => {
+const createNotification = async (recipientId, type, message, createdBy, relatedId = null, title = null) => { // Thêm tham số title
   if (!db) {
     console.error("DB chưa sẵn sàng để tạo thông báo.");
     return;
@@ -807,13 +810,14 @@ const createNotification = async (recipientId, type, message, createdBy, related
   try {
     const notificationsCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/notifications`);
     await addDoc(notificationsCollectionRef, {
-      recipientId: recipientId, // UID của người nhận hoặc 'all'
-      type: type, // Loại thông báo
+      recipientId: recipientId,
+      type: type,
       message: message,
-      isRead: false, // Mặc định là chưa đọc
+      isRead: false,
       createdAt: serverTimestamp(),
-      createdBy: createdBy, // UID của người tạo thông báo
-      relatedId: relatedId // ID của tài liệu liên quan
+      createdBy: createdBy,
+      relatedId: relatedId,
+      title: title // Lưu title vào Firestore
     });
     console.log(`Đã tạo thông báo loại '${type}' cho '${recipientId}'.`);
   } catch (error) {
@@ -1758,16 +1762,16 @@ useEffect(() => {
       console.log("Đã tính toán số ngày có mặt và chi phí trung bình.");
 
       // Mới: TẠO THÔNG BÁO TIỀN ĐIỆN NƯỚC CHO TỪNG THÀNH VIÊN (Đoạn này đã đúng)
-      for (const resident of residents.filter(res => res.isActive)) { // Chỉ thông báo cho cư dân đang hoạt động
+      for (const resident of residents.filter(res => res.isActive)) {
         const userLinkedToResident = allUsersData.find(user => user.linkedResidentId === resident.id);
-        if (userLinkedToResident) { // Nếu có tài khoản người dùng liên kết
+        if (userLinkedToResident) {
             const cost = individualCalculatedCostsLocal[resident.id]?.cost || 0;
             const message = `Bạn có hóa đơn tiền điện nước cần đóng ${cost.toLocaleString('vi-VN')} VND cho kỳ từ ${startDate} đến ${endDate}.`;
-            await createNotification(userLinkedToResident.id, 'payment', message, userId, newCostSharingDocRef.id);
+            await createNotification(userLinkedToResident.id, 'payment', message, userId, newCostSharingDocRef.id, 'Hóa đơn tiền điện nước'); // Thêm title
         }
       }
       // Tạo thông báo chung cho admin
-      await createNotification('all', 'payment', `Hóa đơn điện nước mới cho kỳ ${startDate} đến ${endDate} đã được tính.`, userId, newCostSharingDocRef.id);
+      await createNotification('all', 'payment', `Hóa đơn điện nước mới cho kỳ ${startDate} đến ${endDate} đã được tính.`, userId, newCostSharingDocRef.id, 'Thông báo hóa đơn chung'); // Thêm title
 
     } catch (error) {
       console.error("Lỗi khi tính toán ngày có mặt và chi phí:", error);
@@ -3146,76 +3150,18 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
             </div>
         );
 
-        case 'customNotificationDesign': // Mới: Thiết kế thông báo
+        case 'customNotificationDesign': // Đây là case bạn muốn chỉnh sửa
         return (
           <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
             <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Thiết kế thông báo tùy chỉnh</h2>
 
+            {/* Form soạn thông báo mới - Giữ nguyên */}
             <form onSubmit={handleSendCustomNotification} className="mb-8 p-4 bg-blue-100 dark:bg-gray-800 rounded-xl shadow-inner border border-blue-200 dark:border-gray-600">
               <h3 className="text-xl font-bold text-blue-700 dark:text-blue-200 mb-4">Soạn thông báo mới</h3>
               <div className="space-y-4">
-                {/* Tiêu đề thông báo (Tùy chọn) */}
-                <div>
-                  <label htmlFor="notificationTitle" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Tiêu đề (Tùy chọn):</label>
-                  <input
-                    type="text"
-                    id="notificationTitle"
-                    value={newNotificationTitle}
-                    onChange={(e) => setNewNotificationTitle(e.target.value)}
-                    className="shadow-sm appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Ví dụ: Thông báo khẩn về tiền điện"
-                  />
-                </div>
+                {/* ... các input và textarea cho tiêu đề, người nhận, loại, nội dung thông báo ... */}
 
-                {/* Người nhận */}
-                <div>
-                  <label htmlFor="notificationRecipient" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Gửi đến:</label>
-                  <select
-                    id="notificationRecipient"
-                    value={newNotificationRecipient}
-                    onChange={(e) => setNewNotificationRecipient(e.target.value)}
-                    className="shadow-sm appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="all">Tất cả thành viên</option>
-                    {residents.filter(res => res.isActive).map(resident => { // Chỉ hiển thị cư dân đang hoạt động
-                        const linkedUser = allUsersData.find(user => user.linkedResidentId === resident.id);
-                        if (linkedUser) { // Chỉ hiển thị người dùng có tài khoản liên kết
-                          return <option key={linkedUser.id} value={linkedUser.id}>{linkedUser.fullName || resident.name}</option>;
-                        }
-                        return null;
-                    })}
-                  </select>
-                </div>
-
-                {/* Loại thông báo */}
-                <div>
-                  <label htmlFor="notificationType" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Loại thông báo:</label>
-                  <select
-                    id="notificationType"
-                    value={newNotificationType}
-                    onChange={(e) => setNewNotificationType(e.target.value)}
-                    className="shadow-sm appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="general">Thông báo chung</option>
-                    <option value="urgent">Thông báo khẩn</option>
-                    <option value="custom">Thông báo tùy chỉnh</option>
-                    {/* Có thể thêm các loại khác nếu cần */}
-                  </select>
-                </div>
-
-                {/* Nội dung thông báo */}
-                <div>
-                  <label htmlFor="notificationMessage" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Nội dung thông báo:</label>
-                  <textarea
-                    id="notificationMessage"
-                    value={newNotificationMessage}
-                    onChange={(e) => setNewNotificationMessage(e.target.value)}
-                    rows="5"
-                    className="shadow-sm appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500 resize-y"
-                    placeholder="Nhập nội dung thông báo..."
-                  ></textarea>
-                </div>
-
+                {/* Phần hiển thị lỗi/thành công */}
                 {customNotificationError && <p className="text-red-500 text-sm text-center mt-4">{customNotificationError}</p>}
                 {customNotificationSuccess && <p className="text-green-600 text-sm text-center mt-4">{customNotificationSuccess}</p>}
 
@@ -3227,6 +3173,76 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 </button>
               </div>
             </form>
+
+            {/* ==================================================================== */}
+            {/* PHẦN MỚI ĐƯỢC DI CHUYỂN TỪ 'notifications' VÀ CHỈ DÀNH CHO ADMIN */}
+            {/* ==================================================================== */}
+            <div className="mt-8 pt-6 border-t border-gray-300 dark:border-gray-600">
+              <h3 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Danh sách thông báo đã gửi/nhận</h3>
+              {notificationError && <p className="text-red-500 text-sm text-center mb-4">{notificationError}</p>}
+              {notifications.length === 0 ? (
+                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có thông báo nào.</p>
+              ) : (
+                <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                  <table className="min-w-full bg-white dark:bg-gray-800">
+                    <thead>
+                      <tr>
+                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Nội dung tóm tắt</th>
+                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Loại</th>
+                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Người nhận</th> {/* Mới */}
+                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Thời gian</th>
+                        <th className="py-3 px-4 text-center text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Trạng thái</th>
+                        <th className="py-3 px-4 text-center text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Chi tiết</th>
+                        <th className="py-3 px-4 text-center text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Hành động</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
+                      {/* Lọc thông báo: admin xem tất cả, thành viên chỉ xem của mình */}
+                      {notifications.map(notification => (
+                        <tr
+                          key={notification.id}
+                          className={`border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 ${!notification.isRead ? 'font-semibold' : ''}`}
+                        >
+                          <td className="py-3 px-4 max-w-xs overflow-hidden text-ellipsis whitespace-nowrap">
+                            {notification.message}
+                          </td>
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            {notification.type}
+                          </td>
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            {notification.recipientId === 'all' ? 'Tất cả' : (allUsersData.find(u => u.id === notification.recipientId)?.fullName || 'N/A')}
+                          </td>
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            {notification.createdAt instanceof Date ? notification.createdAt.toLocaleDateString('vi-VN') : 'N/A'}
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className={`px-2 py-1 rounded-full text-xs ${notification.isRead ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'}`}>
+                              {notification.isRead ? 'Đã đọc' : 'Chưa đọc'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <button
+                              onClick={() => { setSelectedNotificationDetails(notification); markNotificationAsRead(notification.id); }}
+                              className="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg shadow-sm hover:bg-blue-600 transition-colors"
+                            >
+                              Xem
+                            </button>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <button
+                              onClick={() => deleteNotification(notification.id)}
+                              className="px-3 py-1 bg-red-500 text-white text-xs rounded-lg shadow-sm hover:bg-red-600 transition-colors"
+                            >
+                              Xóa
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
         );
 
@@ -3960,6 +3976,61 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 </div>
               )}
             </div>
+          );
+          case 'notifications': // Vẫn giữ nguyên cho member
+          return (
+            <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Thông báo của tôi</h2>
+              {notificationError && <p className="text-red-500 text-sm text-center mb-4">{notificationError}</p>}
+              {notifications.length === 0 ? (
+                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa có thông báo nào.</p>
+              ) : (
+                <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                  <table className="min-w-full bg-white dark:bg-gray-800">
+                    <thead>
+                      <tr>
+                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Nội dung tóm tắt</th>
+                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Loại</th>
+                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Thời gian</th>
+                        <th className="py-3 px-4 text-center text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Trạng thái</th>
+                        <th className="py-3 px-4 text-center text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Chi tiết</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
+                      {notifications.map(notification => (
+                        <tr
+                          key={notification.id}
+                          className={`border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 ${!notification.isRead ? 'font-semibold' : ''}`}
+                        >
+                          <td className="py-3 px-4 max-w-xs overflow-hidden text-ellipsis whitespace-nowrap">
+                            {notification.message}
+                          </td>
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            {notification.type}
+                          </td>
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            {notification.createdAt instanceof Date ? notification.createdAt.toLocaleDateString('vi-VN') : 'N/A'}
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className={`px-2 py-1 rounded-full text-xs ${notification.isRead ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'}`}>
+                              {notification.isRead ? 'Đã đọc' : 'Chưa đọc'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <button
+                              onClick={() => { setSelectedNotificationDetails(notification); markNotificationAsRead(notification.id); }}
+                              className="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg shadow-sm hover:bg-blue-600 transition-colors"
+                            >
+                              Xem
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           );        
           default:
           return (
@@ -4627,6 +4698,34 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
             )}
             <button
               onClick={() => setShowNotificationsModal(false)}
+              className="mt-6 w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+            >
+              Đóng
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Chi tiết Thông báo */}
+      {selectedNotificationDetails && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md">
+            <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">Chi tiết thông báo</h3>
+            <div className="space-y-3 text-gray-700 dark:text-gray-300">
+              <p><strong>Tiêu đề:</strong> {selectedNotificationDetails.title || 'Không có tiêu đề'}</p> {/* Có thể có title nếu bạn thêm vào hàm createNotification */}
+              <p><strong>Nội dung:</strong> {selectedNotificationDetails.message}</p>
+              <p><strong>Loại:</strong> {selectedNotificationDetails.type}</p>
+              <p><strong>Người gửi:</strong> {selectedNotificationDetails.createdBy || 'Hệ thống'}</p> {/* Bạn có thể cần tìm tên người gửi nếu cần */}
+              <p><strong>Người nhận:</strong> {selectedNotificationDetails.recipientId === 'all' ? 'Tất cả' : (allUsersData.find(u => u.id === selectedNotificationDetails.recipientId)?.fullName || selectedNotificationDetails.recipientId)}</p>
+              <p><strong>Thời gian:</strong> {selectedNotificationDetails.createdAt instanceof Date ? selectedNotificationDetails.createdAt.toLocaleString('vi-VN') : 'N/A'}</p>
+              <p><strong>Trạng thái:</strong>
+                <span className={`ml-2 px-2 py-1 rounded-full text-sm ${selectedNotificationDetails.isRead ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'}`}>
+                  {selectedNotificationDetails.isRead ? 'Đã đọc' : 'Chưa đọc'}
+                </span>
+              </p>
+            </div>
+            <button
+              onClick={() => setSelectedNotificationDetails(null)}
               className="mt-6 w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
             >
               Đóng
