@@ -28,6 +28,19 @@ const firebaseConfig = {
 // currentAppId should consistently be the projectId - Moved outside the component
 const currentAppId = firebaseConfig.projectId;
 
+// ===========================================
+// KHAI BÁO HẰNG SỐ CLOUDINARY Ở ĐÂY
+// ===========================================
+const CLOUDINARY_CLOUD_NAME = "dzvcgfkxs"; // Thay bằng Cloud Name của bạn
+const CLOUDINARY_UPLOAD_PRESET_MEMORY = "qun_ly_phong"; // Đổi tên để rõ ràng hơn cho kỷ niệm
+const CLOUDINARY_UPLOAD_PRESET_AVATAR = "qun_ly_phong"; // Bạn có thể dùng chung preset này cho avatar
+const CLOUDINARY_API_URL_IMAGE_UPLOAD = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`; // API cho upload ảnh
+const CLOUDINARY_API_URL_AUTO_UPLOAD = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`; // API cho upload tự động (ảnh/video)
+
+// ===========================================
+// KẾT THÚC KHAI BÁO CLOUDINARY
+// ===========================================
+
 function App() {
   const [db, setDb] = useState(null);
   const [auth, setAuth] = useState(null);
@@ -150,6 +163,73 @@ function App() {
 
   // New state for Image Lightbox/Zoom
   const [selectedImageToZoom, setSelectedImageToZoom] = useState(null); // Lưu URL của ảnh muốn phóng to
+
+   // Mới: Hàm để thêm một kỷ niệm mới
+// Trong hàm handleAddMemory
+const handleAddMemory = async (e) => {
+  e.preventDefault();
+  setMemoryError('');
+  if (!db || !auth || !newMemoryEventName || !newMemoryPhotoDate || !newMemoryImageFile) {
+    setMemoryError("Vui lòng điền đầy đủ thông tin và chọn file."); // Sửa thông báo
+    return;
+  }
+  if (!userId) {
+    setMemoryError("Bạn cần đăng nhập để đăng kỷ niệm.");
+    return;
+  }
+
+  setIsUploadingMemory(true);
+  setUploadProgress(0);
+
+  try {
+    
+    const formData = new FormData();
+    formData.append('file', newMemoryImageFile);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET_MEMORY);
+
+    const response = await axios.post(CLOUDINARY_API_URL_AUTO_UPLOAD, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      onUploadProgress: (progressEvent) => {
+        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        setUploadProgress(percentCompleted);
+      },
+    });
+
+    const fileUrl = response.data.secure_url; // URL của ảnh hoặc video
+    const publicId = response.data.public_id; // Public ID từ Cloudinary
+    const resourceType = response.data.resource_type; // 'image' hoặc 'video'
+
+    console.log('File có sẵn tại:', fileUrl, 'Public ID:', publicId, 'Loại:', resourceType);
+
+    const memoriesCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/memories`);
+      await addDoc(memoriesCollectionRef, {
+        eventName: newMemoryEventName.trim(),
+        photoDate: newMemoryPhotoDate,
+        fileUrl: fileUrl, // Lưu URL của file (ảnh hoặc video)
+        publicId: publicId, // Lưu publicId
+        fileType: resourceType, // MỚI: Lưu loại file ('image' hoặc 'video')
+        uploadedBy: userId,
+        uploadedAt: serverTimestamp(),
+        uploadedByName: loggedInResidentProfile ? loggedInResidentProfile.name : (allUsersData.find(u => u.id === userId)?.fullName || 'Người dùng ẩn danh')
+      });
+
+      setNewMemoryEventName('');
+      setNewMemoryPhotoDate('');
+      setNewMemoryImageFile(null);
+      setUploadProgress(0);
+      setIsUploadingMemory(false);
+      setMemoryError('');
+      alert("Đã thêm kỷ niệm mới thành công!");
+      console.log("Đã thêm kỷ niệm mới thành công!");
+
+    } catch (error) {
+      console.error("Lỗi khi thêm kỷ niệm (tổng thể):", error);
+      setMemoryError(`Lỗi khi thêm kỷ niệm: ${error.message}`);
+      setIsUploadingMemory(false);
+    }
+  };
 
 
   // Effect để áp dụng lớp chủ đề cho phần tử HTML và lưu vào bộ nhớ cục bộ
@@ -365,103 +445,103 @@ function App() {
     setIsUploadingAvatar(true);
     setAvatarUploadProgress(0);
   
-    const storageRef = getStorage();
-    // Đặt tên file là UID của người dùng để dễ quản lý và cho phép ghi đè
-    const fileExtension = newAvatarFile.name.split('.').pop();
-    const avatarPath = `avatars/${userId}.${fileExtension}`; // Ví dụ: avatars/someUid.jpg
-    const avatarRef = ref(storageRef, avatarPath);
+    const formData = new FormData();
+    formData.append('file', newAvatarFile);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET_AVATAR);
+    // Optional: Add folder for better organization
+    formData.append('folder', 'avatars/users'); // Ví dụ: lưu vào thư mục 'avatars/users' trên Cloudinary
+    // Optional: Set public_id to userId to allow overwriting
+    formData.append('public_id', userId); // Để avatar của mỗi user có public_id là UID của họ
   
     try {
-      // Tải tệp lên Firebase Storage
-      const uploadTask = uploadBytesResumable(avatarRef, newAvatarFile);
-  
-      uploadTask.on('state_changed',
-        (snapshot) => {
-          const progress = (snapshot.loaded / snapshot.total) * 100;
-          setAvatarUploadProgress(progress);
+      const response = await axios.post(CLOUDINARY_API_URL_IMAGE_UPLOAD, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
         },
-        (error) => {
-          console.error("Lỗi khi tải ảnh avatar:", error);
-          setAvatarError(`Lỗi khi tải ảnh: ${error.message}`);
-          setIsUploadingAvatar(false);
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          setAvatarUploadProgress(percentCompleted);
         },
-        async () => {
-          // Lấy URL công khai sau khi tải lên hoàn tất
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          console.log('Avatar tải lên thành công, URL:', downloadURL);
+      });
   
-          // Cập nhật photoURL trong tài liệu người dùng trong Firestore
-          const userDocRef = doc(db, `artifacts/${currentAppId}/public/data/users`, userId);
-          await updateDoc(userDocRef, { photoURL: downloadURL });
+      const downloadURL = response.data.secure_url;
+      console.log('Avatar tải lên Cloudinary thành công, URL:', downloadURL);
   
-          setUserAvatarUrl(downloadURL); // Cập nhật state avatar cục bộ
-          setNewAvatarFile(null); // Reset input file
-          setAvatarUploadProgress(0);
-          setIsUploadingAvatar(false);
-          setAvatarError('');
-          alert("Đã cập nhật ảnh đại diện thành công!");
-        }
-      );
-    } catch (error) {
-      console.error("Lỗi tổng thể khi tải avatar:", error);
-      setAvatarError(`Lỗi: ${error.message}`);
+      // Cập nhật photoURL trong tài liệu người dùng trong Firestore
+      const userDocRef = doc(db, `artifacts/${currentAppId}/public/data/users`, userId);
+      await updateDoc(userDocRef, { photoURL: downloadURL });
+  
+      setUserAvatarUrl(downloadURL);
+      setNewAvatarFile(null);
+      setAvatarUploadProgress(0);
       setIsUploadingAvatar(false);
-    }
-  };
+      setAvatarError('');
+      alert("Đã cập nhật ảnh đại diện thành công!");
   
-  // Hàm tải lên avatar cho tiền bối (chỉ admin)
-  const handleUploadFormerResidentAvatar = async (formerResidentId) => {
-    setFormerResidentAvatarError('');
-    if (!db || !userId || userRole !== 'admin' || !newFormerResidentAvatarFile) {
-      setFormerResidentAvatarError("Bạn không có quyền hoặc vui lòng chọn một tệp ảnh.");
-      return;
-    }
-  
-    setIsUploadingFormerResidentAvatar(true);
-    setFormerResidentAvatarUploadProgress(0);
-  
-    const storageRef = getStorage();
-    const fileExtension = newFormerResidentAvatarFile.name.split('.').pop();
-    // Đặt tên file là ID của tiền bối
-    const avatarPath = `avatars/former-residents/${formerResidentId}.${fileExtension}`;
-    const avatarRef = ref(storageRef, avatarPath);
-  
-    try {
-      const uploadTask = uploadBytesResumable(avatarRef, newFormerResidentAvatarFile);
-  
-      uploadTask.on('state_changed',
-        (snapshot) => {
-          const progress = (snapshot.loaded / snapshot.total) * 100;
-          setFormerResidentAvatarUploadProgress(progress);
-        },
-        (error) => {
-          console.error("Lỗi khi tải ảnh avatar tiền bối:", error);
-          setFormerResidentAvatarError(`Lỗi khi tải ảnh: ${error.message}`);
-          setIsUploadingFormerResidentAvatar(false);
-        },
-        async () => {
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          console.log('Avatar tiền bối tải lên thành công, URL:', downloadURL);
-  
-          // Cập nhật photoURL trong tài liệu tiền bối trong Firestore
-          const formerResidentDocRef = doc(db, `artifacts/${currentAppId}/public/data/formerResidents`, formerResidentId);
-          await updateDoc(formerResidentDocRef, { photoURL: downloadURL });
-  
-          // Cập nhật state cục bộ
-          setFormerResidentAvatarUrls(prev => ({ ...prev, [formerResidentId]: downloadURL }));
-          setNewFormerResidentAvatarFile(null); // Reset input file
-          setFormerResidentAvatarUploadProgress(0);
-          setIsUploadingFormerResidentAvatar(false);
-          setFormerResidentAvatarError('');
-          alert("Đã cập nhật ảnh đại diện tiền bối thành công!");
-        }
-      );
     } catch (error) {
-      console.error("Lỗi tổng thể khi tải avatar tiền bối:", error);
-      setFormerResidentAvatarError(`Lỗi: ${error.message}`);
-      setIsUploadingFormerResidentAvatar(false);
+      console.error("Lỗi khi tải ảnh avatar lên Cloudinary:", error);
+      setAvatarError(`Lỗi khi tải ảnh: ${error.message}`);
+      setIsUploadingAvatar(false);
+      // Log lỗi chi tiết từ Axios nếu có
+      if (error.response) {
+        console.error("Cloudinary Error Response:", error.response.data);
+      }
     }
   };
+
+  // Hàm tải lên avatar cho tiền bối (chỉ admin)
+const handleUploadFormerResidentAvatar = async (formerResidentId) => {
+  setFormerResidentAvatarError('');
+  if (!db || !userId || userRole !== 'admin' || !newFormerResidentAvatarFile) {
+    setFormerResidentAvatarError("Bạn không có quyền hoặc vui lòng chọn một tệp ảnh.");
+    return;
+  }
+
+  setIsUploadingFormerResidentAvatar(true);
+  setFormerResidentAvatarUploadProgress(0);
+
+  const formData = new FormData();
+  formData.append('file', newFormerResidentAvatarFile);
+  formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET_AVATAR);
+  // Optional: Add folder
+  formData.append('folder', 'avatars/former-residents'); // Ví dụ: lưu vào thư mục 'avatars/former-residents'
+  // Optional: Set public_id to formerResidentId
+  formData.append('public_id', formerResidentId); // Để avatar của mỗi tiền bối có public_id là ID của họ
+
+  try {
+    const response = await axios.post(CLOUDINARY_API_URL_IMAGE_UPLOAD, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      onUploadProgress: (progressEvent) => {
+        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        setFormerResidentAvatarUploadProgress(percentCompleted);
+      },
+    });
+
+    const downloadURL = response.data.secure_url;
+    console.log('Avatar tiền bối tải lên Cloudinary thành công, URL:', downloadURL);
+
+    // Cập nhật photoURL trong tài liệu tiền bối trong Firestore
+    const formerResidentDocRef = doc(db, `artifacts/${currentAppId}/public/data/formerResidents`, formerResidentId);
+    await updateDoc(formerResidentDocRef, { photoURL: downloadURL });
+
+    setFormerResidentAvatarUrls(prev => ({ ...prev, [formerResidentId]: downloadURL }));
+    setNewFormerResidentAvatarFile(null);
+    setFormerResidentAvatarUploadProgress(0);
+    setIsUploadingFormerResidentAvatar(false);
+    setFormerResidentAvatarError('');
+    alert("Đã cập nhật ảnh đại diện tiền bối thành công!");
+
+  } catch (error) {
+    console.error("Lỗi khi tải ảnh avatar tiền bối lên Cloudinary:", error);
+    setFormerResidentAvatarError(`Lỗi khi tải ảnh: ${error.message}`);
+    setIsUploadingFormerResidentAvatar(false);
+    if (error.response) {
+      console.error("Cloudinary Error Response:", error.response.data);
+    }
+  }
+};
 
   // Trong useEffect lắng nghe formerResidents (đã có)
 useEffect(() => {
@@ -709,76 +789,7 @@ const handleSendCustomNotification = async (e) => {
     }
   };
 
-  // Mới: Hàm để thêm một kỷ niệm mới
-// Trong hàm handleAddMemory
-// Trong hàm handleAddMemory
-const handleAddMemory = async (e) => {
-  e.preventDefault();
-  setMemoryError('');
-  if (!db || !auth || !newMemoryEventName || !newMemoryPhotoDate || !newMemoryImageFile) {
-    setMemoryError("Vui lòng điền đầy đủ thông tin và chọn file."); // Sửa thông báo
-    return;
-  }
-  if (!userId) {
-    setMemoryError("Bạn cần đăng nhập để đăng kỷ niệm.");
-    return;
-  }
-
-  setIsUploadingMemory(true);
-  setUploadProgress(0);
-
-  try {
-    const CLOUDINARY_CLOUD_NAME = "dzvcgfkxs"; // Thay bằng Cloud Name của bạn
-    const CLOUDINARY_UPLOAD_PRESET = "qun_ly_phong"; // Thay bằng Upload Preset của bạn
-    const CLOUDINARY_API_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`; // Dùng /auto/upload để Cloudinary tự nhận diện loại file
-
-    const formData = new FormData();
-    formData.append('file', newMemoryImageFile);
-    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-
-    const response = await axios.post(CLOUDINARY_API_URL, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-      onUploadProgress: (progressEvent) => {
-        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-        setUploadProgress(percentCompleted);
-      },
-    });
-
-    const fileUrl = response.data.secure_url; // URL của ảnh hoặc video
-    const publicId = response.data.public_id; // Public ID từ Cloudinary
-    const resourceType = response.data.resource_type; // 'image' hoặc 'video'
-
-    console.log('File có sẵn tại:', fileUrl, 'Public ID:', publicId, 'Loại:', resourceType);
-
-    const memoriesCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/memories`);
-    await addDoc(memoriesCollectionRef, {
-      eventName: newMemoryEventName.trim(),
-      photoDate: newMemoryPhotoDate,
-      fileUrl: fileUrl, // Lưu URL của file (ảnh hoặc video)
-      publicId: publicId, // Lưu publicId
-      fileType: resourceType, // MỚI: Lưu loại file ('image' hoặc 'video')
-      uploadedBy: userId,
-      uploadedAt: serverTimestamp(),
-      uploadedByName: loggedInResidentProfile ? loggedInResidentProfile.name : (allUsersData.find(u => u.id === userId)?.fullName || 'Người dùng ẩn danh')
-    });
-
-    setNewMemoryEventName('');
-    setNewMemoryPhotoDate('');
-    setNewMemoryImageFile(null);
-    setUploadProgress(0);
-    setIsUploadingMemory(false);
-    setMemoryError('');
-    alert("Đã thêm kỷ niệm mới thành công!");
-    console.log("Đã thêm kỷ niệm mới thành công!");
-
-  } catch (error) {
-    console.error("Lỗi khi thêm kỷ niệm (tổng thể):", error);
-    setMemoryError(`Lỗi khi thêm kỷ niệm: ${error.message}`);
-    setIsUploadingMemory(false);
-  }
-};
+ 
 
   // Mới: Hàm để xóa một kỷ niệm (chỉ admin)
 // Trong hàm handleDeleteMemory
