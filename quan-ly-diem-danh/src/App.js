@@ -4063,96 +4063,106 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               </div>
             </div>
           );
-          case 'roomMemories':    // <--- Đảm bảo case này nằm TRƯỚC default
-          return (
-            <div className="p-6 bg-indigo-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-indigo-800 dark:text-indigo-200 mb-5">Kỷ niệm phòng</h2>
-
-              {/* Phần đăng ảnh kỷ niệm */}
-              <form onSubmit={handleAddMemory} className="mb-8 p-4 bg-indigo-100 dark:bg-gray-800 rounded-xl shadow-inner border border-indigo-200 dark:border-gray-600 ">
-                <h3 className="text-xl font-bold text-indigo-700 dark:text-indigo-200 mb-4">Đăng ảnh kỷ niệm mới</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label htmlFor="eventName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Sự kiện:</label>
-                    <input
-                      type="text"
-                      id="eventName"
-                      value={newMemoryEventName}
-                      onChange={(e) => setNewMemoryEventName(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700"
-                      placeholder="Ví dụ: Sinh nhật tháng 10"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="photoDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày chụp:</label>
-                    <input
-                      type="date"
-                      id="photoDate"
-                      value={newMemoryPhotoDate}
-                      onChange={(e) => setNewMemoryPhotoDate(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="imageFile" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Chọn ảnh:</label>
-                    <input
-                      type="file"
-                      id="imageFile"
-                      accept="image/*"
-                      onChange={(e) => setNewMemoryImageFile(e.target.files[0])}
-                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                    />
-                  </div>
-                  {isUploadingMemory && (
-                    <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-                      <div className="bg-indigo-600 h-2.5 rounded-full" style={{ width: `${uploadProgress}%` }}></div>
+          case 'roomMemories':
+            return (
+              <div className="p-6 bg-indigo-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+                <h2 className="text-2xl font-bold text-indigo-800 dark:text-indigo-200 mb-5">Kỷ niệm phòng</h2>
+  
+                {/* Phần đăng ảnh kỷ niệm */}
+                <form onSubmit={handleAddMemory} className="mb-8 p-4 bg-indigo-100 dark:bg-gray-800 rounded-xl shadow-inner border border-indigo-200 dark:border-gray-600 ">
+                  <h3 className="text-xl font-bold text-indigo-700 dark:text-indigo-200 mb-4">Đăng ảnh kỷ niệm mới</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label htmlFor="eventName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Sự kiện:</label>
+                      <input
+                        type="text"
+                        id="eventName"
+                        value={newMemoryEventName}
+                        onChange={(e) => setNewMemoryEventName(e.target.value)}
+                        className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700"
+                        placeholder="Ví dụ: Sinh nhật tháng 10"
+                      />
                     </div>
-                  )}
-                  {memoryError && <p className="text-red-500 text-sm text-center mt-4">{memoryError}</p>}
-                  <button
-                    type="submit"
-                    className="w-full px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl shadow-md hover:bg-indigo-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-75"
-                    disabled={isUploadingMemory}
-                  >
-                    {isUploadingMemory ? <i className="fas fa-spinner fa-spin mr-2"></i> : <i className="fas fa-upload mr-2"></i>}
-                    Đăng kỷ niệm
-                  </button>
-                </div>
-              </form>
-
-              {/* Danh sách các kỷ niệm đã đăng */}
-              <h3 className="text-xl font-bold text-indigo-700 dark:text-indigo-200 mb-4">Các kỷ niệm đã đăng</h3>
-              {memories.length === 0 ? (
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có kỷ niệm nào được đăng.</p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {memories.map(memory => (
-                    <div key={memory.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer" onClick={() => setSelectedImageToZoom(memory.imageUrl)}>
-                      <img src={memory.imageUrl} alt={memory.eventName} className="w-full h-48 object-cover" />
-                      <div className="p-4">
-                        <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">{memory.eventName}</h4>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                          <i className="fas fa-calendar-alt mr-2"></i>Ngày chụp: {memory.photoDate}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                          <i className="fas fa-upload mr-2"></i>Đăng bởi: {memory.uploadedByName || 'Ẩn danh'} vào {memory.uploadedAt?.toLocaleDateString('vi-VN')}
-                        </p>
-                        {userRole === 'admin' && ( // Chỉ admin mới có nút xóa
-                          <button
-                            onClick={() => handleDeleteMemory(memory.id, memory.imageUrl)}
-                            className="mt-4 px-4 py-2 bg-red-500 text-white rounded-lg shadow hover:bg-red-600 transition-colors duration-200"
-                          >
-                            <i className="fas fa-trash mr-2"></i>Xóa
-                          </button>
-                        )}
+                    <div>
+                      <label htmlFor="photoDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày chụp/quay:</label>
+                      <input
+                        type="date"
+                        id="photoDate"
+                        value={newMemoryPhotoDate}
+                        onChange={(e) => setNewMemoryPhotoDate(e.target.value)}
+                        className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="imageFile" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Chọn ảnh hoặc video:</label>
+                      <input
+                        type="file"
+                        id="imageFile"
+                        accept="image/*,video/*"
+                        onChange={(e) => setNewMemoryImageFile(e.target.files[0])}
+                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                      />
+                    </div>
+                    {isUploadingMemory && (
+                      <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                        <div className="bg-indigo-600 h-2.5 rounded-full" style={{ width: `${uploadProgress}%` }}></div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        case 'formerResidents': // <--- Đảm bảo case này nằm TRƯỚC default
+                    )}
+                    {memoryError && <p className="text-red-500 text-sm text-center mt-4">{memoryError}</p>}
+                    <button
+                      type="submit"
+                      className="w-full px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl shadow-md hover:bg-indigo-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-75"
+                      disabled={isUploadingMemory}
+                    >
+                      {isUploadingMemory ? <i className="fas fa-spinner fa-spin mr-2"></i> : <i className="fas fa-upload mr-2"></i>}
+                      Đăng kỷ niệm
+                    </button>
+                  </div>
+                </form>
+  
+                {/* Danh sách các kỷ niệm đã đăng */}
+                <h3 className="text-xl font-bold text-indigo-700 dark:text-indigo-200 mb-4">Các kỷ niệm đã đăng</h3>
+                {memories.length === 0 ? (
+                  <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có kỷ niệm nào được đăng.</p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {memories.map(memory => (
+                      <div
+                        key={memory.id}
+                        className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer"
+                        onClick={() => setSelectedImageToZoom(memory)} // Truyền toàn bộ đối tượng memory
+                      >
+                        {/* Dòng này ĐÃ SỬA để dùng memory.fileUrl và phân biệt video/image */}
+                        {memory.fileType === 'video' ? (
+                          <video src={memory.fileUrl} controls className="w-full h-48 object-cover"></video>
+                        ) : (
+                          <img src={memory.fileUrl} alt={memory.eventName} className="w-full h-48 object-cover" />
+                        )}
+                        <div className="p-4">
+                          <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">{memory.eventName}</h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-300">
+                            <i className="fas fa-calendar-alt mr-2"></i>Ngày chụp/quay: {memory.photoDate}
+                          </p>
+                          <p className="text-sm text-gray-600 dark:text-gray-300">
+                            <i className="fas fa-upload mr-2"></i>Đăng bởi: {memory.uploadedByName || 'Ẩn danh'} vào {memory.uploadedAt?.toLocaleDateString('vi-VN')}
+                          </p>
+                          {/* Logic hiển thị nút xóa cho admin HOẶC người đăng tải */}
+                          {(userRole === 'admin' || userId === memory.uploadedBy) && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDeleteMemory(memory.id, memory.fileUrl, memory.publicId, memory.uploadedBy); }}
+                              className="mt-4 px-4 py-2 bg-red-500 text-white rounded-lg shadow hover:bg-red-600 transition-colors duration-200"
+                            >
+                              <i className="fas fa-trash mr-2"></i>Xóa
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+            case 'formerResidents': // <--- Đảm bảo case này nằm TRƯỚC default
           return (
             <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
               <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">Thông tin tiền bối</h2>
