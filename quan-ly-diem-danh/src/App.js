@@ -4749,7 +4749,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
     // Trường hợp không có vai trò hoặc không xác định (hiển thị khi chưa đăng nhập)
     return (
       <div className="text-center p-8 bg-gray-100 dark:bg-gray-700 rounded-xl shadow-inner">
-        <p className="text-xl text-gray-700 dark:text-gray-300 font-semibold mb-4">Vui lòng đăng nhập để sử dụng ứng dụng.</p>
+        <p className="text-xl text-gray-700 dark:text-gray-300 font-semibold mb-4">Đang đăng nhập...</p>
       </div>
     );
   };
