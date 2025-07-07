@@ -5162,8 +5162,61 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
           {userId ? (
             renderSection()
           ) : (
-            <div className="text-center p-8 bg-gray-100 dark:bg-gray-700 rounded-xl shadow-inner">
-              <p className="text-xl text-gray-700 dark:text-gray-300 font-semibold mb-4">Vui lòng đăng nhập để sử dụng ứng dụng.</p>
+              // Nếu chưa đăng nhập, hiển thị TOÀN BỘ KHU VỰC XÁC THỰC NGƯỜI DÙNG để họ có thể đăng nhập/đăng ký
+              <div className="mb-8 p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg mx-auto max-w-lg"> {/* Thêm mx-auto max-w-lg để căn giữa và giới hạn chiều rộng */}
+              <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5 text-center">Đăng nhập / Đăng ký</h2> {/* Đổi tiêu đề */}
+              {!isAuthReady ? (
+                <p className="text-blue-600 dark:text-blue-300 text-center text-lg">Đang kết nối Firebase...</p>
+              ) : (
+                <div className="flex flex-col space-y-4">
+                  <input
+                    type="text"
+                    placeholder="Họ tên đầy đủ"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                  />
+                  <input
+                    type="email"
+                    placeholder="Email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                  />
+                  <input
+                    type="password"
+                    placeholder="Mật khẩu"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                  />
+                  {authError && (
+                    <p className="text-red-500 text-sm text-center">{authError}</p>
+                  )}
+                  <div className="flex justify-center space-x-4">
+                    <button
+                      onClick={handleSignIn}
+                      className="flex-1 px-6 py-2 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75"
+                      disabled={!isAuthReady}
+                    >
+                      <i className="fas fa-sign-in-alt mr-2"></i> Đăng nhập
+                    </button>
+                    <button
+                      onClick={handleSignUp}
+                      className="flex-1 px-6 py-2 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75"
+                      disabled={!isAuthReady}
+                    >
+                      <i className="fas fa-user-plus mr-2"></i> Đăng ký
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => { setShowForgotPasswordModal(true); setAuthError(''); setForgotPasswordMessage(''); }}
+                    className="w-full mt-4 text-blue-600 dark:text-blue-400 hover:underline text-sm font-semibold"
+                  >
+                    Quên mật khẩu?
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </main>
