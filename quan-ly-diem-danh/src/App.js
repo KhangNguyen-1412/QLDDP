@@ -1539,6 +1539,50 @@ useEffect(() => {
     }
   };
 
+  // Thêm vào danh sách các useState của bạn
+  const [editingFormerResident, setEditingFormerResident] = useState(null); // Lưu trữ đối tượng tiền bối đang được chỉnh sửa
+
+  // Thêm hàm này vào file App.js của bạn
+  const handleUpdateFormerResident = async (e) => {
+    e.preventDefault();
+    setAuthError(''); // Reset lỗi
+    if (!db || !userId || userRole !== 'admin') {
+        setAuthError("Bạn không có quyền cập nhật thông tin tiền bối.");
+        return;
+    }
+    if (!editingFormerResident || !editingFormerResident.id) {
+        setAuthError("Không có tiền bối nào được chọn để cập nhật.");
+        return;
+    }
+    if (!editingFormerResident.name || !editingFormerResident.email || !editingFormerResident.deactivatedAt) {
+        setAuthError("Vui lòng điền đầy đủ Họ tên, Email, Ngày ra khỏi phòng.");
+        return;
+    }
+
+    try {
+        const formerResidentDocRef = doc(db, `artifacts/${currentAppId}/public/data/formerResidents`, editingFormerResident.id);
+        
+        await updateDoc(formerResidentDocRef, {
+            name: editingFormerResident.name.trim(),
+            email: editingFormerResident.email.trim(),
+            phoneNumber: editingFormerResident.phoneNumber.trim() || null,
+            studentId: editingFormerResident.studentId.trim() || null,
+            birthday: editingFormerResident.birthday.trim() || null,
+            dormEntryDate: editingFormerResident.dormEntryDate.trim() || null,
+            academicLevel: editingFormerResident.academicLevel.trim() || null,
+            deactivatedAt: editingFormerResident.deactivatedAt, // Lưu ý: giữ nguyên định dạng (string YYYY-MM-DD)
+            lastUpdatedBy: userId,
+            lastUpdatedAt: serverTimestamp()
+        });
+
+        alert('Đã cập nhật thông tin tiền bối thành công!');
+        setEditingFormerResident(null); // Đóng modal/form chỉnh sửa
+    } catch (error) {
+        console.error("Lỗi khi cập nhật tiền bối:", error);
+        setAuthError(`Lỗi khi cập nhật tiền bối: ${error.message}`);
+    }
+  };
+
   // Vô hiệu hóa hoặc kích hoạt lại một cư dân
   const handleToggleResidentActiveStatus = async (residentId, residentName, currentStatus) => {
     setAuthError('');
@@ -3258,7 +3302,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {formerResidents.map(resident => (
                     <div key={resident.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                      {/* Toàn bộ phần hiển thị ảnh (resident.photoURL) ĐÃ XÓA */}
                       <div className="p-4">
                         <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">{resident.name}</h4>
                         <p className="text-sm text-gray-600 dark:text-gray-300">
@@ -3283,12 +3326,31 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                             <i className="fas fa-door-open mr-2"></i>Ngày ra khỏi phòng: {resident.deactivatedAt && typeof resident.deactivatedAt.toLocaleDateString === 'function' ? resident.deactivatedAt.toLocaleDateString('vi-VN') : (resident.deactivatedAt || 'N/A')}
                         </p>
                         {userRole === 'admin' && (
-                          <button
-                            onClick={() => handleDeleteFormerResident(resident.id)} // <-- Đã sửa: chỉ truyền resident.id
-                            className="mt-4 px-4 py-2 bg-red-500 text-white rounded-lg shadow hover:bg-red-600 transition-colors duration-200"
-                          >
-                            <i className="fas fa-trash mr-2"></i>Xóa
-                          </button>
+                          <div className="flex mt-4 space-x-2">
+                            <button
+                              onClick={() => setEditingFormerResident({ // Thiết lập tiền bối đang chỉnh sửa
+                                  id: resident.id,
+                                  name: resident.name,
+                                  email: resident.email || '',
+                                  phoneNumber: resident.phoneNumber || '',
+                                  studentId: resident.studentId || '',
+                                  birthday: resident.birthday || '',
+                                  dormEntryDate: resident.dormEntryDate || '',
+                                  academicLevel: resident.academicLevel || '',
+                                  // Đảm bảo deactivatedAt là string định dạng YYYY-MM-DD
+                                  deactivatedAt: resident.deactivatedAt instanceof Date ? formatDate(resident.deactivatedAt) : (resident.deactivatedAt || '')
+                              })}
+                              className="px-4 py-2 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-600 transition-colors duration-200"
+                            >
+                              <i className="fas fa-edit mr-2"></i>Chỉnh sửa
+                            </button>
+                            <button
+                              onClick={() => handleDeleteFormerResident(resident.id)}
+                              className="px-4 py-2 bg-red-500 text-white rounded-lg shadow hover:bg-red-600 transition-colors duration-200"
+                            >
+                              <i className="fas fa-trash mr-2"></i>Xóa
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>
