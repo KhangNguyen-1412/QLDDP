@@ -187,7 +187,7 @@ const handleAddMemory = async (e) => {
     formData.append('file', newMemoryImageFile);
     formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET_MEMORY);
 
-    const response = await axios.post(CLOUDINARY_API_URL_AUTO_UPLOAD, {
+    const response = await axios.post(CLOUDINARY_API_URL_AUTO_UPLOAD, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -454,7 +454,7 @@ const handleAddMemory = async (e) => {
     formData.append('public_id', userId); // Để avatar của mỗi user có public_id là UID của họ
   
     try {
-      const response = await axios.post(CLOUDINARY_API_URL_IMAGE_UPLOAD, {
+      const response = await axios.post(CLOUDINARY_API_URL_IMAGE_UPLOAD, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -509,7 +509,7 @@ const handleUploadFormerResidentAvatar = async (formerResidentId) => {
   formData.append('public_id', formerResidentId); // Để avatar của mỗi tiền bối có public_id là ID của họ
 
   try {
-    const response = await axios.post(CLOUDINARY_API_URL_IMAGE_UPLOAD, {
+    const response = await axios.post(CLOUDINARY_API_URL_IMAGE_UPLOAD, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
