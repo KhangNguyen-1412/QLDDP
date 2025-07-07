@@ -220,6 +220,7 @@ function App() {
           // Lấy vai trò người dùng và fullName từ Firestore
           const userDocRef = doc(firestoreDb, `artifacts/${currentAppId}/public/data/users`, user.uid);
           const userDocSnap = await getDoc(userDocRef);
+          let fetchedPhotoURL = null; // MỚI: Thêm để lấy photoURL
           let fetchedRole = 'member'; // Mặc định là member
           let fetchedFullName = user.email; // Mặc định là email nếu không có fullName
           let linkedResidentId = null; // ID cư dân được liên kết
@@ -243,6 +244,9 @@ function App() {
             if (userData.linkedResidentId) {
               linkedResidentId = userData.linkedResidentId;
             }
+            if (userData.photoURL) { // MỚI: Lấy photoURL
+              fetchedPhotoURL = userData.photoURL;
+            }
             // Fetch new fields
             fetchedPhoneNumber = userData.phoneNumber || '';
             fetchedAcademicLevel = userData.academicLevel || '';
@@ -254,6 +258,7 @@ function App() {
             // Nếu tài liệu người dùng không tồn tại, tạo nó với vai trò mặc định
             await setDoc(userDocRef, { email: user.email, fullName: user.email, role: 'member', createdAt: serverTimestamp() }, { merge: true });
           }
+          setUserAvatarUrl(fetchedPhotoURL); // MỚI: Cập nhật state avatar URL
           setUserRole(fetchedRole);
           setFullName(fetchedFullName); // Cập nhật fullName cho state
           console.log("8. Vai trò người dùng:", fetchedRole);
@@ -318,6 +323,7 @@ function App() {
           setMemberDormEntryDate('');
           setMemberBirthday('');
           setMemberStudentId('');
+          setUserAvatarUrl(null); // MỚI: Reset avatar URL khi đăng xuất
         }
         setIsAuthReady(true);
         console.log("9. Trạng thái xác thực Firebase đã sẵn sàng: ", true);
@@ -333,7 +339,167 @@ function App() {
     }
   }, []); // Không cần userRole trong dependency array này vì nó được xử lý nội bộ
 
-  // ... (các hàm xử lý khác của bạn, ví dụ: createNotification) ...
+  // States for Avatar Upload
+  const [newAvatarFile, setNewAvatarFile] = useState(null);
+  const [avatarUploadProgress, setAvatarUploadProgress] = useState(0);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState('');
+
+  // States for Former Resident Avatar Upload (Admin Only)
+  const [newFormerResidentAvatarFile, setNewFormerResidentAvatarFile] = useState(null);
+  const [formerResidentAvatarUploadProgress, setFormerResidentAvatarUploadProgress] = useState(0);
+  const [isUploadingFormerResidentAvatar, setIsUploadingFormerResidentAvatar] = useState(false);
+  const [formerResidentAvatarError, setFormerResidentAvatarError] = useState('');
+
+  // Để lưu trữ avatar URLs
+  const [userAvatarUrl, setUserAvatarUrl] = useState(null);
+  const [formerResidentAvatarUrls, setFormerResidentAvatarUrls] = useState({});
+
+  const handleUploadMyAvatar = async () => {
+    setAvatarError('');
+    if (!db || !userId || !auth.currentUser || !newAvatarFile) {
+      setAvatarError("Vui lòng chọn một tệp ảnh để tải lên.");
+      return;
+    }
+  
+    setIsUploadingAvatar(true);
+    setAvatarUploadProgress(0);
+  
+    const storageRef = getStorage();
+    // Đặt tên file là UID của người dùng để dễ quản lý và cho phép ghi đè
+    const fileExtension = newAvatarFile.name.split('.').pop();
+    const avatarPath = `avatars/${userId}.${fileExtension}`; // Ví dụ: avatars/someUid.jpg
+    const avatarRef = ref(storageRef, avatarPath);
+  
+    try {
+      // Tải tệp lên Firebase Storage
+      const uploadTask = uploadBytesResumable(avatarRef, newAvatarFile);
+  
+      uploadTask.on('state_changed',
+        (snapshot) => {
+          const progress = (snapshot.loaded / snapshot.total) * 100;
+          setAvatarUploadProgress(progress);
+        },
+        (error) => {
+          console.error("Lỗi khi tải ảnh avatar:", error);
+          setAvatarError(`Lỗi khi tải ảnh: ${error.message}`);
+          setIsUploadingAvatar(false);
+        },
+        async () => {
+          // Lấy URL công khai sau khi tải lên hoàn tất
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          console.log('Avatar tải lên thành công, URL:', downloadURL);
+  
+          // Cập nhật photoURL trong tài liệu người dùng trong Firestore
+          const userDocRef = doc(db, `artifacts/${currentAppId}/public/data/users`, userId);
+          await updateDoc(userDocRef, { photoURL: downloadURL });
+  
+          setUserAvatarUrl(downloadURL); // Cập nhật state avatar cục bộ
+          setNewAvatarFile(null); // Reset input file
+          setAvatarUploadProgress(0);
+          setIsUploadingAvatar(false);
+          setAvatarError('');
+          alert("Đã cập nhật ảnh đại diện thành công!");
+        }
+      );
+    } catch (error) {
+      console.error("Lỗi tổng thể khi tải avatar:", error);
+      setAvatarError(`Lỗi: ${error.message}`);
+      setIsUploadingAvatar(false);
+    }
+  };
+  
+  // Hàm tải lên avatar cho tiền bối (chỉ admin)
+  const handleUploadFormerResidentAvatar = async (formerResidentId) => {
+    setFormerResidentAvatarError('');
+    if (!db || !userId || userRole !== 'admin' || !newFormerResidentAvatarFile) {
+      setFormerResidentAvatarError("Bạn không có quyền hoặc vui lòng chọn một tệp ảnh.");
+      return;
+    }
+  
+    setIsUploadingFormerResidentAvatar(true);
+    setFormerResidentAvatarUploadProgress(0);
+  
+    const storageRef = getStorage();
+    const fileExtension = newFormerResidentAvatarFile.name.split('.').pop();
+    // Đặt tên file là ID của tiền bối
+    const avatarPath = `avatars/former-residents/${formerResidentId}.${fileExtension}`;
+    const avatarRef = ref(storageRef, avatarPath);
+  
+    try {
+      const uploadTask = uploadBytesResumable(avatarRef, newFormerResidentAvatarFile);
+  
+      uploadTask.on('state_changed',
+        (snapshot) => {
+          const progress = (snapshot.loaded / snapshot.total) * 100;
+          setFormerResidentAvatarUploadProgress(progress);
+        },
+        (error) => {
+          console.error("Lỗi khi tải ảnh avatar tiền bối:", error);
+          setFormerResidentAvatarError(`Lỗi khi tải ảnh: ${error.message}`);
+          setIsUploadingFormerResidentAvatar(false);
+        },
+        async () => {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          console.log('Avatar tiền bối tải lên thành công, URL:', downloadURL);
+  
+          // Cập nhật photoURL trong tài liệu tiền bối trong Firestore
+          const formerResidentDocRef = doc(db, `artifacts/${currentAppId}/public/data/formerResidents`, formerResidentId);
+          await updateDoc(formerResidentDocRef, { photoURL: downloadURL });
+  
+          // Cập nhật state cục bộ
+          setFormerResidentAvatarUrls(prev => ({ ...prev, [formerResidentId]: downloadURL }));
+          setNewFormerResidentAvatarFile(null); // Reset input file
+          setFormerResidentAvatarUploadProgress(0);
+          setIsUploadingFormerResidentAvatar(false);
+          setFormerResidentAvatarError('');
+          alert("Đã cập nhật ảnh đại diện tiền bối thành công!");
+        }
+      );
+    } catch (error) {
+      console.error("Lỗi tổng thể khi tải avatar tiền bối:", error);
+      setFormerResidentAvatarError(`Lỗi: ${error.message}`);
+      setIsUploadingFormerResidentAvatar(false);
+    }
+  };
+
+  // Trong useEffect lắng nghe formerResidents (đã có)
+useEffect(() => {
+  if (!db || !isAuthReady || userId === null) {
+      console.log("Lắng nghe tiền bối: Đang chờ DB, Auth hoặc User ID sẵn sàng.");
+      return;
+  }
+  console.log("Bắt đầu lắng nghe cập nhật thông tin tiền bối...");
+
+  const formerResidentsCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/formerResidents`);
+  const q = query(formerResidentsCollectionRef);
+
+  const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetchedFormerResidents = [];
+      const newFormerResidentAvatarUrls = {}; // MỚI: Để lưu URLs avatar
+      snapshot.forEach(docSnap => {
+          const data = docSnap.data();
+          if (data.deactivatedAt && typeof data.deactivatedAt.toDate === 'function') {
+              data.deactivatedAt = data.deactivatedAt.toDate();
+          }
+          if (data.photoURL) { // MỚI: Lưu photoURL nếu có
+              newFormerResidentAvatarUrls[docSnap.id] = data.photoURL;
+          }
+          fetchedFormerResidents.push({ id: docSnap.id, ...data });
+      });
+      setFormerResidents(fetchedFormerResidents);
+      setFormerResidentAvatarUrls(newFormerResidentAvatarUrls); // MỚI: Cập nhật state
+      console.log("Đã cập nhật thông tin tiền bối:", fetchedFormerResidents);
+  }, (error) => {
+      console.error("Lỗi khi tải dữ liệu tiền bối:", error);
+  });
+
+  return () => {
+      console.log("Hủy đăng ký lắng nghe thông tin tiền bối.");
+      unsubscribe();
+  };
+}, [db, isAuthReady, userId]); // Giữ nguyên dependencies
+
 
 // Mới: Hàm để admin gửi thông báo tùy chỉnh
 const handleSendCustomNotification = async (e) => {
@@ -3302,6 +3468,14 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {formerResidents.map(resident => (
                     <div key={resident.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                      {/* HIỂN THỊ AVATAR */}
+                      {formerResidentAvatarUrls[resident.id] ? (
+                        <img src={formerResidentAvatarUrls[resident.id]} alt={`Avatar của ${resident.name}`} className="w-full h-48 object-cover" />
+                      ) : (
+                        <div className="w-full h-48 bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 text-6xl">
+                          <i className="fas fa-user-circle"></i>
+                        </div>
+                      )}
                       <div className="p-4">
                         <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">{resident.name}</h4>
                         <p className="text-sm text-gray-600 dark:text-gray-300">
@@ -3589,6 +3763,41 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                     className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
                   />
                 </div>
+
+                <div className="mt-8 pt-6 border-t border-gray-300 dark:border-gray-600">
+                <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-4">Ảnh đại diện</h3>
+                <div className="flex items-center space-x-4 mb-4">
+                  {userAvatarUrl ? (
+                    <img src={userAvatarUrl} alt="Avatar" className="w-24 h-24 rounded-full object-cover shadow-lg border border-gray-200 dark:border-gray-700" />
+                  ) : (
+                    <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-5xl">
+                      <i className="fas fa-user-circle"></i>
+                    </div>
+                  )}
+                  <div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => { setNewAvatarFile(e.target.files[0]); setAvatarError(''); }}
+                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    />
+                    {isUploadingAvatar && (
+                      <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2">
+                        <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${avatarUploadProgress}%` }}></div>
+                      </div>
+                    )}
+                    {avatarError && <p className="text-red-500 text-sm mt-2">{avatarError}</p>}
+                    <button
+                      onClick={handleUploadMyAvatar}
+                      className="mt-3 px-4 py-2 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+                      disabled={isUploadingAvatar || !newAvatarFile}
+                    >
+                      {isUploadingAvatar ? <i className="fas fa-spinner fa-spin mr-2"></i> : <i className="fas fa-upload mr-2"></i>}
+                      Tải ảnh đại diện
+                    </button>
+                  </div>
+                </div>
+              </div>
 
                 {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
 
@@ -4057,6 +4266,41 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                     />
                   </div>
 
+                  <div className="mt-8 pt-6 border-t border-gray-300 dark:border-gray-600">
+                  <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-4">Ảnh đại diện</h3>
+                  <div className="flex items-center space-x-4 mb-4">
+                    {userAvatarUrl ? (
+                      <img src={userAvatarUrl} alt="Avatar" className="w-24 h-24 rounded-full object-cover shadow-lg border border-gray-200 dark:border-gray-700" />
+                    ) : (
+                      <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-5xl">
+                        <i className="fas fa-user-circle"></i>
+                      </div>
+                    )}
+                    <div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => { setNewAvatarFile(e.target.files[0]); setAvatarError(''); }}
+                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      />
+                      {isUploadingAvatar && (
+                        <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2">
+                          <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${avatarUploadProgress}%` }}></div>
+                        </div>
+                      )}
+                      {avatarError && <p className="text-red-500 text-sm mt-2">{avatarError}</p>}
+                      <button
+                        onClick={handleUploadMyAvatar}
+                        className="mt-3 px-4 py-2 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+                        disabled={isUploadingAvatar || !newAvatarFile}
+                      >
+                        {isUploadingAvatar ? <i className="fas fa-spinner fa-spin mr-2"></i> : <i className="fas fa-upload mr-2"></i>}
+                        Tải ảnh đại diện
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
                   {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
 
                   <button
@@ -4504,6 +4748,19 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 shadow-md p-4 flex justify-between items-center sticky top-0 z-30">
         <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Quản lý phòng</h1>
+        <div className="flex items-center space-x-3 mb-4">
+          {userAvatarUrl ? (
+            <img src={userAvatarUrl} alt="Avatar" className="w-12 h-12 rounded-full object-cover border border-gray-200 dark:border-gray-700" />
+          ) : (
+            <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-2xl">
+              <i className="fas fa-user-circle"></i>
+            </div>
+          )}
+          <div>
+            <p className="text-gray-800 dark:text-gray-100 font-semibold">{fullName}</p>
+            {userRole && <p className="text-gray-600 dark:text-gray-400 text-sm">{userRole === 'admin' ? 'Trưởng phòng/phó phòng' : 'Thành viên'}</p>}
+          </div>
+        </div>
         <div className="flex items-center space-x-4">
           {/* Biểu tượng thông báo */}
           {userId && ( // Chỉ hiển thị nếu đã đăng nhập
