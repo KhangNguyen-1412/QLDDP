@@ -5083,7 +5083,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
         {/* Content Area */}
         <main className="flex-1 p-4 lg:ml-64 transition-all duration-300 ease-in-out overflow-y-auto">
           {/* Authentication Section - Luôn hiển thị ở đầu nội dung chính */}
-          <div className="mb-8 p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg">
+          {/* <div className="mb-8 p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg">
             <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Xác thực người dùng</h2>
             {!isAuthReady ? (
               <p className="text-blue-600 dark:text-blue-300 text-center text-lg">Đang kết nối Firebase...</p>
@@ -5157,7 +5157,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 )}
               </>
             )}
-          </div>
+          </div> */}
 
           {userId ? (
             renderSection()
