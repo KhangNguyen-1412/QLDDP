@@ -5149,6 +5149,80 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
           </div>
         </div>
       )}
+
+      {editingFormerResident && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md">
+                  <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">Chỉnh sửa thông tin tiền bối</h3>
+                  <form onSubmit={handleUpdateFormerResident} className="space-y-4">
+                      <div>
+                          <label htmlFor="editFormerName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Họ tên:</label>
+                          <input type="text" id="editFormerName" value={editingFormerResident.name}
+                              onChange={(e) => setEditingFormerResident({ ...editingFormerResident, name: e.target.value })}
+                              className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500" />
+                      </div>
+                      <div>
+                          <label htmlFor="editFormerEmail" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email:</label>
+                          <input type="email" id="editFormerEmail" value={editingFormerResident.email}
+                              onChange={(e) => setEditingFormerResident({ ...editingFormerResident, email: e.target.value })}
+                              className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500" />
+                      </div>
+                      <div>
+                          <label htmlFor="editFormerPhone" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">SĐT:</label>
+                          <input type="text" id="editFormerPhone" value={editingFormerResident.phoneNumber}
+                              onChange={(e) => setEditingFormerResident({ ...editingFormerResident, phoneNumber: e.target.value })}
+                              className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500" />
+                      </div>
+                      <div>
+                          <label htmlFor="editFormerStudentId" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">MSSV:</label>
+                          <input type="text" id="editFormerStudentId" value={editingFormerResident.studentId}
+                              onChange={(e) => setEditingFormerResident({ ...editingFormerResident, studentId: e.target.value })}
+                              className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500" />
+                      </div>
+                      <div>
+                          <label htmlFor="editFormerBirthday" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày sinh:</label>
+                          <input type="date" id="editFormerBirthday" value={editingFormerResident.birthday}
+                              onChange={(e) => setEditingFormerResident({ ...editingFormerResident, birthday: e.target.value })}
+                              className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500" />
+                      </div>
+                      <div>
+                          <label htmlFor="editFormerDormEntryDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày nhập KTX:</label>
+                          <input type="date" id="editFormerDormEntryDate" value={editingFormerResident.dormEntryDate}
+                              onChange={(e) => setEditingFormerResident({ ...editingFormerResident, dormEntryDate: e.target.value })}
+                              className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500" />
+                      </div>
+                      <div>
+                          <label htmlFor="editFormerAcademicLevel" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Cấp:</label>
+                          <input type="text" id="editFormerAcademicLevel" value={editingFormerResident.academicLevel}
+                              onChange={(e) => setEditingFormerResident({ ...editingFormerResident, academicLevel: e.target.value })}
+                              className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500" />
+                      </div>
+                      <div>
+                          <label htmlFor="editFormerDeactivatedDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày ra khỏi phòng (Ngày vô hiệu hóa):</label>
+                          <input type="date" id="editFormerDeactivatedDate" value={editingFormerResident.deactivatedAt}
+                              onChange={(e) => setEditingFormerResident({ ...editingFormerResident, deactivatedAt: e.target.value })}
+                              className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500" />
+                      </div>
+                      {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
+                      <div className="flex justify-between space-x-4 mt-6">
+                          <button
+                              type="submit"
+                              className="flex-1 px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+                          >
+                              <i className="fas fa-save mr-2"></i> Lưu thay đổi
+                          </button>
+                          <button
+                              type="button"
+                              onClick={() => { setEditingFormerResident(null); setAuthError(''); }}
+                              className="flex-1 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
+                          >
+                              Hủy
+                          </button>
+                      </div>
+                  </form>
+              </div>
+          </div>
+      )}
       {/* Forgot Password Modal */}
       {showForgotPasswordModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
