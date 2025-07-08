@@ -10,7 +10,6 @@ import {
   updatePassword
 } from 'firebase/auth';
 import { getFirestore, doc, setDoc, collection, onSnapshot, query, addDoc, serverTimestamp, deleteDoc, getDocs, where, getDoc, updateDoc, orderBy  } from 'firebase/firestore';
-import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage'; // Thêm imports cho Firebase Storag
 import axios from 'axios';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
@@ -213,6 +212,19 @@ function App() {
   const [searchTermMemory, setSearchTermMemory] = useState('');
   const [filterUploaderMemory, setFilterUploaderMemory] = useState('all'); // 'all' hoặc userId
 
+// Thêm các states cho chức năng chỉnh sửa kỷ niệm
+const [editingMemory, setEditingMemory] = useState(null); // Lưu bài đăng kỷ niệm đang được chỉnh sửa
+const [editMemoryEventName, setEditMemoryEventName] = useState('');
+const [editMemoryPhotoDate, setEditMemoryPhotoDate] = useState('');
+const [editMemoryNewFiles, setEditMemoryNewFiles] = useState([]); // File mới thêm vào bài đăng đã có
+const [isUploadingEditMemory, setIsUploadingEditMemory] = useState(false);
+const [editMemoryUploadProgress, setEditMemoryUploadProgress] = useState(0);
+const [editMemoryError, setEditMemoryError] = useState('');
+
+// States mới cho Lightbox/Zoom
+const [selectedMemoryForLightbox, setSelectedMemoryForLightbox] = useState(null); // Lưu toàn bộ đối tượng memory
+const [currentLightboxIndex, setCurrentLightboxIndex] = useState(0); // Index của file đang hiển thị
+
   // States for Former Residents <-- KHAI BÁO CHÍNH XÁC VÀ DUY NHẤT Ở ĐÂY
   const [formerResidents, setFormerResidents] = useState([]); // <-- Đảm bảo dòng này tồn tại và không bị xóa
   const [newFormerResidentName, setNewFormerResidentName] = useState('');
@@ -247,69 +259,153 @@ function App() {
   const [selectedImageToZoom, setSelectedImageToZoom] = useState(null); // Lưu URL của ảnh muốn phóng to
 
    // Mới: Hàm để thêm một kỷ niệm mới
-// Trong hàm handleAddMemory
-const handleAddMemory = async (e) => {
-  e.preventDefault();
-  setMemoryError('');
-  if (!db || !auth || !newMemoryEventName || !newMemoryPhotoDate || !newMemoryImageFile) {
-    setMemoryError("Vui lòng điền đầy đủ thông tin và chọn file."); // Sửa thông báo
-    return;
-  }
-  if (!userId) {
-    setMemoryError("Bạn cần đăng nhập để đăng kỷ niệm.");
-    return;
-  }
-
-  setIsUploadingMemory(true);
-  setUploadProgress(0);
-
-  try {
-    
-    const formData = new FormData();
-    formData.append('file', newMemoryImageFile);
-    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET_MEMORY);
-
-    const response = await axios.post(CLOUDINARY_API_URL_AUTO_UPLOAD, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-      onUploadProgress: (progressEvent) => {
-        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-        setUploadProgress(percentCompleted);
-      },
-    });
-
-    const fileUrl = response.data.secure_url; // URL của ảnh hoặc video
-    const publicId = response.data.public_id; // Public ID từ Cloudinary
-    const resourceType = response.data.resource_type; // 'image' hoặc 'video'
-
-    console.log('File có sẵn tại:', fileUrl, 'Public ID:', publicId, 'Loại:', resourceType);
-
-    const memoriesCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/memories`);
+   const handleAddMemory = async (e) => {
+    e.preventDefault();
+    setMemoryError('');
+    // Kiểm tra newMemoryImageFile.length thay vì chỉ một file
+    if (!db || !auth || !newMemoryEventName || !newMemoryPhotoDate || newMemoryImageFile.length === 0) {
+      setMemoryError("Vui lòng điền đầy đủ thông tin và chọn ít nhất một file.");
+      return;
+    }
+    if (!userId) {
+      setMemoryError("Bạn cần đăng nhập để đăng kỷ niệm.");
+      return;
+    }
+  
+    setIsUploadingMemory(true);
+    setUploadProgress(0);
+  
+    try {
+      const uploadedFilesInfo = []; // Mảng để lưu thông tin (URL, publicId, fileType) của tất cả các file
+  
+      // Lặp qua từng file đã chọn để tải lên Cloudinary
+      for (const file of newMemoryImageFile) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET_MEMORY);
+  
+        const response = await axios.post(CLOUDINARY_API_URL_AUTO_UPLOAD, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+          onUploadProgress: (progressEvent) => {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setUploadProgress(percentCompleted);
+          },
+        });
+        // Thêm thông tin file đã tải lên vào mảng
+        uploadedFilesInfo.push({
+          fileUrl: response.data.secure_url,
+          publicId: response.data.public_id,
+          fileType: response.data.resource_type,
+        });
+      }
+  
+      const memoriesCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/memories`);
       await addDoc(memoriesCollectionRef, {
         eventName: newMemoryEventName.trim(),
         photoDate: newMemoryPhotoDate,
-        fileUrl: fileUrl, // Lưu URL của file (ảnh hoặc video)
-        publicId: publicId, // Lưu publicId
-        fileType: resourceType, // MỚI: Lưu loại file ('image' hoặc 'video')
+        files: uploadedFilesInfo, // LƯU MẢNG CÁC ĐỐI TƯỢNG FILE VÀO TRƯỜNG 'files'
         uploadedBy: userId,
         uploadedAt: serverTimestamp(),
         uploadedByName: loggedInResidentProfile ? loggedInResidentProfile.name : (allUsersData.find(u => u.id === userId)?.fullName || 'Người dùng ẩn danh')
       });
-
+  
+      // Reset form và trạng thái
       setNewMemoryEventName('');
       setNewMemoryPhotoDate('');
-      setNewMemoryImageFile(null);
+      setNewMemoryImageFile([]); // Reset mảng file
       setUploadProgress(0);
       setIsUploadingMemory(false);
       setMemoryError('');
       alert("Đã thêm kỷ niệm mới thành công!");
       console.log("Đã thêm kỷ niệm mới thành công!");
-
+  
     } catch (error) {
       console.error("Lỗi khi thêm kỷ niệm (tổng thể):", error);
       setMemoryError(`Lỗi khi thêm kỷ niệm: ${error.message}`);
       setIsUploadingMemory(false);
+    }
+  };
+
+  // MỚI: Hàm để bắt đầu chỉnh sửa kỷ niệm
+  const handleEditMemory = (memory) => {
+    setEditingMemory(memory);
+    setEditMemoryEventName(memory.eventName);
+    setEditMemoryPhotoDate(memory.photoDate);
+    // Khởi tạo editMemoryNewFiles là mảng rỗng khi bắt đầu chỉnh sửa
+    setEditMemoryNewFiles([]);
+    setEditMemoryError('');
+    // Đảm bảo photoDate được định dạng đúng cho input type="date"
+    setEditMemoryPhotoDate(memory.photoDate || '');
+  };
+
+  // MỚI: Hàm để lưu thay đổi kỷ niệm
+  const handleUpdateMemory = async (e) => {
+    e.preventDefault();
+    setEditMemoryError('');
+    if (!db || !auth || !editingMemory) {
+      setEditMemoryError("Không có kỷ niệm nào được chọn để cập nhật.");
+      return;
+    }
+    if (!editMemoryEventName || !editMemoryPhotoDate) {
+      setEditMemoryError("Vui lòng điền đầy đủ thông tin sự kiện và ngày.");
+      return;
+    }
+
+    setIsUploadingEditMemory(true);
+    setEditMemoryUploadProgress(0);
+
+    try {
+      // Bắt đầu với các file hiện có trong bài đăng đang chỉnh sửa
+      // Đảm bảo editingMemory.files luôn là một mảng
+      let updatedFilesInfo = editingMemory.files ? [...editingMemory.files] : [];
+
+      // Tải lên các file mới được thêm vào
+      if (editMemoryNewFiles.length > 0) {
+        for (const file of editMemoryNewFiles) {
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET_MEMORY);
+
+          const response = await axios.post(CLOUDINARY_API_URL_AUTO_UPLOAD, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+            onUploadProgress: (progressEvent) => {
+              const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+              setEditMemoryUploadProgress(percentCompleted);
+            },
+          });
+          // Thêm thông tin file mới vào mảng
+          updatedFilesInfo.push({
+            fileUrl: response.data.secure_url,
+            publicId: response.data.public_id,
+            fileType: response.data.resource_type,
+          });
+        }
+      }
+
+      const memoryDocRef = doc(db, `artifacts/${currentAppId}/public/data/memories`, editingMemory.id);
+      await updateDoc(memoryDocRef, {
+        eventName: editMemoryEventName.trim(),
+        photoDate: editMemoryPhotoDate,
+        files: updatedFilesInfo, // Cập nhật trường 'files' với mảng mới
+        lastUpdatedBy: userId,
+        lastUpdatedAt: serverTimestamp()
+      });
+
+      // Reset trạng thái và đóng modal
+      setEditingMemory(null);
+      setEditMemoryEventName('');
+      setEditMemoryPhotoDate('');
+      setEditMemoryNewFiles([]);
+      setEditMemoryUploadProgress(0);
+      setIsUploadingEditMemory(false);
+      setEditMemoryError('');
+      alert("Đã cập nhật kỷ niệm thành công!");
+    } catch (error) {
+      console.error("Lỗi khi cập nhật kỷ niệm:", error);
+      setEditMemoryError(`Lỗi khi cập nhật kỷ niệm: ${error.message}`);
+      setIsUploadingEditMemory(false);
     }
   };
 
@@ -894,20 +990,14 @@ const handleSendCustomNotification = async (e) => {
     }
   };
 
- 
-
-  // Mới: Hàm để xóa một kỷ niệm (chỉ admin)
-// Trong hàm handleDeleteMemory
-// Trong hàm handleDeleteMemory
 // MỚI: Hàm để xóa một kỷ niệm (admin có thể xóa bất kỳ, người đăng tải có thể xóa của chính họ)
-const handleDeleteMemory = async (memoryId, fileUrl, publicId, uploadedByUserId) => { // Thêm uploadedByUserId
+const handleDeleteMemory = async (memoryId, files, uploadedByUserId) => {
   setMemoryError('');
   if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) {
     setMemoryError("Hệ thống chưa sẵn sàng hoặc bạn chưa đăng nhập.");
     return;
   }
 
-  // Kiểm tra quyền xóa Firestore document
   const isAllowedToDelete = userRole === 'admin' || userId === uploadedByUserId;
 
   if (!isAllowedToDelete) {
@@ -920,25 +1010,25 @@ const handleDeleteMemory = async (memoryId, fileUrl, publicId, uploadedByUserId)
   }
 
   try {
-    // Xóa tài liệu Firestore trước
+    // 1. Xóa tài liệu Firestore trước
     await deleteDoc(doc(db, `artifacts/${currentAppId}/public/data/memories`, memoryId));
 
-    // ===============================================
-    // XÓA FILE TỪ CLOUDINARY QUA CLOUD FUNCTION (KHUYẾN NGHỊ)
-    // ===============================================
-    if (publicId) {
-      console.log(`Đang cố gắng xóa file Cloudinary với publicId: ${publicId}`);
-      // Đây là placeholder cho việc gọi Cloud Function của bạn
-      // Bạn cần tạo một Cloud Function để xử lý việc xóa file Cloudinary an toàn
-      // Hàm này sẽ nhận publicId và xóa file khỏi Cloudinary bằng API_SECRET
-      // Ví dụ: await axios.post('/api/deleteCloudinaryAsset', { publicId: publicId, resourceType: 'auto' });
-      alert("Chức năng xóa file trên Cloudinary yêu cầu triển khai Cloud Function. Kỷ niệm đã được xóa khỏi danh sách.");
+    // 2. Xóa từng file từ Cloudinary (CHỈ NẾU CÓ CLOUD FUNCTION ĐỂ XỬ LÝ)
+    // Đây là phần yêu cầu backend (Cloud Function) để xóa an toàn bằng API_SECRET
+    if (files && files.length > 0) {
+      for (const fileInfo of files) {
+        if (fileInfo.publicId) {
+          console.log(`Đang cố gắng xóa file Cloudinary với publicId: ${fileInfo.publicId}, loại: ${fileInfo.fileType}`);
+          // VÍ DỤ: Gọi Cloud Function
+          // await axios.post('/api/deleteCloudinaryAsset', { publicId: fileInfo.publicId, resourceType: fileInfo.fileType });
+        }
+      }
+      alert("Kỷ niệm đã được xóa khỏi danh sách. Chức năng xóa file trên Cloudinary yêu cầu triển khai Cloud Function để xóa file thực tế.");
+    } else {
+      alert("Đã xóa kỷ niệm thành công!");
     }
-    // ===============================================
-    // KẾT THÚC: XÓA FILE TỪ CLOUDINARY
-    // ===============================================
 
-    console.log(`Đã xóa kỷ niệm ${memoryId} và file liên quan (nếu có).`);
+    console.log(`Đã xóa kỷ niệm ${memoryId} và các file liên quan (nếu có).`);
   } catch (error) {
     console.error("Lỗi khi xóa kỷ niệm:", error);
     setMemoryError(`Lỗi khi xóa kỷ niệm: ${error.message}`);
@@ -1626,66 +1716,62 @@ const handleChangePassword = async () => {
 
 
   // Mới: Lắng nghe cập nhật Kỷ niệm phòng
-// MỚI: Lắng nghe cập nhật Kỷ niệm phòng
-useEffect(() => {
-  if (!db || !isAuthReady || userId === null) {
-    console.log("Lắng nghe kỷ niệm: Đang chờ DB, Auth hoặc User ID sẵn sàng.");
-    return;
-  }
-  console.log("Bắt đầu lắng nghe cập nhật kỷ niệm phòng...");
-
-  const memoriesCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/memories`);
-  let q = query(memoriesCollectionRef); // Bắt đầu với truy vấn cơ bản
-
-  // THÊM: Lọc theo người đăng
-  if (filterUploaderMemory !== 'all') {
-    q = query(q, where("uploadedBy", "==", filterUploaderMemory));
-  }
-
-  // THÊM: Lọc theo tên sự kiện (Firestore không hỗ trợ tìm kiếm text full-text,
-  // nên chỉ có thể tìm kiếm theo tiền tố hoặc chính xác)
-  // Để tìm kiếm theo tiền tố (startsWith), bạn cần một truy vấn `where` và `orderBy` phù hợp.
-  // Nếu chỉ tìm kiếm chính xác, dùng `where("eventName", "==", searchTermMemory.trim())`
-  // Để tìm kiếm gần đúng/chứa, bạn sẽ cần Full-text search (ví dụ: Algolia, ElasticSearch)
-  // hoặc Cloud Functions. Ở đây, tôi sẽ ví dụ tìm kiếm theo sự kiện chính xác hoặc bỏ qua nếu trống.
-  if (searchTermMemory.trim() !== '') {
-    // Để tìm kiếm tiền tố (ví dụ: "Tết" sẽ tìm "Tết 2023", "Tết Nguyên Đán")
-    // đòi hỏi kết hợp `where` và `orderBy`. Nếu chỉ tìm khớp chính xác, thì đơn giản hơn.
-    // Nếu bạn muốn tìm kiếm "chứa", bạn cần giải pháp ngoài Firestore.
-    // Đây là ví dụ tìm kiếm chính xác hoặc tìm kiếm tiền tố (nếu trường được index đúng và không có orderBy nào khác)
-    q = query(q, where("eventName", "==", searchTermMemory.trim()));
-    // Hoặc nếu bạn muốn tìm theo tiền tố:
-    // q = query(q, where("eventName", ">=", searchTermMemory.trim()), where("eventName", "<=", searchTermMemory.trim() + '\uf8ff'));
-  }
-
-
-  // Sắp xếp các kỷ niệm (quan trọng cho hiệu suất khi kết hợp với where)
-  // Firestore yêu cầu orderBy trên trường được sử dụng trong range query (nếu có)
-  // và thường orderBy trên trường được lọc là tốt.
-  q = query(q, orderBy("uploadedAt", "desc")); // Sắp xếp theo ngày đăng giảm dần (mới nhất lên đầu)
-
-
-  const unsubscribe = onSnapshot(q, (snapshot) => {
-    const fetchedMemories = [];
-    snapshot.forEach(docSnap => {
-      const data = docSnap.data();
-      if (data.uploadedAt && typeof data.uploadedAt.toDate === 'function') {
-        data.uploadedAt = data.uploadedAt.toDate();
-      }
-      fetchedMemories.push({ id: docSnap.id, ...data });
+  useEffect(() => {
+    if (!db || !isAuthReady || userId === null) {
+      console.log("Lắng nghe kỷ niệm: Đang chờ DB, Auth hoặc User ID sẵn sàng.");
+      return;
+    }
+    console.log("Bắt đầu lắng nghe cập nhật kỷ niệm phòng...");
+  
+    const memoriesCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/memories`);
+    let q = query(memoriesCollectionRef);
+  
+    if (filterUploaderMemory !== 'all') {
+      q = query(q, where("uploadedBy", "==", filterUploaderMemory));
+    }
+  
+    if (searchTermMemory.trim() !== '') {
+      q = query(q, where("eventName", "==", searchTermMemory.trim()));
+    }
+  
+    q = query(q, orderBy("uploadedAt", "desc"));
+  
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetchedMemories = [];
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.uploadedAt && typeof data.uploadedAt.toDate === 'function') {
+          data.uploadedAt = data.uploadedAt.toDate();
+        }
+        // Đảm bảo 'files' là một MẢNG. Nếu không tồn tại hoặc là chuỗi cũ, tạo lại.
+        if (!data.files) {
+          data.files = [];
+          if (data.fileUrl) { // Nếu có fileUrl cũ (chỉ một file)
+            data.files.push({
+              fileUrl: data.fileUrl,
+              publicId: data.publicId,
+              fileType: data.fileType || (data.fileUrl.match(/\.(mp4|mov|avi|wmv|flv)$/i) ? 'video' : 'image') // Đoán loại nếu không có
+            });
+          }
+        }
+        // Xóa các trường cũ không cần thiết nếu bạn đã chuyển hoàn toàn sang 'files'
+        delete data.fileUrl;
+        delete data.publicId;
+        delete data.fileType;
+  
+        fetchedMemories.push({ id: docSnap.id, ...data });
+      });
+      setMemories(fetchedMemories);
+      console.log("Đã cập nhật kỷ niệm phòng (có bộ lọc):", fetchedMemories);
+    }, (error) => {
+      console.error("Lỗi khi tải dữ liệu kỷ niệm (có bộ lọc):", error);
     });
-    setMemories(fetchedMemories);
-    console.log("Đã cập nhật kỷ niệm phòng (có bộ lọc):", fetchedMemories);
-  }, (error) => {
-    console.error("Lỗi khi tải dữ liệu kỷ niệm (có bộ lọc):", error);
-  });
-
-  return () => {
-    console.log("Hủy đăng ký lắng nghe kỷ niệm.");
-    unsubscribe();
-  };
-// THÊM searchTermMemory và filterUploaderMemory vào dependency array
-}, [db, isAuthReady, userId, searchTermMemory, filterUploaderMemory]);
+  
+    return () => {
+      console.log("Hủy đăng ký lắng nghe kỷ niệm.");
+      unsubscribe();
+    };
+  }, [db, isAuthReady, userId, searchTermMemory, filterUploaderMemory]);
 
   // Mới: Lắng nghe cập nhật Thông tin tiền bối
   useEffect(() => {
@@ -1851,7 +1937,7 @@ useEffect(() => {
   const handleAddResident = async () => {
     setAuthError('');
     setBillingError('');
-    if (!db || !userId || userRole !== 'admin' && userId === 'BJHeKQkyE9VhWCpMfaONEf2N28H2') { // Chỉ admin mới có thể thêm cư dân
+    if (!db || !userId || (userRole !== 'admin' && userId === 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) { // Chỉ admin mới có thể thêm cư dân
       console.error("Hệ thống chưa sẵn sàng hoặc bạn không có quyền.");
       setAuthError("Bạn không có quyền thực hiện thao tác này.");
       return;
@@ -3500,12 +3586,13 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                   />
                 </div>
                 <div>
-                  <label htmlFor="imageFile" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Chọn ảnh hoặc video:</label> {/* Sửa nhãn */}
+                  <label htmlFor="imageFile" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Chọn ảnh hoặc video:</label>
                   <input
                     type="file"
                     id="imageFile"
-                    accept="image/*,video/*" // MỚI: Chấp nhận cả ảnh và video
-                    onChange={(e) => setNewMemoryImageFile(e.target.files[0])}
+                    accept="image/*,video/*"
+                    multiple // RẤT QUAN TRỌNG: Cho phép chọn nhiều file
+                    onChange={(e) => setNewMemoryImageFile(Array.from(e.target.files))} // Lưu TẤT CẢ các file vào mảng
                     className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
                   />
                 </div>
@@ -4641,7 +4728,8 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                         type="file"
                         id="imageFile"
                         accept="image/*,video/*"
-                        onChange={(e) => setNewMemoryImageFile(e.target.files[0])}
+                        multiple // RẤT QUAN TRỌNG: Cho phép chọn nhiều file
+                        onChange={(e) => setNewMemoryImageFile(Array.from(e.target.files))} // Lưu TẤT CẢ các file vào mảng
                         className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
                       />
                     </div>
@@ -4704,13 +4792,19 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                       <div
                         key={memory.id}
                         className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer"
-                        onClick={() => setSelectedImageToZoom(memory)} // Truyền toàn bộ đối tượng memory
+                        // Click handler sẽ mở lightbox cho toàn bộ kỷ niệm
+                        onClick={() => {
+                          setSelectedMemoryForLightbox(memory);
+                          setCurrentLightboxIndex(0); // Bắt đầu từ ảnh/video đầu tiên
+                        }}
                       >
-                        {/* Dòng này ĐÃ SỬA để dùng memory.fileUrl và phân biệt video/image */}
-                        {memory.fileType === 'video' ? (
-                          <video src={memory.fileUrl} controls className="w-full h-48 object-cover"></video>
-                        ) : (
-                          <img src={memory.fileUrl} alt={memory.eventName} className="w-full h-48 object-cover" />
+                        {/* Hiển thị ảnh/video ĐẦU TIÊN làm thumbnail của kỷ niệm */}
+                        {memory.files && memory.files.length > 0 && (
+                          memory.files[0].fileType === 'video' ? (
+                            <video src={memory.files[0].fileUrl} controls className="w-full h-48 object-cover"></video>
+                          ) : (
+                            <img src={memory.files[0].fileUrl} alt={memory.eventName} className="w-full h-48 object-cover" />
+                          )
                         )}
                         <div className="p-4">
                           <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">{memory.eventName}</h4>
@@ -4720,21 +4814,30 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                           <p className="text-sm text-gray-600 dark:text-gray-300">
                             <i className="fas fa-upload mr-2"></i>Đăng bởi: {memory.uploadedByName || 'Ẩn danh'} vào {memory.uploadedAt?.toLocaleDateString('vi-VN')}
                           </p>
-                          {/* Logic hiển thị nút xóa cho admin HOẶC người đăng tải */}
+                          <p className="text-sm text-gray-600 dark:text-gray-300">
+                            <i className="fas fa-images mr-2"></i>Số file: {memory.files?.length || 0} {/* Hiển thị số lượng file */}
+                          </p>
                           {(userRole === 'admin' || userId === memory.uploadedBy) && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleDeleteMemory(memory.id, memory.fileUrl, memory.publicId, memory.uploadedBy); }}
-                              className="mt-4 px-4 py-2 bg-red-500 text-white rounded-lg shadow hover:bg-red-600 transition-colors duration-200"
-                            >
-                              <i className="fas fa-trash mr-2"></i>Xóa
-                            </button>
+                            <div className="flex mt-4 space-x-2">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleEditMemory(memory); }} // Nút chỉnh sửa
+                                className="px-4 py-2 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-600 transition-colors duration-200"
+                              >
+                                <i className="fas fa-edit mr-2"></i>Chỉnh sửa
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleDeleteMemory(memory.id, memory.files, memory.uploadedBy); }} // Truyền mảng files
+                                className="px-4 py-2 bg-red-500 text-white rounded-lg shadow hover:bg-red-600 transition-colors duration-200"
+                              >
+                                <i className="fas fa-trash mr-2"></i>Xóa
+                              </button>
+                            </div>
                           )}
                         </div>
                       </div>
                     ))}
                   </div>
-                )}
-                
+                )}                
               </div>
             );
             case 'formerResidents': // MỚI: Thông tin tiền bối (Dành cho THÀNH VIÊN)
@@ -5603,6 +5706,156 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               className="mt-6 w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
             >
               Đóng
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal chỉnh sửa kỷ niệm */}
+      {editingMemory && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">Chỉnh sửa kỷ niệm</h3>
+            <form onSubmit={handleUpdateMemory} className="space-y-4">
+              <div>
+                <label htmlFor="editEventName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Sự kiện:</label>
+                <input
+                  type="text"
+                  id="editEventName"
+                  value={editMemoryEventName}
+                  onChange={(e) => setEditMemoryEventName(e.target.value)}
+                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                />
+              </div>
+              <div>
+                <label htmlFor="editPhotoDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày chụp/quay:</label>
+                <input
+                  type="date"
+                  id="editPhotoDate"
+                  value={editMemoryPhotoDate}
+                  onChange={(e) => setEditMemoryPhotoDate(e.target.value)}
+                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                />
+              </div>
+              {/* Hiển thị các ảnh/video hiện có và tùy chọn xóa */}
+              <div className="border p-3 rounded-lg bg-gray-50 dark:bg-gray-700">
+                <p className="font-semibold text-gray-700 dark:text-gray-300 mb-2">File hiện có:</p>
+                {editingMemory.files && editingMemory.files.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    {editingMemory.files.map((file, index) => (
+                      <div key={index} className="relative group">
+                        {file.fileType === 'video' ? (
+                          <video src={file.fileUrl} controls className="w-full h-24 object-cover rounded-lg"></video>
+                        ) : (
+                          <img src={file.fileUrl} alt={`Memory ${index}`} className="w-full h-24 object-cover rounded-lg" />
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            // Tạo một bản sao của mảng files, lọc bỏ file bị xóa
+                            const updatedFiles = editingMemory.files.filter((_, i) => i !== index);
+                            // Cập nhật state editingMemory với mảng files mới
+                            setEditingMemory({ ...editingMemory, files: updatedFiles });
+                            // Xóa file khỏi Cloudinary (cần Cloud Function, chỉ là alert ở đây)
+                            if (file.publicId) {
+                              alert(`Chức năng xóa file Cloudinary cho ${file.publicId} cần Cloud Function.`);
+                            }
+                          }}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <i className="fas fa-times"></i>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 dark:text-gray-400 italic">Không có file nào.</p>
+                )}
+              </div>
+              {/* Thêm file mới */}
+              <div>
+                <label htmlFor="editNewFiles" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Thêm file mới (ảnh/video):</label>
+                <input
+                  type="file"
+                  id="editNewFiles"
+                  accept="image/*,video/*"
+                  multiple // Cho phép thêm nhiều file mới
+                  onChange={(e) => setEditMemoryNewFiles(Array.from(e.target.files))}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                />
+              </div>
+              {isUploadingEditMemory && (
+                <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                  <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${editMemoryUploadProgress}%` }}></div>
+                </div>
+              )}
+              {editMemoryError && <p className="text-red-500 text-sm text-center mt-4">{editMemoryError}</p>}
+              <button
+                type="submit"
+                className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75"
+                disabled={isUploadingEditMemory}
+              >
+                {isUploadingEditMemory ? <i className="fas fa-spinner fa-spin mr-2"></i> : <i className="fas fa-save mr-2"></i>}
+                Lưu thay đổi
+              </button>
+              <button
+                type="button"
+                onClick={() => { setEditingMemory(null); setEditMemoryError(''); }}
+                className="w-full mt-2 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
+              >
+                Hủy
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal hiển thị ảnh/video phóng to (Lightbox) */}
+      {selectedMemoryForLightbox && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
+          onClick={() => setSelectedMemoryForLightbox(null)} // Đóng modal khi nhấp ra ngoài
+        >
+          <div className="relative max-w-full max-h-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+            {selectedMemoryForLightbox.files && selectedMemoryForLightbox.files.length > 0 && (
+              <>
+                {/* Hiển thị file hiện tại theo currentLightboxIndex */}
+                {selectedMemoryForLightbox.files[currentLightboxIndex].fileType === 'video' ? (
+                  <video src={selectedMemoryForLightbox.files[currentLightboxIndex].fileUrl} controls autoPlay loop className="max-w-full max-h-[90vh] object-contain shadow-lg rounded-lg"></video>
+                ) : (
+                  <img
+                    src={selectedMemoryForLightbox.files[currentLightboxIndex].fileUrl}
+                    alt={`${selectedMemoryForLightbox.eventName} - ${currentLightboxIndex + 1}`}
+                    className="max-w-full max-h-[90vh] object-contain shadow-lg rounded-lg"
+                  />
+                )}
+
+                {/* Nút điều hướng Previous */}
+                {selectedMemoryForLightbox.files.length > 1 && (
+                  <button
+                    onClick={() => setCurrentLightboxIndex(prev => (prev === 0 ? selectedMemoryForLightbox.files.length - 1 : prev - 1))}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-white text-4xl bg-gray-800 bg-opacity-50 rounded-full w-12 h-12 flex items-center justify-center hover:bg-opacity-75 transition-colors"
+                  >
+                    &#10094;
+                  </button>
+                )}
+
+                {/* Nút điều hướng Next */}
+                {selectedMemoryForLightbox.files.length > 1 && (
+                  <button
+                    onClick={() => setCurrentLightboxIndex(prev => (prev === selectedMemoryForLightbox.files.length - 1 ? 0 : prev + 1))}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white text-4xl bg-gray-800 bg-opacity-50 rounded-full w-12 h-12 flex items-center justify-center hover:bg-opacity-75 transition-colors"
+                  >
+                    &#10095;
+                  </button>
+                )}
+              </>
+            )}
+            <button
+              onClick={() => setSelectedMemoryForLightbox(null)}
+              className="absolute top-4 right-4 text-white text-3xl bg-gray-800 bg-opacity-50 rounded-full w-10 h-10 flex items-center justify-center hover:bg-opacity-75 transition-colors"
+            >
+              &times;
             </button>
           </div>
         </div>
