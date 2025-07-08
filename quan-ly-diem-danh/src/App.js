@@ -130,6 +130,8 @@ function App() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploadingMemory, setIsUploadingMemory] = useState(false);
   const [memoryError, setMemoryError] = useState('');
+  const [searchTermMemory, setSearchTermMemory] = useState('');
+  const [filterUploaderMemory, setFilterUploaderMemory] = useState('all'); // 'all' hoặc userId
 
   // States for Former Residents <-- KHAI BÁO CHÍNH XÁC VÀ DUY NHẤT Ở ĐÂY
   const [formerResidents, setFormerResidents] = useState([]); // <-- Đảm bảo dòng này tồn tại và không bị xóa
@@ -1521,40 +1523,66 @@ const handleChangePassword = async () => {
 
 
   // Mới: Lắng nghe cập nhật Kỷ niệm phòng
-  useEffect(() => {
-    if (!db || !isAuthReady || userId === null) {
-      console.log("Lắng nghe kỷ niệm: Đang chờ DB, Auth hoặc User ID sẵn sàng.");
-      return;
-    }
-    console.log("Bắt đầu lắng nghe cập nhật kỷ niệm phòng...");
+// MỚI: Lắng nghe cập nhật Kỷ niệm phòng
+useEffect(() => {
+  if (!db || !isAuthReady || userId === null) {
+    console.log("Lắng nghe kỷ niệm: Đang chờ DB, Auth hoặc User ID sẵn sàng.");
+    return;
+  }
+  console.log("Bắt đầu lắng nghe cập nhật kỷ niệm phòng...");
 
-    const memoriesCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/memories`);
-    const q = query(memoriesCollectionRef);
+  const memoriesCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/memories`);
+  let q = query(memoriesCollectionRef); // Bắt đầu với truy vấn cơ bản
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedMemories = [];
-      snapshot.forEach(docSnap => {
-        const data = docSnap.data();
-        if (data.uploadedAt && typeof data.uploadedAt.toDate === 'function') {
-          data.uploadedAt = data.uploadedAt.toDate();
-        }
-        // photoDate có thể là string nếu bạn lưu từ input type="date"
-        // Không cần chuyển đổi nếu nó đã là string.
-        fetchedMemories.push({ id: docSnap.id, ...data });
-      });
-      // Sắp xếp theo ngày đăng giảm dần
-      fetchedMemories.sort((a, b) => (b.uploadedAt || 0) - (a.uploadedAt || 0));
-      setMemories(fetchedMemories);
-      console.log("Đã cập nhật kỷ niệm phòng:", fetchedMemories);
-    }, (error) => {
-      console.error("Lỗi khi tải dữ liệu kỷ niệm:", error);
+  // THÊM: Lọc theo người đăng
+  if (filterUploaderMemory !== 'all') {
+    q = query(q, where("uploadedBy", "==", filterUploaderMemory));
+  }
+
+  // THÊM: Lọc theo tên sự kiện (Firestore không hỗ trợ tìm kiếm text full-text,
+  // nên chỉ có thể tìm kiếm theo tiền tố hoặc chính xác)
+  // Để tìm kiếm theo tiền tố (startsWith), bạn cần một truy vấn `where` và `orderBy` phù hợp.
+  // Nếu chỉ tìm kiếm chính xác, dùng `where("eventName", "==", searchTermMemory.trim())`
+  // Để tìm kiếm gần đúng/chứa, bạn sẽ cần Full-text search (ví dụ: Algolia, ElasticSearch)
+  // hoặc Cloud Functions. Ở đây, tôi sẽ ví dụ tìm kiếm theo sự kiện chính xác hoặc bỏ qua nếu trống.
+  if (searchTermMemory.trim() !== '') {
+    // Để tìm kiếm tiền tố (ví dụ: "Tết" sẽ tìm "Tết 2023", "Tết Nguyên Đán")
+    // đòi hỏi kết hợp `where` và `orderBy`. Nếu chỉ tìm khớp chính xác, thì đơn giản hơn.
+    // Nếu bạn muốn tìm kiếm "chứa", bạn cần giải pháp ngoài Firestore.
+    // Đây là ví dụ tìm kiếm chính xác hoặc tìm kiếm tiền tố (nếu trường được index đúng và không có orderBy nào khác)
+    q = query(q, where("eventName", "==", searchTermMemory.trim()));
+    // Hoặc nếu bạn muốn tìm theo tiền tố:
+    // q = query(q, where("eventName", ">=", searchTermMemory.trim()), where("eventName", "<=", searchTermMemory.trim() + '\uf8ff'));
+  }
+
+
+  // Sắp xếp các kỷ niệm (quan trọng cho hiệu suất khi kết hợp với where)
+  // Firestore yêu cầu orderBy trên trường được sử dụng trong range query (nếu có)
+  // và thường orderBy trên trường được lọc là tốt.
+  q = query(q, orderBy("uploadedAt", "desc")); // Sắp xếp theo ngày đăng giảm dần (mới nhất lên đầu)
+
+
+  const unsubscribe = onSnapshot(q, (snapshot) => {
+    const fetchedMemories = [];
+    snapshot.forEach(docSnap => {
+      const data = docSnap.data();
+      if (data.uploadedAt && typeof data.uploadedAt.toDate === 'function') {
+        data.uploadedAt = data.uploadedAt.toDate();
+      }
+      fetchedMemories.push({ id: docSnap.id, ...data });
     });
+    setMemories(fetchedMemories);
+    console.log("Đã cập nhật kỷ niệm phòng (có bộ lọc):", fetchedMemories);
+  }, (error) => {
+    console.error("Lỗi khi tải dữ liệu kỷ niệm (có bộ lọc):", error);
+  });
 
-    return () => {
-      console.log("Hủy đăng ký lắng nghe kỷ niệm.");
-      unsubscribe();
-    };
-  }, [db, isAuthReady, userId]);
+  return () => {
+    console.log("Hủy đăng ký lắng nghe kỷ niệm.");
+    unsubscribe();
+  };
+// THÊM searchTermMemory và filterUploaderMemory vào dependency array
+}, [db, isAuthReady, userId, searchTermMemory, filterUploaderMemory]);
 
   // Mới: Lắng nghe cập nhật Thông tin tiền bối
   useEffect(() => {
@@ -3434,8 +3462,40 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 ))}
               </div>
             )}
+            {/* MỚI: Phần lọc và tìm kiếm kỷ niệm */}
+            <div className="mb-8 p-4 bg-gray-100 dark:bg-gray-800 rounded-xl shadow-inner border border-gray-200 dark:border-gray-600">
+                <h3 className="text-xl font-bold text-gray-700 dark:text-gray-200 mb-4">Tìm kiếm & Lọc kỷ niệm</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="searchMemory" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Tìm kiếm theo tên sự kiện:</label>
+                    <input
+                      type="text"
+                      id="searchMemory"
+                      value={searchTermMemory}
+                      onChange={(e) => setSearchTermMemory(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700"
+                      placeholder="Nhập tên sự kiện..."
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="filterUploader" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Lọc theo người đăng:</label>
+                    <select
+                      id="filterUploader"
+                      value={filterUploaderMemory}
+                      onChange={(e) => setFilterUploaderMemory(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    >
+                      <option value="all">Tất cả người đăng</option>
+                      {/* Hiển thị tất cả người dùng trong hệ thống để lọc */}
+                      {allUsersData.map(user => (
+                        <option key={user.id} value={user.id}>{user.fullName || user.email}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
             </div>
-          );
+          </div>
+        );
         case 'formerResidents': // Thông tin tiền bối
           return (
             <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
@@ -4534,6 +4594,38 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                     ))}
                   </div>
                 )}
+                {/* MỚI: Phần lọc và tìm kiếm kỷ niệm */}
+                <div className="mb-8 p-4 bg-gray-100 dark:bg-gray-800 rounded-xl shadow-inner border border-gray-200 dark:border-gray-600">
+                  <h3 className="text-xl font-bold text-gray-700 dark:text-gray-200 mb-4">Tìm kiếm & Lọc kỷ niệm</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="searchMemory" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Tìm kiếm theo tên sự kiện:</label>
+                      <input
+                        type="text"
+                        id="searchMemory"
+                        value={searchTermMemory}
+                        onChange={(e) => setSearchTermMemory(e.target.value)}
+                        className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700"
+                        placeholder="Nhập tên sự kiện..."
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="filterUploader" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Lọc theo người đăng:</label>
+                      <select
+                        id="filterUploader"
+                        value={filterUploaderMemory}
+                        onChange={(e) => setFilterUploaderMemory(e.target.value)}
+                        className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700"
+                      >
+                        <option value="all">Tất cả người đăng</option>
+                        {/* Hiển thị tất cả người dùng trong hệ thống để lọc */}
+                        {allUsersData.map(user => (
+                          <option key={user.id} value={user.id}>{user.fullName || user.email}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
               </div>
             );
             case 'formerResidents': // MỚI: Thông tin tiền bối (Dành cho THÀNH VIÊN)
