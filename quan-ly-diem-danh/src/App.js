@@ -349,7 +349,7 @@ function App() {
     setEditMemoryError('');
   };
 
-  //Hàm cập nhật bài đăng kỷ niệm
+  // Hàm cập nhật bài đăng kỷ niệm
   const handleUpdateMemory = async (e) => {
     e.preventDefault();
     setEditMemoryError('');
@@ -361,24 +361,24 @@ function App() {
       setEditMemoryError('Vui lòng điền đầy đủ thông tin sự kiện và ngày.');
       return;
     }
-  
+
     setIsUploadingEditMemory(true);
     setEditMemoryUploadProgress(0);
-  
+
     try {
       // Bắt đầu với CÁC FILE HIỆN CÓ từ editingMemory.files
       // Đảm bảo editingMemory.files luôn là một mảng (vì đã được xử lý trong useEffect)
       let updatedFilesInfo = editingMemory.files ? [...editingMemory.files] : [];
-  
+
       // Tải lên các file mới được thêm vào
       if (editMemoryNewFiles.length > 0) {
         for (const file of editMemoryNewFiles) {
           const formData = new FormData();
           formData.append('file', file);
           formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET_MEMORY);
-  
+
           const response = await axios.post(CLOUDINARY_API_URL_AUTO_UPLOAD, formData, {
-            headers: { 'Content-Type': 'multipart/form-content' },
+            headers: { 'Content-Type': 'multipart/form-data' },
             onUploadProgress: (progressEvent) => {
               const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
               setEditMemoryUploadProgress(percentCompleted);
@@ -392,7 +392,7 @@ function App() {
           });
         }
       }
-  
+
       const memoryDocRef = doc(db, `artifacts/${currentAppId}/public/data/memories`, editingMemory.id);
       await updateDoc(memoryDocRef, {
         eventName: editMemoryEventName.trim(),
@@ -401,7 +401,7 @@ function App() {
         lastUpdatedBy: userId,
         lastUpdatedAt: serverTimestamp(),
       });
-  
+
       setEditingMemory(null); // Đóng modal chỉnh sửa
       setEditMemoryEventName('');
       setEditMemoryPhotoDate('');
@@ -416,27 +416,6 @@ function App() {
       setIsUploadingEditMemory(false);
     }
   };
-  // MỚI: Effect để xác định mùa và áp dụng theme tương ứng
-  useEffect(() => {
-    const updateSeasonTheme = () => {
-      const today = new Date();
-      const season = getSeason(today); // Xác định mùa hiện tại
-      setCurrentSeason(season); // Cập nhật state mùa
-      setCurrentSeasonTheme(`theme-${season}`); // Cập nhật class theme (ví dụ: 'theme-summer')
-
-      // Tạo các phần tử hiệu ứng dựa trên mùa
-      // Ít tia nắng hơn (5), nhiều hoa/lá/tuyết hơn (50)
-      setSeasonalEffectElements(generateSeasonalEffectElement(season, season === 'summer' ? 5 : 50));
-    };
-
-    updateSeasonTheme(); // Chạy lần đầu khi component mount
-
-    // Thiết lập interval để kiểm tra lại mỗi ngày để tự động chuyển theme khi sang ngày/tháng mới
-    const dailyCheckInterval = setInterval(updateSeasonTheme, 1000 * 60 * 60 * 24); // Kiểm tra mỗi 24 giờ
-
-    return () => clearInterval(dailyCheckInterval); // Dọn dẹp interval khi component unmount
-  }, []); // Dependency rỗng, chạy một lần khi component mount
-
   // Effect để áp dụng lớp chủ đề cho phần tử HTML và lưu vào bộ nhớ cục bộ
   useEffect(() => {
     if (theme === 'dark') {
@@ -1017,42 +996,46 @@ function App() {
   const handleDeleteMemory = async (memoryId, files, uploadedByUserId) => {
     setMemoryError('');
     if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) {
-      setMemoryError("Hệ thống chưa sẵn sàng hoặc bạn chưa đăng nhập.");
+      setMemoryError('Hệ thống chưa sẵn sàng hoặc bạn chưa đăng nhập.');
       return;
     }
-  
+
     const isAllowedToDelete = userRole === 'admin' || userId === uploadedByUserId;
-  
+
     if (!isAllowedToDelete) {
-      setMemoryError("Bạn không có quyền xóa kỷ niệm này.");
+      setMemoryError('Bạn không có quyền xóa kỷ niệm này.');
       return;
     }
-  
-    if (!window.confirm("Bạn có chắc chắn muốn xóa kỷ niệm này không?")) {
+
+    if (!window.confirm('Bạn có chắc chắn muốn xóa kỷ niệm này không?')) {
       return;
     }
-  
+
     try {
       // Xóa tài liệu Firestore trước
       await deleteDoc(doc(db, `artifacts/${currentAppId}/public/data/memories`, memoryId));
-  
+
       // Xóa từng file từ Cloudinary
       if (files && files.length > 0) {
         for (const fileInfo of files) {
           if (fileInfo.publicId) {
-            console.log(`Đang cố gắng xóa file Cloudinary với publicId: ${fileInfo.publicId}, loại: ${fileInfo.fileType}`);
+            console.log(
+              `Đang cố gắng xóa file Cloudinary với publicId: ${fileInfo.publicId}, loại: ${fileInfo.fileType}`,
+            );
             // Đây là placeholder cho việc gọi Cloud Function của bạn
             // Bạn cần tạo một Cloud Function để xử lý việc xóa file Cloudinary an toàn
             // Hàm này sẽ nhận publicId và resourceType và xóa file khỏi Cloudinary bằng API_SECRET
             // Ví dụ: await axios.post('/api/deleteCloudinaryAsset', { publicId: fileInfo.publicId, resourceType: fileInfo.fileType });
           }
         }
-        alert("Chức năng xóa file trên Cloudinary yêu cầu triển khai Cloud Function. Kỷ niệm đã được xóa khỏi danh sách.");
+        alert(
+          'Chức năng xóa file trên Cloudinary yêu cầu triển khai Cloud Function. Kỷ niệm đã được xóa khỏi danh sách.',
+        );
       }
-  
+
       console.log(`Đã xóa kỷ niệm ${memoryId} và các file liên quan (nếu có).`);
     } catch (error) {
-      console.error("Lỗi khi xóa kỷ niệm:", error);
+      console.error('Lỗi khi xóa kỷ niệm:', error);
       setMemoryError(`Lỗi khi xóa kỷ niệm: ${error.message}`);
     }
   };
@@ -1772,58 +1755,63 @@ function App() {
     };
   }, [db, isAuthReady, userId]); // userId is still relevant for the collection path.
 
-// MỚI: Lắng nghe cập nhật Kỷ niệm phòng
-useEffect(() => {
-  if (!db || !isAuthReady || userId === null) {
-    console.log("Lắng nghe kỷ niệm: Đang chờ DB, Auth hoặc User ID sẵn sàng.");
-    return;
-  }
-  console.log("Bắt đầu lắng nghe cập nhật kỷ niệm phòng...");
+  // MỚI: Lắng nghe cập nhật Kỷ niệm phòng
+  useEffect(() => {
+    if (!db || !isAuthReady || userId === null) {
+      console.log('Lắng nghe kỷ niệm: Đang chờ DB, Auth hoặc User ID sẵn sàng.');
+      return;
+    }
+    console.log('Bắt đầu lắng nghe cập nhật kỷ niệm phòng...');
 
-  const memoriesCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/memories`);
-  let q = query(memoriesCollectionRef);
+    const memoriesCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/memories`);
+    let q = query(memoriesCollectionRef);
 
-  if (filterUploaderMemory !== 'all') {
-    q = query(q, where("uploadedBy", "==", filterUploaderMemory));
-  }
+    if (filterUploaderMemory !== 'all') {
+      q = query(q, where('uploadedBy', '==', filterUploaderMemory));
+    }
 
-  if (searchTermMemory.trim() !== '') {
-    q = query(q, where("eventName", "==", searchTermMemory.trim()));
-  }
+    if (searchTermMemory.trim() !== '') {
+      q = query(q, where('eventName', '==', searchTermMemory.trim()));
+    }
 
-  q = query(q, orderBy("uploadedAt", "desc"));
+    q = query(q, orderBy('uploadedAt', 'desc'));
 
-  const unsubscribe = onSnapshot(q, (snapshot) => {
-    const fetchedMemories = [];
-    snapshot.forEach(docSnap => {
-      const data = docSnap.data();
-      if (data.uploadedAt && typeof data.uploadedAt.toDate === 'function') {
-        data.uploadedAt = data.uploadedAt.toDate();
-      }
-      // Đảm bảo 'files' là một mảng, nếu không thì tạo một mảng từ fileUrl cũ
-      if (!data.files) {
-        data.files = [];
-        if (data.fileUrl) { // Kiểm tra nếu có fileUrl cũ (single file)
-          data.files.push({
-            fileUrl: data.fileUrl,
-            publicId: data.publicId,
-            fileType: data.fileType || (data.fileUrl.match(/\.(mp4|mov|avi|wmv|flv)$/i) ? 'video' : 'image') // Đoán loại nếu không có
-          });
-        }
-      }
-      fetchedMemories.push({ id: docSnap.id, ...data });
-    });
-    setMemories(fetchedMemories);
-    console.log("Đã cập nhật kỷ niệm phòng (có bộ lọc):", fetchedMemories);
-  }, (error) => {
-    console.error("Lỗi khi tải dữ liệu kỷ niệm (có bộ lọc):", error);
-  });
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const fetchedMemories = [];
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          if (data.uploadedAt && typeof data.uploadedAt.toDate === 'function') {
+            data.uploadedAt = data.uploadedAt.toDate();
+          }
+          // Đảm bảo 'files' là một mảng, nếu không thì tạo một mảng từ fileUrl cũ
+          if (!data.files) {
+            data.files = [];
+            if (data.fileUrl) {
+              // Kiểm tra nếu có fileUrl cũ (single file)
+              data.files.push({
+                fileUrl: data.fileUrl,
+                publicId: data.publicId,
+                fileType: data.fileType || (data.fileUrl.match(/\.(mp4|mov|avi|wmv|flv)$/i) ? 'video' : 'image'), // Đoán loại nếu không có
+              });
+            }
+          }
+          fetchedMemories.push({ id: docSnap.id, ...data });
+        });
+        setMemories(fetchedMemories);
+        console.log('Đã cập nhật kỷ niệm phòng (có bộ lọc):', fetchedMemories);
+      },
+      (error) => {
+        console.error('Lỗi khi tải dữ liệu kỷ niệm (có bộ lọc):', error);
+      },
+    );
 
-  return () => {
-    console.log("Hủy đăng ký lắng nghe kỷ niệm.");
-    unsubscribe();
-  };
-}, [db, isAuthReady, userId, searchTermMemory, filterUploaderMemory]);
+    return () => {
+      console.log('Hủy đăng ký lắng nghe kỷ niệm.');
+      unsubscribe();
+    };
+  }, [db, isAuthReady, userId, searchTermMemory, filterUploaderMemory]);
 
   // Mới: Lắng nghe cập nhật Thông tin tiền bối
   useEffect(() => {
@@ -4057,7 +4045,8 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                     <div
                       key={memory.id}
                       className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer"
-                      onClick={() => { // CHÍNH XÁC: Mở lightbox đa ảnh
+                      onClick={() => {
+                        // CHÍNH XÁC: Mở lightbox đa ảnh
                         setSelectedMemoryForLightbox(memory);
                         setCurrentLightboxIndex(0); // Bắt đầu từ ảnh/video đầu tiên
                       }}
@@ -4081,15 +4070,20 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                         </p>
                         {/* MỚI: Nút xóa cho admin HOẶC người đăng tải */}
                         {(userRole === 'admin' || userId === memory.uploadedBy) && (
+                          <div className="flex mt-4 space-x-2">
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteMemory(memory.id, memory.fileUrl, memory.publicId, memory.uploadedBy);
-                            }} // Truyền publicId và uploadedBy
-                            className="mt-4 px-4 py-2 bg-red-500 text-white rounded-lg shadow hover:bg-red-600 transition-colors duration-200"
+                            onClick={(e) => { e.stopPropagation(); handleEditMemory(memory); }} // Nút chỉnh sửa
+                            className="px-4 py-2 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-600 transition-colors duration-200"
+                          >
+                            <i className="fas fa-edit mr-2"></i>Chỉnh sửa
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDeleteMemory(memory.id, memory.files, memory.uploadedBy); }} // Truyền mảng files
+                            className="px-4 py-2 bg-red-500 text-white rounded-lg shadow hover:bg-red-600 transition-colors duration-200"
                           >
                             <i className="fas fa-trash mr-2"></i>Xóa
                           </button>
+                        </div>
                         )}
                       </div>
                     </div>
@@ -5670,7 +5664,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 </p>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {memories.map(memory => (
+                  {memories.map((memory) => (
                     <div
                       key={memory.id}
                       className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700"
@@ -5678,20 +5672,27 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                       onClick={() => setSelectedImageToZoom(memory.files[0])} // Mở ảnh đầu tiên trong lightbox
                     >
                       {/* Hiển thị ảnh/video đầu tiên làm thumbnail */}
-                      {memory.files && memory.files.length > 0 && (
-                        memory.files[0].fileType === 'video' ? (
+                      {memory.files &&
+                        memory.files.length > 0 &&
+                        (memory.files[0].fileType === 'video' ? (
                           <video src={memory.files[0].fileUrl} controls className="w-full h-48 object-cover"></video>
                         ) : (
-                          <img src={memory.files[0].fileUrl} alt={memory.eventName} className="w-full h-48 object-cover" />
-                        )
-                      )}
+                          <img
+                            src={memory.files[0].fileUrl}
+                            alt={memory.eventName}
+                            className="w-full h-48 object-cover"
+                          />
+                        ))}
                       <div className="p-4">
-                        <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">{memory.eventName}</h4>
+                        <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">
+                          {memory.eventName}
+                        </h4>
                         <p className="text-sm text-gray-600 dark:text-gray-300">
                           <i className="fas fa-calendar-alt mr-2"></i>Ngày chụp/quay: {memory.photoDate}
                         </p>
                         <p className="text-sm text-gray-600 dark:text-gray-300">
-                          <i className="fas fa-upload mr-2"></i>Đăng bởi: {memory.uploadedByName || 'Ẩn danh'} vào {memory.uploadedAt?.toLocaleDateString('vi-VN')}
+                          <i className="fas fa-upload mr-2"></i>Đăng bởi: {memory.uploadedByName || 'Ẩn danh'} vào{' '}
+                          {memory.uploadedAt?.toLocaleDateString('vi-VN')}
                         </p>
                         <p className="text-sm text-gray-600 dark:text-gray-300">
                           <i className="fas fa-images mr-2"></i>Số file: {memory.files?.length || 0}
@@ -5699,13 +5700,19 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                         {(userRole === 'admin' || userId === memory.uploadedBy) && (
                           <div className="flex mt-4 space-x-2">
                             <button
-                              onClick={(e) => { e.stopPropagation(); handleEditMemory(memory); }} // Nút chỉnh sửa
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditMemory(memory);
+                              }} // Nút chỉnh sửa
                               className="px-4 py-2 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-600 transition-colors duration-200"
                             >
                               <i className="fas fa-edit mr-2"></i>Chỉnh sửa
                             </button>
                             <button
-                              onClick={(e) => { e.stopPropagation(); handleDeleteMemory(memory.id, memory.files, memory.uploadedBy); }} // Truyền mảng files
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteMemory(memory.id, memory.files, memory.uploadedBy);
+                              }} // Truyền mảng files
                               className="px-4 py-2 bg-red-500 text-white rounded-lg shadow hover:bg-red-600 transition-colors duration-200"
                             >
                               <i className="fas fa-trash mr-2"></i>Xóa
@@ -6883,7 +6890,12 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
             <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">Chỉnh sửa kỷ niệm</h3>
             <form onSubmit={handleUpdateMemory} className="space-y-4">
               <div>
-                <label htmlFor="editEventName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Sự kiện:</label>
+                <label
+                  htmlFor="editEventName"
+                  className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                >
+                  Sự kiện:
+                </label>
                 <input
                   type="text"
                   id="editEventName"
@@ -6893,7 +6905,12 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 />
               </div>
               <div>
-                <label htmlFor="editPhotoDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày chụp/quay:</label>
+                <label
+                  htmlFor="editPhotoDate"
+                  className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                >
+                  Ngày chụp/quay:
+                </label>
                 <input
                   type="date"
                   id="editPhotoDate"
@@ -6912,7 +6929,11 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                         {file.fileType === 'video' ? (
                           <video src={file.fileUrl} controls className="w-full h-24 object-cover rounded-lg"></video>
                         ) : (
-                          <img src={file.fileUrl} alt={`Memory ${index}`} className="w-full h-24 object-cover rounded-lg" />
+                          <img
+                            src={file.fileUrl}
+                            alt={`Memory ${index}`}
+                            className="w-full h-24 object-cover rounded-lg"
+                          />
                         )}
                         <button
                           type="button"
@@ -6937,7 +6958,9 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               </div>
               {/* Thêm file mới */}
               <div>
-                <label htmlFor="editNewFiles" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Thêm file mới (ảnh/video):</label>
+                <label htmlFor="editNewFiles" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                  Thêm file mới (ảnh/video):
+                </label>
                 <input
                   type="file"
                   id="editNewFiles"
@@ -6949,7 +6972,10 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               </div>
               {isUploadingEditMemory && (
                 <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-                  <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${editMemoryUploadProgress}%` }}></div>
+                  <div
+                    className="bg-blue-600 h-2.5 rounded-full"
+                    style={{ width: `${editMemoryUploadProgress}%` }}
+                  ></div>
                 </div>
               )}
               {editMemoryError && <p className="text-red-500 text-sm text-center mt-4">{editMemoryError}</p>}
@@ -6958,12 +6984,19 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75"
                 disabled={isUploadingEditMemory}
               >
-                {isUploadingEditMemory ? <i className="fas fa-spinner fa-spin mr-2"></i> : <i className="fas fa-save mr-2"></i>}
+                {isUploadingEditMemory ? (
+                  <i className="fas fa-spinner fa-spin mr-2"></i>
+                ) : (
+                  <i className="fas fa-save mr-2"></i>
+                )}
                 Lưu thay đổi
               </button>
               <button
                 type="button"
-                onClick={() => { setEditingMemory(null); setEditMemoryError(''); }}
+                onClick={() => {
+                  setEditingMemory(null);
+                  setEditMemoryError('');
+                }}
                 className="w-full mt-2 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
               >
                 Hủy
@@ -6978,11 +7011,20 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
           className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
           onClick={() => setSelectedMemoryForLightbox(null)} // Đóng modal khi nhấp ra ngoài
         >
-          <div className="relative max-w-full max-h-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="relative max-w-full max-h-full flex items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
             {selectedMemoryForLightbox.files && selectedMemoryForLightbox.files.length > 0 && (
               <>
                 {selectedMemoryForLightbox.files[currentLightboxIndex].fileType === 'video' ? (
-                  <video src={selectedMemoryForLightbox.files[currentLightboxIndex].fileUrl} controls autoPlay loop className="max-w-full max-h-[90vh] object-contain shadow-lg rounded-lg"></video>
+                  <video
+                    src={selectedMemoryForLightbox.files[currentLightboxIndex].fileUrl}
+                    controls
+                    autoPlay
+                    loop
+                    className="max-w-full max-h-[90vh] object-contain shadow-lg rounded-lg"
+                  ></video>
                 ) : (
                   <img
                     src={selectedMemoryForLightbox.files[currentLightboxIndex].fileUrl}
@@ -6994,7 +7036,11 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 {/* Nút điều hướng Previous */}
                 {selectedMemoryForLightbox.files.length > 1 && (
                   <button
-                    onClick={() => setCurrentLightboxIndex(prev => (prev === 0 ? selectedMemoryForLightbox.files.length - 1 : prev - 1))}
+                    onClick={() =>
+                      setCurrentLightboxIndex((prev) =>
+                        prev === 0 ? selectedMemoryForLightbox.files.length - 1 : prev - 1,
+                      )
+                    }
                     className="absolute left-4 top-1/2 -translate-y-1/2 text-white text-4xl bg-gray-800 bg-opacity-50 rounded-full w-12 h-12 flex items-center justify-center hover:bg-opacity-75 transition-colors"
                   >
                     &#10094;
@@ -7004,7 +7050,11 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 {/* Nút điều hướng Next */}
                 {selectedMemoryForLightbox.files.length > 1 && (
                   <button
-                    onClick={() => setCurrentLightboxIndex(prev => (prev === selectedMemoryForLightbox.files.length - 1 ? 0 : prev + 1))}
+                    onClick={() =>
+                      setCurrentLightboxIndex((prev) =>
+                        prev === selectedMemoryForLightbox.files.length - 1 ? 0 : prev + 1,
+                      )
+                    }
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-white text-4xl bg-gray-800 bg-opacity-50 rounded-full w-12 h-12 flex items-center justify-center hover:bg-opacity-75 transition-colors"
                   >
                     &#10095;
