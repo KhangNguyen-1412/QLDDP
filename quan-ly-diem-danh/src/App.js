@@ -814,6 +814,91 @@ function App() {
       setCustomNotificationError(`Lỗi khi gửi thông báo: ${error.message}`);
     }
   };
+  //Hàm phân trang
+  const [currentPageMemories, setCurrentPageMemories] = useState(1);
+  const [itemsPerPageMemories] = useState(10); // 10 bài đăng mỗi trang
+  const [totalPagesMemories, setTotalPagesMemories] = useState(1);
+  const [totalMemoriesCount, setTotalMemoriesCount] = useState(0); // Tổng số bài kỷ niệm
+
+  // MỚI: Lắng nghe cập nhật Kỷ niệm phòng
+  useEffect(() => {
+    if (!db || !isAuthReady || userId === null) {
+      console.log('Lắng nghe kỷ niệm: Đang chờ DB, Auth hoặc User ID sẵn sàng.');
+      return;
+    }
+    console.log('Bắt đầu lắng nghe cập nhật kỷ niệm phòng...');
+
+    const memoriesCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/memories`);
+    let q = query(memoriesCollectionRef);
+
+    // Áp dụng bộ lọc người đăng nếu có
+    if (filterUploaderMemory !== 'all') {
+      q = query(q, where('uploadedBy', '==', filterUploaderMemory));
+    }
+
+    // Áp dụng tìm kiếm theo tên sự kiện nếu có
+    if (searchTermMemory.trim() !== '') {
+      // Lưu ý: Tìm kiếm '==' chỉ khớp chính xác. Để tìm kiếm một phần, bạn cần giải pháp khác (ví dụ: Algolia Search hoặc Cloud Functions)
+      q = query(q, where('eventName', '==', searchTermMemory.trim()));
+    }
+
+    // SẮP XẾP HÌNH THEO THỜI GIAN CHỤP GẦN ĐÂY NHẤT
+    // Sắp xếp theo photoDate giảm dần, sau đó theo uploadedAt giảm dần nếu photoDate giống nhau
+    q = query(q, orderBy('photoDate', 'desc'), orderBy('uploadedAt', 'desc'));
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const allFetchedMemories = [];
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          if (data.uploadedAt && typeof data.uploadedAt.toDate === 'function') {
+            data.uploadedAt = data.uploadedAt.toDate();
+          }
+          // Đảm bảo 'files' là một mảng, nếu không thì tạo một mảng từ fileUrl cũ
+          if (!data.files) {
+            data.files = [];
+            if (data.fileUrl) {
+              // Kiểm tra nếu có fileUrl cũ (single file)
+              data.files.push({
+                fileUrl: data.fileUrl,
+                publicId: data.publicId,
+                fileType: data.fileType || (data.fileUrl.match(/\.(mp4|mov|avi|wmv|flv)$/i) ? 'video' : 'image'), // Đoán loại nếu không có
+              });
+            }
+          }
+          // Xóa các trường cũ không cần thiết nếu bạn đã chuyển hoàn toàn sang 'files'
+          delete data.fileUrl;
+          delete data.publicId;
+          delete data.fileType;
+
+          allFetchedMemories.push({ id: docSnap.id, ...data });
+        });
+
+        // Cập nhật tổng số bài kỷ niệm
+        setTotalMemoriesCount(allFetchedMemories.length);
+
+        // Tính tổng số trang (làm tròn lên)
+        setTotalPagesMemories(Math.ceil(allFetchedMemories.length / itemsPerPageMemories));
+
+        // Lọc dữ liệu cho trang hiện tại (PHÂN TRANG CLIENT-SIDE)
+        const startIndex = (currentPageMemories - 1) * itemsPerPageMemories;
+        const endIndex = startIndex + itemsPerPageMemories;
+        const memoriesForCurrentPage = allFetchedMemories.slice(startIndex, endIndex);
+
+        setMemories(memoriesForCurrentPage); // Cập nhật state 'memories' chỉ với các bài của trang hiện tại
+        console.log('Đã cập nhật kỷ niệm phòng (có bộ lọc và phân trang):', memoriesForCurrentPage);
+      },
+      (error) => {
+        console.error('Lỗi khi tải dữ liệu kỷ niệm (có bộ lọc):', error);
+      },
+    );
+
+    return () => {
+      console.log('Hủy đăng ký lắng nghe kỷ niệm.');
+      unsubscribe();
+    };
+  }, [db, isAuthReady, userId, searchTermMemory, filterUploaderMemory, currentPageMemories, itemsPerPageMemories]); // THÊM currentPageMemories và itemsPerPageMemories vào dependencies
 
   // --- Các hàm xác thực ---
   const handleSignUp = async () => {
@@ -4093,6 +4178,29 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                           </button>
                         </div>
                         )}
+                        {/* MỚI: PHẦN ĐIỀU KHIỂN PHÂN TRANG */}
+                        {totalPagesMemories > 1 && (
+                          <div className="flex justify-center items-center mt-8 space-x-4">
+                            <button
+                              onClick={() => setCurrentPageMemories(prev => Math.max(1, prev - 1))}
+                              disabled={currentPageMemories === 1}
+                              className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                            >
+                              Trang trước
+                            </button>
+                            <span className="text-gray-700 dark:text-gray-300 font-medium">
+                              Trang {currentPageMemories} / {totalPagesMemories}
+                            </span>
+                            <button
+                              onClick={() => setCurrentPageMemories(prev => Math.min(totalPagesMemories, prev + 1))}
+                              disabled={currentPageMemories === totalPagesMemories}
+                              className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                            >
+                              Trang sau
+                            </button>
+                          </div>
+                        )}
+                        {/* KẾT THÚC PHẦN ĐIỀU KHIỂN PHÂN TRANG */}
                       </div>
                     </div>
                   ))}
@@ -5727,6 +5835,29 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                             </button>
                           </div>
                         )}
+                        {/* MỚI: PHẦN ĐIỀU KHIỂN PHÂN TRANG */}
+                        {totalPagesMemories > 1 && (
+                          <div className="flex justify-center items-center mt-8 space-x-4">
+                            <button
+                              onClick={() => setCurrentPageMemories(prev => Math.max(1, prev - 1))}
+                              disabled={currentPageMemories === 1}
+                              className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                            >
+                              Trang trước
+                            </button>
+                            <span className="text-gray-700 dark:text-gray-300 font-medium">
+                              Trang {currentPageMemories} / {totalPagesMemories}
+                            </span>
+                            <button
+                              onClick={() => setCurrentPageMemories(prev => Math.min(totalPagesMemories, prev + 1))}
+                              disabled={currentPageMemories === totalPagesMemories}
+                              className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                            >
+                              Trang sau
+                            </button>
+                          </div>
+                        )}
+                        {/* KẾT THÚC PHẦN ĐIỀU KHIỂN PHÂN TRANG */}
                       </div>
                     </div>
                   ))}
