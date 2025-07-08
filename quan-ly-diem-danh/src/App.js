@@ -6629,16 +6629,16 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
           </div>
         )}
 
-{selectedCostSharingDetails && (userRole === 'admin') && (
+        {selectedCostSharingDetails && (userRole === 'admin') && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
           {/* Main modal dialog with max height and overflow-y */}
           <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[95vh]"> {/* Adjusted: flex-col and increased max-h */}
             
             {/* Modal Header */}
-            <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center flex-shrink-0">Chi tiết chia tiền</h3> {/* flex-shrink-0 to keep header fixed */}
+            <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center flex-shrink-0">Chi tiết chia tiền</h3>
             
-            {/* Scrollable Content Area */}
-            <div className="flex-grow overflow-y-auto pr-2"> {/* flex-grow to take available space, overflow-y-auto for scrolling */}
+            {/* Main Content Area - this will contain non-scrollable and the specific scrollable part */}
+            <div className="flex-grow overflow-hidden"> {/* Changed to overflow-hidden here */}
               <div className="space-y-3 text-gray-700 dark:text-gray-300">
                 <p><strong>Kỳ tính:</strong> {selectedCostSharingDetails.periodStart} đến {selectedCostSharingDetails.periodEnd}</p>
                 <p><strong>Ngày tính:</strong> {selectedCostSharingDetails.calculatedDate && selectedCostSharingDetails.calculatedDate instanceof Date ? selectedCostSharingDetails.calculatedDate.toLocaleDateString('vi-VN') : 'N/A'}</p>
@@ -6648,26 +6648,31 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 <p className="text-xl font-bold border-t pt-3 mt-3 border-gray-300 dark:border-gray-600">
                   Số tiền mỗi người cần đóng:
                 </p>
-                <ul className="space-y-2 pl-4">
-                  {Object.entries(selectedCostSharingDetails.individualCosts || {}).map(([residentId, data]) => {
-                    const residentName = residents.find(res => res.id === residentId)?.name || residentId;
-                    return (
-                      <li key={residentId} className="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-2 rounded-lg">
-                        <span>{residentName}:</span>
-                        <span className="font-bold mr-2">{typeof data.cost === 'number' ? data.cost?.toLocaleString('vi-VN') : 'N/A'} VND</span>
-                        <input
-                          type="checkbox"
-                          checked={data.isPaid || false}
-                          onChange={() => handleToggleIndividualPaymentStatus(selectedCostSharingDetails.id, residentId, data.isPaid || false)}
-                          className="form-checkbox h-5 w-5 text-green-600 dark:text-green-400 rounded cursor-pointer border border-gray-300 dark:border-gray-600"
-                        />
-                        <span className={`ml-2 text-sm font-semibold ${data.isPaid ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
-                          {data.isPaid ? 'Đã đóng' : 'Chưa đóng'}
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ul>
+                
+                {/* DÒNG MỚI: CONTAINER CUỘN CHO DANH SÁCH CHI PHÍ CÁ NHÂN */}
+                <div className="max-h-40 overflow-y-auto pr-2 border rounded-lg border-gray-200 dark:border-gray-700"> {/* Đặt max-h và overflow-y-auto ở đây */}
+                  <ul className="space-y-2 pl-4 py-2"> {/* Thêm padding cho ul */}
+                    {Object.entries(selectedCostSharingDetails.individualCosts || {}).map(([residentId, data]) => {
+                      const residentName = residents.find(res => res.id === residentId)?.name || residentId;
+                      return (
+                        <li key={residentId} className="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-2 rounded-lg">
+                          <span>{residentName}:</span>
+                          <span className="font-bold mr-2">{typeof data.cost === 'number' ? data.cost?.toLocaleString('vi-VN') : 'N/A'} VND</span>
+                          <input
+                            type="checkbox"
+                            checked={data.isPaid || false}
+                            onChange={() => handleToggleIndividualPaymentStatus(selectedCostSharingDetails.id, residentId, data.isPaid || false)}
+                            className="form-checkbox h-5 w-5 text-green-600 dark:text-green-400 rounded cursor-pointer border border-gray-300 dark:border-gray-600"
+                          />
+                          <span className={`ml-2 text-sm font-semibold ${data.isPaid ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
+                            {data.isPaid ? 'Đã đóng' : 'Chưa đóng'}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div> {/* KẾT THÚC CONTAINER CUỘN */}
+
                 <p className="text-lg font-bold border-t pt-3 mt-3 border-gray-300 dark:border-gray-600">
                   Quỹ phòng còn lại: <span className={`font-bold ${selectedCostSharingDetails.remainingFund >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
                     {selectedCostSharingDetails.remainingFund?.toLocaleString('vi-VN')} VND
