@@ -1301,56 +1301,59 @@ const handleChangePassword = async () => {
   // Lắng nghe cập nhật điểm danh hàng ngày theo thời gian thực cho tháng đã chọn
   useEffect(() => {
     if (!db || !isAuthReady || !selectedMonth || userId === null) {
-      console.log("Lắng nghe điểm danh: Đang chờ DB, Auth, tháng hoặc User ID sẵn sàng.");
-      return;
+        console.log("Lắng nghe điểm danh: Đang chờ DB, Auth, tháng hoặc User ID sẵn sàng.");
+        return;
     }
     console.log(`Bắt đầu lắng nghe điểm danh hàng ngày cho tháng: ${selectedMonth}...`);
 
     const dailyPresenceCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/dailyPresence`);
     let q;
 
-    if (userRole === 'member' && loggedInResidentProfile) {
-      // Thành viên chỉ truy vấn điểm danh của chính hồ sơ cư dân được liên kết
-      q = query(dailyPresenceCollectionRef, where("residentId", "==", loggedInResidentProfile.id));
-    } else if (userRole === 'admin') {
-      // Admin truy vấn tất cả
-      q = query(dailyPresenceCollectionRef);
-    } else {
-      // Nếu không phải admin và không có hồ sơ cư dân liên kết, không truy vấn gì cả
-      setMonthlyAttendanceData({}); // Xóa dữ liệu cũ
-      return;
-    }
+    // Modified section:
+    // Admin queries all attendance records.
+    // Member also queries all attendance records to allow viewing others' statuses.
+    q = query(dailyPresenceCollectionRef); // Query all records, regardless of user role
 
+    // Optional: Add filtering by date range here for performance if the collection grows very large.
+    // This would require a compound index on Firestore (e.g., residentId, date or just date).
+    // Example:
+    // const yearMonth = selectedMonth.split('-');
+    // const startOfMonth = `${selectedMonth}-01`;
+    // const lastDay = new Date(parseInt(yearMonth[0]), parseInt(yearMonth[1]), 0).getDate();
+    // const endOfMonth = `${selectedMonth}-${String(lastDay).padStart(2, '0')}`;
+    // q = query(dailyPresenceCollectionRef, where("date", ">=", startOfMonth), where("date", "<=", endOfMonth));
+
+    // End modified section
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = {};
-      snapshot.forEach(docSnap => {
-        const record = docSnap.data();
+        const data = {};
+        // Process all records from the snapshot, filtering by selectedMonth in client-side.
         const yearMonth = selectedMonth.split('-');
         const startOfMonth = `${selectedMonth}-01`;
         const lastDay = new Date(parseInt(yearMonth[0]), parseInt(yearMonth[1]), 0).getDate();
         const endOfMonth = `${selectedMonth}-${String(lastDay).padStart(2, '0')}`;
 
-        if (record.date && record.date >= startOfMonth && record.date <= endOfMonth) {
-          if (!data[record.residentId]) {
-            data[record.residentId] = {};
-          }
-          const day = record.date.split('-')[2];
-          data[record.residentId][day] = record.status;
-        }
-      });
-      setMonthlyAttendanceData(data);
-      console.log(`Đã cập nhật dữ liệu điểm danh cho tháng ${selectedMonth}:`, data);
+        snapshot.forEach(docSnap => {
+            const record = docSnap.data();
+            if (record.date && record.date >= startOfMonth && record.date <= endOfMonth) {
+                if (!data[record.residentId]) {
+                    data[record.residentId] = {};
+                }
+                const day = record.date.split('-')[2];
+                data[record.residentId][day] = record.status;
+            }
+        });
+        setMonthlyAttendanceData(data);
+        console.log(`Đã cập nhật dữ liệu điểm danh cho tháng ${selectedMonth}:`, data);
     }, (error) => {
-      console.error("Lỗi khi tải dữ liệu điểm danh tháng:", error);
+        console.error("Lỗi khi tải dữ liệu điểm danh tháng:", error);
     });
 
     return () => {
-      console.log(`Hủy đăng ký lắng nghe điểm danh hàng ngày cho tháng ${selectedMonth}.`);
-      unsubscribe();
+        console.log(`Hủy đăng ký lắng nghe điểm danh hàng ngày cho tháng ${selectedMonth}.`);
+        unsubscribe();
     };
-  }, [db, isAuthReady, selectedMonth, userId, userRole, loggedInResidentProfile]); // Thêm loggedInResidentProfile vào dependency
-
+}, [db, isAuthReady, selectedMonth, userId, userRole, loggedInResidentProfile]);
   // Lấy các chỉ số đồng hồ được ghi nhận cuối cùng khi thành phần được gắn kết
   useEffect(() => {
     if (!db || !isAuthReady || userId === null) {
@@ -4207,72 +4210,77 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               </div>
             </div>
           );
+
           case 'attendanceTracking': // Điểm danh của tôi
-          return (
-            <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">Điểm danh của tôi</h2>
-              {/* Giữ nguyên phần chọn tháng */}
-              <div className="mb-6 flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4">
-                <label htmlFor="monthSelector" className="font-semibold text-gray-700 dark:text-gray-300 text-lg">Chọn tháng:</label>
-                <input
-                  type="month"
-                  id="monthSelector"
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700"
-                />
-              </div>
-
-              {displayedResidents.length === 0 ? (
-                // Thông báo này sẽ ít khi xuất hiện vì displayedResidents giờ chứa tất cả cư dân hoạt động
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có người ở nào trong danh sách hoạt động.</p>
-              ) : (
-                <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-                  <table className="min-w-full bg-white dark:bg-gray-800">
-                    <thead><tr>
-                      <th className="py-3 px-6 text-left sticky left-0 bg-green-100 dark:bg-gray-700 z-20 border-r border-green-200 dark:border-gray-600 rounded-tl-xl text-green-800 dark:text-green-200 uppercase text-sm leading-normal">Tên</th>
-                      {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map(day => (
-                        <th key={day} className="py-3 px-2 text-center border-l border-green-200 dark:border-gray-600 text-green-800 dark:text-green-200 uppercase text-sm leading-normal">
-                          {day}
-                        </th>
-                      ))}
-                    </tr></thead>
-                    <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
-                      {displayedResidents.map(resident => {
-                        // MỚI: Xác định xem hàng này có phải của người dùng đang đăng nhập không
-                        const isMyRow = userRole === 'member' && loggedInResidentProfile && resident.id === loggedInResidentProfile.id;
-
-                        return (
-                          <tr key={resident.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-                            <td className="py-3 px-6 text-left whitespace-nowrap font-medium sticky left-0 bg-white dark:bg-gray-800 z-10 border-r border-gray-200 dark:border-gray-700">
-                              {resident.name}
-                              {!isMyRow && <span className="ml-2 text-xs text-gray-500 dark:text-gray-400"></span>} {/* Thêm nhãn để phân biệt */}
-                            </td>
-                            {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map(day => {
-                              const dayString = String(day).padStart(2, '0');
-                              const isPresent = monthlyAttendanceData[resident.id]?.[dayString] === 1;
-                              return (
-                                <td key={day} className="py-3 px-2 text-center border-l border-gray-200 dark:border-gray-700">
-                                  <input
-                                    type="checkbox"
-                                    checked={isPresent}
-                                    onChange={() => handleToggleDailyPresence(resident.id, day)}
-                                    disabled={userRole === 'member' && !isMyRow} // MỚI: Vô hiệu hóa nếu là member và không phải hàng của mình
-                                    className="form-checkbox h-5 w-5 text-green-600 dark:text-green-400 rounded focus:ring-green-500 cursor-pointer"
-                                  />
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+            return (
+              <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+                <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">Điểm danh của tôi</h2>
+                {/* Giữ nguyên phần chọn tháng */}
+                <div className="mb-6 flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4">
+                  <label htmlFor="monthSelector" className="font-semibold text-gray-700 dark:text-gray-300 text-lg">Chọn tháng:</label>
+                  <input
+                    type="month"
+                    id="monthSelector"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700"
+                  />
                 </div>
-              )}
-            </div>
-          );
-          case 'memberCostSummary': // Chi phí của tôi
+
+                {!loggedInResidentProfile ? (
+                  <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.</p>
+                ) : (
+                  <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                    <table className="min-w-full bg-white dark:bg-gray-800">
+                      <thead>
+                        <tr>
+                          <th className="py-3 px-6 text-left sticky left-0 bg-green-100 dark:bg-gray-700 z-20 border-r border-green-200 dark:border-gray-600 rounded-tl-xl text-green-800 dark:text-green-200 uppercase text-sm leading-normal">Tên</th>
+                          {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map(day => (
+                            <th key={day} className="py-3 px-2 text-center border-l border-green-200 dark:border-gray-600 text-green-800 dark:text-green-200 uppercase text-sm leading-normal">
+                              {day}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
+                        {/* Vòng lặp qua TẤT CẢ các displayedResidents (người ở đang hoạt động) */}
+                        {displayedResidents.map(resident => {
+                          // Xác định xem hàng này có phải của người dùng đang đăng nhập không
+                          const isMyRow = loggedInResidentProfile && resident.id === loggedInResidentProfile.id;
+
+                          return (
+                            <tr key={resident.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                              <td className="py-3 px-6 text-left whitespace-nowrap font-medium sticky left-0 bg-white dark:bg-gray-800 z-10 border-r border-gray-200 dark:border-gray-700">
+                                {resident.name}
+                                {/* Thêm nhãn "(Bạn)" để người dùng dễ nhận biết hàng của mình */}
+                                {isMyRow && <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold">(Bạn)</span>}
+                              </td>
+                              {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map(day => {
+                                const dayString = String(day).padStart(2, '0');
+                                const isPresent = monthlyAttendanceData[resident.id]?.[dayString] === 1;
+                                return (
+                                  <td key={day} className="py-3 px-2 text-center border-l border-gray-200 dark:border-gray-700">
+                                    <input
+                                      type="checkbox"
+                                      checked={isPresent}
+                                      onChange={() => handleToggleDailyPresence(resident.id, day)}
+                                      // Vô hiệu hóa checkbox NẾU KHÔNG PHẢI HÀNG CỦA MÌNH
+                                      disabled={!isMyRow}
+                                      className="form-checkbox h-5 w-5 text-green-600 dark:text-green-400 rounded focus:ring-green-500 cursor-pointer"
+                                    />
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            );          
+            case 'memberCostSummary': // Chi phí của tôi
           // Hiển thị tóm tắt chi phí mới nhất và nút đánh dấu đã đóng
           const latestCostSharingRecord = costSharingHistory[0];
           return (
