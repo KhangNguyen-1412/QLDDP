@@ -4057,7 +4057,10 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                     <div
                       key={memory.id}
                       className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer"
-                      onClick={() => setSelectedImageToZoom(memory)} // MỚI: Truyền toàn bộ đối tượng memory để có fileType
+                      onClick={() => {
+                        setSelectedMemoryForLightbox(memory);
+                        setCurrentLightboxIndex(0); // Bắt đầu từ ảnh/video đầu tiên trong album
+                      }}
                     >
                       {memory.fileType === 'video' ? ( // MỚI: Hiển thị video nếu là video
                         <video src={memory.fileUrl} controls className="w-full h-48 object-cover"></video>
@@ -5672,7 +5675,10 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                       key={memory.id}
                       className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700"
                       // Click handler sẽ mở lightbox cho ảnh đầu tiên hoặc một gallery
-                      onClick={() => setSelectedImageToZoom(memory.files[0])} // Mở ảnh đầu tiên trong lightbox
+                      onClick={() => {
+                        setSelectedMemoryForLightbox(memory);
+                        setCurrentLightboxIndex(0); // Bắt đầu từ ảnh/video đầu tiên trong album
+                      }}
                     >
                       {/* Hiển thị ảnh/video đầu tiên làm thumbnail */}
                       {memory.files && memory.files.length > 0 && (
