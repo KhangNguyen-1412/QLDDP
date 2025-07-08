@@ -3534,7 +3534,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                     <div key={resident.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
                       {/* HIỂN THỊ AVATAR */}
                       {formerResidentAvatarUrls[resident.id] ? (
-                        <img src={formerResidentAvatarUrls[resident.id]} alt={`Avatar của ${resident.name}`} className="w-full h-48 object-cover" />
+                        <img src={formerResidentAvatarUrls[resident.id]} alt={`Avatar của ${resident.name}`} className="w-full h-48 object-cover cursor-pointer" onClick={() => setSelectedImageToZoom({ fileUrl: resident.photoURL, fileType: 'image', eventName: `Avatar của ${resident.name}` })}/>
                       ) : (
                         <div className="w-full h-48 bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 text-6xl">
                           <i className="fas fa-user-circle"></i>
@@ -4550,7 +4550,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                                 <div key={resident.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
                                     {/* HIỂN THỊ AVATAR */}
                                     {resident.photoURL ? ( // Dùng resident.photoURL trực tiếp từ object
-                                        <img src={resident.photoURL} alt={`Avatar của ${resident.name}`} className="w-full h-48 object-cover" />
+                                        <img src={resident.photoURL} alt={`Avatar của ${resident.name}`} className="w-full h-48 object-cover cursor-pointer" onClick={() => setSelectedImageToZoom({ fileUrl: resident.photoURL, fileType: 'image', eventName: `Avatar của ${resident.name}` })}/>
                                     ) : (
                                         <div className="w-full h-48 bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 text-6xl">
                                             <i className="fas fa-user-circle"></i>
