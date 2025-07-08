@@ -4,7 +4,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Các CSS tùy chỉnh khác của bạn (nếu có) sẽ nằm bên dưới đây */
+/* Bạn có thể thêm các kiểu dáng CSS tùy chỉnh khác ở đây nếu cần */
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -17,4 +17,168 @@ body {
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+/* ============================ */
+/* HIỆU ỨNG MÙA ĐẶC TRƯNG */
+/* ============================ */
+
+/* Lớp chung cho container của các hiệu ứng */
+.seasonal-effect {
+    position: fixed; /* Giữ hiệu ứng cố định trên màn hình */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none; /* Cho phép tương tác với các phần tử bên dưới */
+    z-index: 1000; /* Đảm bảo hiệu ứng nằm trên cùng */
+    overflow: hidden; /* Đảm bảo hiệu ứng không tràn ra ngoài */
+}
+
+/* Các biến CSS cho màu nền chính của theme */
+/* Đây là nơi bạn định nghĩa màu nền cho mỗi theme mùa. */
+/* Các giá trị 'from-blue-100' và 'to-purple-200' trong App.js sẽ bị ghi đè bởi biến này. */
+:root {
+  --theme-bg-start: #e0f2f7; /* Default light blue (Ánh sáng) */
+  --theme-bg-end: #d1c4e9; /* Default light purple (Tối hơn) */
+  transition: background 0.5s ease-in-out; /* Hiệu ứng chuyển màu nền mượt mà */
+}
+
+/* Override biến cho Dark mode */
+.dark {
+  --theme-bg-start: #1f2937; /* Màu nền bắt đầu Dark mode */
+  --theme-bg-end: #374151;   /* Màu nền kết thúc Dark mode */
+}
+
+/* Theme Mùa Hè */
+.theme-summer {
+  --theme-bg-start: #ffe082; /* Vàng nhạt */
+  --theme-bg-end: #ffb74d;   /* Cam nhạt */
+}
+
+/* Theme Mùa Thu */
+.theme-autumn {
+  --theme-bg-start: #d4e157; /* Xanh lá chanh */
+  --theme-bg-end: #8d6e63;   /* Nâu */
+}
+
+/* Theme Mùa Đông */
+.theme-winter {
+  --theme-bg-start: #e0f2f7; /* Xanh băng */
+  --theme-bg-end: #bbdefb;   /* Xanh dương nhạt */
+}
+
+/* Theme Mùa Xuân */
+.theme-spring {
+  --theme-bg-start: #c8e6c9; /* Xanh lá cây nhạt */
+  --theme-bg-end: #e1bee7;   /* Tím nhạt */
+}
+
+/* Áp dụng biến vào background của thẻ gốc */
+/* Đảm bảo thẻ div ngoài cùng của bạn trong App.js có class này */
+.min-h-screen {
+  background: linear-gradient(to bottom right, var(--theme-bg-start), var(--theme-bg-end));
+}
+
+/* Mùa Xuân: Hoa Mai Rơi */
+.season-spring .flower-petal {
+    position: absolute;
+    background-color: #ffccff; /* Màu hồng nhạt của cánh hoa */
+    border-radius: 50%; /* Hình tròn */
+    opacity: 0; /* Bắt đầu ẩn */
+    animation: fall-petal linear infinite; /* Animation rơi lặp lại vô hạn */
+    z-index: 1001; /* Nằm trên lớp nền */
+}
+
+@keyframes fall-petal {
+    0% {
+        transform: translate3d(0, -10vh, 0) scale(1); /* Bắt đầu từ trên cao */
+        opacity: 0;
+    }
+    10% {
+        opacity: 1; /* Hiện ra */
+    }
+    100% {
+        transform: translate3d(var(--x-end), 100vh, 0) scale(0.5); /* Rơi xuống dưới và nhỏ lại */
+        opacity: 0; /* Biến mất */
+    }
+}
+
+/* Mùa Hè: Ánh Nắng Chiếu Rọi */
+.season-summer .sun-beam {
+    position: absolute;
+    /* Gradient tạo hiệu ứng tia sáng tròn */
+    background: radial-gradient(circle, rgba(255, 255, 100, 0.8) 0%, rgba(255, 255, 100, 0) 70%);
+    opacity: 0;
+    animation: shine-sun 8s ease-out infinite; /* Ánh nắng xuất hiện và mờ dần */
+    border-radius: 50%;
+    z-index: 1001;
+}
+
+@keyframes shine-sun {
+    0% {
+        transform: scale(0.1) rotate(0deg); /* Bắt đầu nhỏ */
+        opacity: 0;
+    }
+    25% {
+        opacity: 0.6; /* Hiện ra */
+    }
+    50% {
+        transform: scale(1) rotate(180deg); /* Lớn lên và xoay */
+        opacity: 0; /* Mờ đi */
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+/* Mùa Thu: Lá Rơi */
+.season-autumn .falling-leaf {
+    position: absolute;
+    background-color: #d32f2f; /* Màu lá đỏ */
+    width: 20px;
+    height: 20px;
+    border-radius: 5px; /* Hình dáng lá */
+    transform: rotate(45deg);
+    opacity: 0;
+    animation: fall-leaf linear infinite;
+    z-index: 1001;
+}
+
+@keyframes fall-leaf {
+    0% {
+        transform: translate3d(0, -10vh, 0) rotate(0deg); /* Bắt đầu từ trên cao */
+        opacity: 0;
+    }
+    10% {
+        opacity: 0.8; /* Hiện ra */
+    }
+    100% {
+        transform: translate3d(var(--x-end), 100vh, 0) rotate(720deg); /* Rơi xuống và xoay nhiều vòng */
+        opacity: 0; /* Biến mất */
+    }
+}
+
+/* Mùa Đông: Tuyết Rơi */
+.season-winter .snowflake {
+    position: absolute;
+    background-color: #ffffff; /* Màu trắng */
+    border-radius: 50%; /* Hình tròn */
+    opacity: 0;
+    animation: fall-snow linear infinite; /* Animation rơi lặp lại */
+    z-index: 1001;
+}
+
+@keyframes fall-snow {
+    0% {
+        transform: translate3d(0, -10vh, 0); /* Bắt đầu từ trên cao */
+        opacity: 0;
+    }
+    10% {
+        opacity: 1; /* Hiện ra */
+    }
+    100% {
+        transform: translate3d(var(--x-end), 100vh, 0); /* Rơi xuống dưới */
+        opacity: 0; /* Biến mất */
+    }
 }
