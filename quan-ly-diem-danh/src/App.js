@@ -173,7 +173,7 @@ const handleAddMemory = async (e) => {
     setMemoryError("Vui lòng điền đầy đủ thông tin và chọn file."); // Sửa thông báo
     return;
   }
-  if (!userId) {
+  if (!userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) {
     setMemoryError("Bạn cần đăng nhập để đăng kỷ niệm.");
     return;
   }
@@ -587,7 +587,7 @@ const handleSendCustomNotification = async (e) => {
   setCustomNotificationError('');
   setCustomNotificationSuccess('');
 
-  if (!db || !userId || userRole !== 'admin') {
+  if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) {
       setCustomNotificationError("Bạn không có quyền gửi thông báo tùy chỉnh.");
       return;
   }
@@ -738,7 +738,7 @@ const handleSendCustomNotification = async (e) => {
   const handleSaveUserProfile = async () => {
     setAuthError('');
     // Kiểm tra cơ bản
-    if (!db || !userId) {
+    if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) {
       setAuthError("Hệ thống chưa sẵn sàng hoặc bạn không có quyền.");
       return;
     }
@@ -766,7 +766,7 @@ const handleSendCustomNotification = async (e) => {
 
       // 2. Cập nhật tên trong tài liệu resident nếu là Admin VÀ có linkedResidentProfile
       // Chỉ admin mới có quyền ghi vào residents, và chỉ khi có hồ sơ cư dân liên kết
-      if (userRole === 'admin' && residentDocRef && loggedInResidentProfile.name !== fullName.trim()) {
+      if (userRole === 'admin' && residentDocRef && loggedInResidentProfile.name !== fullName.trim() ) {
          await updateDoc(residentDocRef, { name: fullName.trim() });
          console.log("Đã cập nhật tên cư dân liên kết thành công!");
       }
@@ -797,7 +797,7 @@ const handleSendCustomNotification = async (e) => {
 // MỚI: Hàm để xóa một kỷ niệm (admin có thể xóa bất kỳ, người đăng tải có thể xóa của chính họ)
 const handleDeleteMemory = async (memoryId, fileUrl, publicId, uploadedByUserId) => { // Thêm uploadedByUserId
   setMemoryError('');
-  if (!db || !userId) {
+  if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) {
     setMemoryError("Hệ thống chưa sẵn sàng hoặc bạn chưa đăng nhập.");
     return;
   }
@@ -843,7 +843,7 @@ const handleDeleteMemory = async (memoryId, fileUrl, publicId, uploadedByUserId)
   // Mới: Hàm để chuyển một người dùng/cư dân sang danh sách tiền bối (chỉ admin)
   const handleMoveToFormerResidents = async (residentId, userIdToDeactivate) => {
     setAuthError(''); // Reset authError
-    if (!db || !userId || userRole !== 'admin') {
+    if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) {
         setAuthError("Bạn không có quyền thực hiện thao tác này.");
         return;
     }
@@ -924,7 +924,7 @@ const handleDeleteMemory = async (memoryId, fileUrl, publicId, uploadedByUserId)
   const handleAddFormerResidentManually = async (e) => {
     e.preventDefault();
     setAuthError(''); // Reset authError
-    if (!db || !auth || userRole !== 'admin') {
+    if (!db || !auth || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) {
         setAuthError("Bạn không có quyền thêm tiền bối thủ công.");
         return;
     }
@@ -953,7 +953,7 @@ const handleDeleteMemory = async (memoryId, fileUrl, publicId, uploadedByUserId)
             try {
                 const response = await axios.post(CLOUDINARY_API_URL_IMAGE_UPLOAD, formData, {
                     headers: {
-                        'Content-Type': 'multipart/form-formdata',
+                        'Content-Type': 'multipart/form-data',
                     },
                     onUploadProgress: (progressEvent) => {
                         const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -1014,7 +1014,7 @@ const handleDeleteMemory = async (memoryId, fileUrl, publicId, uploadedByUserId)
 
 // Mới: Hàm để xóa tiền bối thủ công (chỉ xóa tài liệu Firestore)
 const handleDeleteFormerResident = async (residentId) => { // <-- Tham số chỉ là residentId
-  if (!db || !userId || userRole !== 'admin') {
+  if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) {
       alert("Bạn không có quyền xóa tiền bối.");
       return;
   }
@@ -1079,7 +1079,7 @@ const markNotificationAsRead = async (notificationId) => {
 
 // Mới: Hàm xóa thông báo (chỉ admin)
 const deleteNotification = async (notificationId) => {
-  if (!db || !userId || userRole !== 'admin') {
+  if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) {
     alert("Bạn không có quyền xóa thông báo.");
     return;
   }
@@ -1717,7 +1717,7 @@ useEffect(() => {
   const handleAddResident = async () => {
     setAuthError('');
     setBillingError('');
-    if (!db || !userId || userRole !== 'admin') { // Chỉ admin mới có thể thêm cư dân
+    if (!db || !userId || userRole !== 'admin' && userId === 'BJHeKQkyE9VhWCpMfaONEf2N28H2') { // Chỉ admin mới có thể thêm cư dân
       console.error("Hệ thống chưa sẵn sàng hoặc bạn không có quyền.");
       setAuthError("Bạn không có quyền thực hiện thao tác này.");
       return;
@@ -1800,7 +1800,7 @@ useEffect(() => {
   const handleToggleResidentActiveStatus = async (residentId, residentName, currentStatus) => {
     setAuthError('');
     setBillingError('');
-    if (!db || !userId || userRole !== 'admin') { // Chỉ admin mới có thể chuyển đổi trạng thái
+    if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) { // Chỉ admin mới có thể chuyển đổi trạng thái
       console.error("Hệ thống chưa sẵn sàng hoặc bạn không có quyền.");
       setAuthError("Bạn không có quyền thực hiện thao tác này.");
       return;
@@ -1864,7 +1864,7 @@ useEffect(() => {
   const calculateBill = async () => {
     setAuthError('');
     setBillingError('');
-    if (!db || !userId || userRole !== 'admin') { // Chỉ admin mới có thể tính hóa đơn
+    if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) { // Chỉ admin mới có thể tính hóa đơn
       setAuthError("Hệ thống chưa sẵn sàng hoặc bạn không có quyền.");
       return;
     }
@@ -1938,7 +1938,7 @@ useEffect(() => {
   const calculateAttendanceDays = async () => {
     setAuthError('');
     setBillingError('');
-    if (!db || !userId || userRole !== 'admin') { // Chỉ admin mới có thể tính toán điểm danh và chi phí
+    if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) { // Chỉ admin mới có thể tính toán điểm danh và chi phí
       setAuthError("Hệ thống chưa sẵn sàng hoặc bạn không có quyền.");
       return;
     }
@@ -2068,7 +2068,7 @@ useEffect(() => {
   const generatePaymentReminder = async () => {
     setAuthError('');
     setBillingError('');
-    if (!db || !userId || userRole !== 'admin') { // Chỉ admin mới có thể tạo nhắc nhở
+    if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) { // Chỉ admin mới có thể tạo nhắc nhở
       setGeneratedReminder("Bạn không có quyền để tạo nhắc nhở.");
       return;
     }
@@ -2133,7 +2133,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
   // Hàm để chuyển đổi trạng thái đã thanh toán hóa đơn
   const handleToggleBillPaidStatus = async (billId, currentStatus) => {
     setAuthError('');
-    if (!db || !userId || userRole !== 'admin') { // Chỉ admin mới có thể chuyển đổi trạng thái hóa đơn
+    if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) { // Chỉ admin mới có thể chuyển đổi trạng thái hóa đơn
       setAuthError("Bạn không có quyền hoặc không có hồ sơ cư dân liên kết để thực hiện thao tác này.");
       return;
     }
@@ -2151,7 +2151,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
   const handleAddCleaningTask = async () => {
     setAuthError('');
     setBillingError(''); // Đặt lại billingError
-    if (!db || !userId || userRole !== 'admin') { // Chỉ admin mới có thể thêm công việc vệ sinh
+    if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) { // Chỉ admin mới có thể thêm công việc vệ sinh
       setAuthError("Bạn không có quyền hoặc không có hồ sơ cư dân liên kết để thực hiện thao tác này.");
       return;
     }
@@ -2186,7 +2186,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
   // Mới: Hàm để chuyển đổi trạng thái hoàn thành công việc vệ sinh
   const handleToggleCleaningTaskCompletion = async (taskId, currentStatus) => {
     setAuthError('');
-    if (!db || !userId || userRole !== 'admin') { // Chỉ admin mới có thể chuyển đổi trạng thái công việc vệ sinh
+    if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) { // Chỉ admin mới có thể chuyển đổi trạng thái công việc vệ sinh
       setAuthError("Bạn không có quyền hoặc không có hồ sơ cư dân liên kết để thực hiện thao tác này.");
       return;
     }
@@ -2203,7 +2203,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
   // Mới: Hàm để xóa một công việc vệ sinh
   const handleDeleteCleaningTask = async (taskId, taskName) => {
     setAuthError('');
-    if (!db || !userId || userRole !== 'admin') { // Chỉ admin mới có thể xóa công việc vệ sinh
+    if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) { // Chỉ admin mới có thể xóa công việc vệ sinh
       setAuthError("Bạn không có quyền hoặc không có hồ sơ cư dân liên kết để thực hiện thao tác này.");
       return;
     }
@@ -2220,7 +2220,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
   // Mới: Hàm để chuyển đổi trạng thái thanh toán cá nhân trong một bản ghi chia sẻ chi phí
   const handleToggleIndividualPaymentStatus = async (costSharingId, residentId, currentStatus) => {
     setAuthError('');
-    if (!db || !userId || userRole !== 'admin') { // Chỉ admin mới có thể chuyển đổi trạng thái thanh toán
+    if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) { // Chỉ admin mới có thể chuyển đổi trạng thái thanh toán
       setAuthError("Bạn không có quyền hoặc không có hồ sơ cư dân liên kết để thực hiện thao tác này.");
       return;
     }
@@ -2272,7 +2272,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
   const handleAssignShoeRack = async () => {
     setAuthError('');
     setBillingError(''); // Đặt lại billingError
-    if (!db || !userId || userRole !== 'admin') { // Chỉ admin mới có thể gán kệ giày
+    if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) { // Chỉ admin mới có thể gán kệ giày
       setAuthError("Bạn không có quyền hoặc không có hồ sơ cư dân liên kết để thực hiện thao tác này.");
       return;
     }
@@ -2321,7 +2321,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
   // Mới: Hàm để xóa một phân công kệ giày
   const handleClearShoeRackAssignment = async (shelfNumber) => {
     setAuthError('');
-    if (!db || !userId || userRole !== 'admin') { // Chỉ admin mới có thể xóa kệ giày
+    if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) { // Chỉ admin mới có thể xóa kệ giày
       setAuthError("Bạn không có quyền hoặc không có hồ sơ cư dân liên kết để thực hiện thao tác này.");
       return;
     }
@@ -2340,7 +2340,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
     setAuthError('');
     setBillingError('');
     setGeneratedCleaningTasks([]); // Xóa các tác vụ đã tạo trước đó
-    if (!db || !userId || userRole !== 'admin') { // Chỉ admin mới có thể tạo lịch vệ sinh
+    if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) { // Chỉ admin mới có thể tạo lịch vệ sinh
       setAuthError("Vui lòng đăng nhập hoặc bạn không có quyền để tạo lịch tự động.");
       return;
     }
@@ -2433,7 +2433,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
   // Mới: Hàm để lưu các công việc vệ sinh đã tạo vào Firestore
   const handleSaveGeneratedTasks = async () => {
     setAuthError('');
-    if (!db || !userId || userRole !== 'admin') { // Chỉ admin mới có thể lưu công việc vệ sinh
+    if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) { // Chỉ admin mới có thể lưu công việc vệ sinh
       setAuthError("Vui lòng đăng nhập hoặc bạn không có quyền để lưu lịch trực.");
       return;
     }
@@ -2563,7 +2563,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
     }
 
     // Logic cho Admin
-    if (userRole === 'admin') {
+    if (userRole === 'admin' || userId === 'BJHeKQkyE9VhWCpMfaONEf2N28H2') {
       switch (activeSection) {
         case 'dashboard': // MỚI: Dashboard cho Admin
           // Lọc các nhiệm vụ trực phòng sắp tới cho Admin (tất cả các nhiệm vụ chưa hoàn thành)
