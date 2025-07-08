@@ -255,7 +255,7 @@ const handleAddMemory = async (e) => {
     setMemoryError("Vui lòng điền đầy đủ thông tin và chọn file."); // Sửa thông báo
     return;
   }
-  if (!userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) {
+  if (!userId) {
     setMemoryError("Bạn cần đăng nhập để đăng kỷ niệm.");
     return;
   }
