@@ -361,46 +361,47 @@ function App() {
       setEditMemoryError('Vui lòng điền đầy đủ thông tin sự kiện và ngày.');
       return;
     }
-
+  
     setIsUploadingEditMemory(true);
     setEditMemoryUploadProgress(0);
-
+  
     try {
-      let updatedFileUrls = editingMemory.fileUrl ? [editingMemory.fileUrl] : []; // Bắt đầu với URL hiện có
-      let updatedPublicIds = editingMemory.publicId ? [editingMemory.publicId] : [];
-      let updatedFileTypes = editingMemory.fileType ? [editingMemory.fileType] : [];
-
+      // Bắt đầu với CÁC FILE HIỆN CÓ từ editingMemory.files
+      // Đảm bảo editingMemory.files luôn là một mảng (vì đã được xử lý trong useEffect)
+      let updatedFilesInfo = editingMemory.files ? [...editingMemory.files] : [];
+  
       // Tải lên các file mới được thêm vào
       if (editMemoryNewFiles.length > 0) {
         for (const file of editMemoryNewFiles) {
           const formData = new FormData();
           formData.append('file', file);
           formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET_MEMORY);
-
+  
           const response = await axios.post(CLOUDINARY_API_URL_AUTO_UPLOAD, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
+            headers: { 'Content-Type': 'multipart/form-content' },
             onUploadProgress: (progressEvent) => {
               const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
               setEditMemoryUploadProgress(percentCompleted);
             },
           });
-          updatedFileUrls.push(response.data.secure_url);
-          updatedPublicIds.push(response.data.public_id);
-          updatedFileTypes.push(response.data.resource_type);
+          // Thêm thông tin file mới vào mảng
+          updatedFilesInfo.push({
+            fileUrl: response.data.secure_url,
+            publicId: response.data.public_id,
+            fileType: response.data.resource_type,
+          });
         }
       }
-
+  
       const memoryDocRef = doc(db, `artifacts/${currentAppId}/public/data/memories`, editingMemory.id);
       await updateDoc(memoryDocRef, {
         eventName: editMemoryEventName.trim(),
         photoDate: editMemoryPhotoDate,
-        fileUrl: updatedFileUrls.length > 1 ? updatedFileUrls : updatedFileUrls[0], // Lưu mảng nếu có nhiều, không thì lưu chuỗi
-        publicId: updatedPublicIds.length > 1 ? updatedPublicIds : updatedPublicIds[0],
-        fileType: updatedFileTypes.length > 1 ? updatedFileTypes : updatedFileTypes[0],
+        files: updatedFilesInfo, // CHỈ CẬP NHẬT TRƯỜNG 'files'
         lastUpdatedBy: userId,
         lastUpdatedAt: serverTimestamp(),
       });
-
+  
       setEditingMemory(null); // Đóng modal chỉnh sửa
       setEditMemoryEventName('');
       setEditMemoryPhotoDate('');
@@ -415,7 +416,6 @@ function App() {
       setIsUploadingEditMemory(false);
     }
   };
-
   // MỚI: Effect để xác định mùa và áp dụng theme tương ứng
   useEffect(() => {
     const updateSeasonTheme = () => {
@@ -4057,7 +4057,10 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                     <div
                       key={memory.id}
                       className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer"
-                      onClick={() => setSelectedImageToZoom(memory)} // MỚI: Truyền toàn bộ đối tượng memory để có fileType
+                      onClick={() => { // CHÍNH XÁC: Mở lightbox đa ảnh
+                        setSelectedMemoryForLightbox(memory);
+                        setCurrentLightboxIndex(0); // Bắt đầu từ ảnh/video đầu tiên
+                      }}
                     >
                       {memory.fileType === 'video' ? ( // MỚI: Hiển thị video nếu là video
                         <video src={memory.fileUrl} controls className="w-full h-48 object-cover"></video>
