@@ -4,6 +4,35 @@
 @tailwind components;
 @tailwind utilities;
 
+main {
+  padding-top: 5rem; /* Tương đương pt-20 */
+}
+
+@media (min-width: 1024px) { /* Điểm ngắt 'lg' của Tailwind */
+  main {
+      padding-top: 1rem; /* Tương đương lg:pt-4 */
+      margin-left: 16rem; /* Tương đương lg:ml-64, nếu sidebar luôn hiển thị trên desktop */
+  }
+}
+
+/* Ẩn tràn ngang trên màn hình điện thoại */
+@media (max-width: 1023px) { /* Dưới điểm ngắt 'lg' của Tailwind */
+  body {
+      overflow-x: hidden; /* Ngăn body cuộn ngang do nội dung rộng */
+  }
+  main {
+      overflow-x: hidden; /* Đảm bảo nội dung chính không tạo thanh cuộn ngang */
+  }
+}
+
+/* Khi sidebar mở trên điện thoại, làm mờ nội dung chính */
+.sidebar-open-overlay {
+  filter: brightness(0.5); /* Làm mờ nội dung */
+  pointer-events: none; /* Vô hiệu hóa tương tác */
+  transition: filter 0.3s ease-in-out; /* Hiệu ứng chuyển đổi mượt mà */
+}
+
+
 /* Bạn có thể thêm các kiểu dáng CSS tùy chỉnh khác ở đây nếu cần */
 body {
   margin: 0;
