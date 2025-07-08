@@ -105,36 +105,49 @@ code {
 
 /* Áp dụng biến vào background của thẻ gốc */
 /* Đảm bảo thẻ div ngoài cùng của bạn trong App.js có class này */
+/* Dòng này ĐÃ TỒN TẠI VÀ ĐÚNG */
 .min-h-screen {
   background: linear-gradient(to bottom right, var(--theme-bg-start), var(--theme-bg-end));
 }
 
-/* Mùa Xuân: Hoa Mai Rơi */
-.season-spring .flower-petal {
+/* Các kiểu dáng cơ bản cho các phần tử hiệu ứng */
+.flower-petal, .falling-leaf, .snowflake, .sun-beam {
     position: absolute;
-    background-color: #ffccff; /* Màu hồng nhạt của cánh hoa */
-    border-radius: 50%; /* Hình tròn */
     opacity: 0; /* Bắt đầu ẩn */
-    animation: fall-petal linear infinite; /* Animation rơi lặp lại vô hạn */
+    animation-iteration-count: infinite; /* Lặp lại vô hạn */
+    animation-timing-function: linear; /* Chuyển động đều */
+    will-change: transform, opacity; /* Tối ưu hóa hiệu suất */
+}
+
+/* Mùa Xuân: Hoa Mai Rơi */
+/* Sửa selector từ .season-spring thành .theme-spring để khớp với App.js */
+.theme-spring .flower-petal {
+    position: absolute; /* Đảm bảo position absolute */
+    background-color: #ffccff; /* Màu hồng nhạt của cánh hoa */
+    border-radius: 50%; /* Hình tròn, bạn có thể điều chỉnh để giống cánh hoa hơn */
+    opacity: 0; /* Bắt đầu ẩn */
+    animation: fall-petal linear infinite; /* Tên animation chính */
     z-index: 1001; /* Nằm trên lớp nền */
 }
 
 @keyframes fall-petal {
     0% {
-        transform: translate3d(0, -10vh, 0) scale(1); /* Bắt đầu từ trên cao */
+        transform: translate3d(var(--x-start, 0), -10vh, 0) scale(1); /* Bắt đầu từ trên cao */
         opacity: 0;
     }
     10% {
         opacity: 1; /* Hiện ra */
     }
     100% {
-        transform: translate3d(var(--x-end), 100vh, 0) scale(0.5); /* Rơi xuống dưới và nhỏ lại */
+        /* Sử dụng var(--x-end) để có dịch chuyển ngang ngẫu nhiên */
+        transform: translate3d(var(--x-end, 0), 100vh, 0) scale(0.5); /* Rơi xuống dưới và nhỏ lại */
         opacity: 0; /* Biến mất */
     }
 }
 
 /* Mùa Hè: Ánh Nắng Chiếu Rọi */
-.season-summer .sun-beam {
+/* Sửa selector từ .season-summer thành .theme-summer */
+.theme-summer .sun-beam {
     position: absolute;
     /* Gradient tạo hiệu ứng tia sáng tròn */
     background: radial-gradient(circle, rgba(255, 255, 100, 0.8) 0%, rgba(255, 255, 100, 0) 70%);
@@ -162,7 +175,8 @@ code {
 }
 
 /* Mùa Thu: Lá Rơi */
-.season-autumn .falling-leaf {
+/* Sửa selector từ .season-autumn thành .theme-autumn */
+.theme-autumn .falling-leaf {
     position: absolute;
     background-color: #d32f2f; /* Màu lá đỏ */
     width: 20px;
@@ -176,20 +190,21 @@ code {
 
 @keyframes fall-leaf {
     0% {
-        transform: translate3d(0, -10vh, 0) rotate(0deg); /* Bắt đầu từ trên cao */
+        transform: translate3d(var(--x-start, 0), -10vh, 0) rotate(0deg); /* Bắt đầu từ trên cao */
         opacity: 0;
     }
     10% {
         opacity: 0.8; /* Hiện ra */
     }
     100% {
-        transform: translate3d(var(--x-end), 100vh, 0) rotate(720deg); /* Rơi xuống và xoay nhiều vòng */
+        transform: translate3d(var(--x-end, 0), 100vh, 0) rotate(720deg); /* Rơi xuống và xoay nhiều vòng */
         opacity: 0; /* Biến mất */
     }
 }
 
 /* Mùa Đông: Tuyết Rơi */
-.season-winter .snowflake {
+/* Sửa selector từ .season-winter thành .theme-winter */
+.theme-winter .snowflake {
     position: absolute;
     background-color: #ffffff; /* Màu trắng */
     border-radius: 50%; /* Hình tròn */
@@ -200,14 +215,14 @@ code {
 
 @keyframes fall-snow {
     0% {
-        transform: translate3d(0, -10vh, 0); /* Bắt đầu từ trên cao */
+        transform: translate3d(var(--x-start, 0), -10vh, 0); /* Bắt đầu từ trên cao */
         opacity: 0;
     }
     10% {
         opacity: 1; /* Hiện ra */
     }
     100% {
-        transform: translate3d(var(--x-end), 100vh, 0); /* Rơi xuống dưới */
+        transform: translate3d(var(--x-end, 0), 100vh, 0); /* Rơi xuống dưới */
         opacity: 0; /* Biến mất */
     }
 }
