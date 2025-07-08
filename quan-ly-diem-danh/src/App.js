@@ -5269,85 +5269,9 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
         </aside>
 
         {/* Content Area */}
-        <main className="flex-1 p-4 lg:ml-64 transition-all duration-300 ease-in-out overflow-y-auto">
-          {/* Authentication Section - Luôn hiển thị ở đầu nội dung chính */}
-          {/* <div className="mb-8 p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg">
-            <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Xác thực người dùng</h2>
-            {!isAuthReady ? (
-              <p className="text-blue-600 dark:text-blue-300 text-center text-lg">Đang kết nối Firebase...</p>
-            ) : (
-              <>
-                {userId ? (
-                  <div className="text-center">
-                    <p className="text-lg text-blue-800 dark:text-blue-200 font-medium mb-3">
-                      Bạn đã đăng nhập với ID: <span className="font-mono break-all text-blue-600 dark:text-blue-300">{userId}</span>
-                    </p>
-                    {userRole && (
-                      <p className="text-md text-blue-700 dark:text-blue-400">
-                        Vai trò: <span className="font-semibold">{userRole === 'admin' ? 'Trưởng phòng/phó phòng' : 'Thành viên'}</span>
-                      </p>
-                    )}
-                    {loggedInResidentProfile && (
-                      <p className="text-md text-blue-700 dark:text-blue-400">
-                        Hồ sơ thành viên: <span className="font-semibold">{loggedInResidentProfile.name}</span>
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex flex-col space-y-4">
-                    <input
-                      type="text" // Input for Full Name
-                      placeholder="Họ tên đầy đủ"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    />
-                    <input
-                      type="email"
-                      placeholder="Email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    />
-                    <input
-                      type="password"
-                      placeholder="Mật khẩu"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    />
-                    {authError && (
-                      <p className="text-red-500 text-sm text-center">{authError}</p>
-                    )}
-                    <div className="flex justify-center space-x-4">
-                      <button
-                        onClick={handleSignIn}
-                        className="flex-1 px-6 py-2 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75"
-                        disabled={!isAuthReady}
-                      >
-                        <i className="fas fa-sign-in-alt mr-2"></i> Đăng nhập
-                      </button>
-                      <button
-                        onClick={handleSignUp}
-                        className="flex-1 px-6 py-2 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75"
-                        disabled={!isAuthReady}
-                      >
-                        <i className="fas fa-user-plus mr-2"></i> Đăng ký
-                      </button>
-                    </div>
-                    <button
-                      onClick={() => { setShowForgotPasswordModal(true); setAuthError(''); setForgotPasswordMessage(''); }}
-                      className="w-full mt-4 text-blue-600 dark:text-blue-400 hover:underline text-sm font-semibold"
-                    >
-                      Quên mật khẩu?
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
-          </div> */}
+        <main className={`flex-1 p-4 transition-all duration-300 ease-in-out overflow-y-auto ${isSidebarOpen && window.innerWidth < 1024 ? 'sidebar-open-overlay' : ''}`}>
 
-{userId ? (
+        {userId ? (
             renderSection()
           ) : (
               // BẮT ĐẦU KHỐI ĐĂNG NHẬP / ĐĂNG KÝ MỚI
