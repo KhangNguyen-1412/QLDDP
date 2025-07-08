@@ -4556,20 +4556,37 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
   
                 {/* Danh sách các kỷ niệm đã đăng */}
                 <h3 className="text-xl font-bold text-indigo-700 dark:text-indigo-200 mb-4">Các kỷ niệm đã đăng</h3>
-                <div>
-                  <label htmlFor="filterUploader" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Lọc theo người đăng:</label>
-                  <select
-                    id="filterUploader"
-                    value={filterUploaderMemory}
-                    onChange={(e) => setFilterUploaderMemory(e.target.value)}
-                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700"
-                  >
-                    <option value="all">Tất cả người đăng</option>
-                    {/* Hiển thị tất cả người dùng trong hệ thống để lọc */}
-                    {allUsersData.map(user => (
-                      <option key={user.id} value={user.id}>{user.fullName || user.email}</option>
-                    ))}
-                  </select>
+                {/* MỚI: Phần lọc và tìm kiếm kỷ niệm */}
+                <div className="mb-8 p-4 bg-gray-100 dark:bg-gray-800 rounded-xl shadow-inner border border-gray-200 dark:border-gray-600">
+                    <h3 className="text-xl font-bold text-gray-700 dark:text-gray-200 mb-4">Tìm kiếm & Lọc kỷ niệm</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label htmlFor="searchMemory" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Tìm kiếm theo tên sự kiện:</label>
+                        <input
+                          type="text"
+                          id="searchMemory"
+                          value={searchTermMemory}
+                          onChange={(e) => setSearchTermMemory(e.target.value)}
+                          className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700"
+                          placeholder="Nhập tên sự kiện..."
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="filterUploader" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Lọc theo người đăng:</label>
+                        <select
+                          id="filterUploader"
+                          value={filterUploaderMemory}
+                          onChange={(e) => setFilterUploaderMemory(e.target.value)}
+                          className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700"
+                        >
+                          <option value="all">Tất cả người đăng</option>
+                          {/* Hiển thị tất cả người dùng trong hệ thống để lọc */}
+                          {allUsersData.map(user => (
+                            <option key={user.id} value={user.id}>{user.fullName || user.email}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
                 </div>
                 {memories.length === 0 ? (
                   <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có kỷ niệm nào được đăng.</p>
