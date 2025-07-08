@@ -4533,127 +4533,60 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 )}
               </div>
             );
-            case 'formerResidents': // <--- Đảm bảo case này nằm TRƯỚC default
-          return (
-            <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">Thông tin tiền bối</h2>
+            case 'formerResidents': // MỚI: Thông tin tiền bối (Dành cho THÀNH VIÊN)
+            return (
+                <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+                    <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">Thông tin tiền bối</h2>
 
-              {/* Form thêm tiền bối thủ công (Chỉ cho Admin) */}
-              {userRole === 'admin' && (
-                <form onSubmit={handleAddFormerResidentManually} className="mb-8 p-4 bg-green-100 dark:bg-gray-800 rounded-xl shadow-inner border border-green-200 dark:border-gray-600">
-                  <h3 className="text-xl font-bold text-green-700 dark:text-green-200 mb-4">Thêm tiền bối thủ công</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <label htmlFor="formerName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Họ tên:</label>
-                      <input type="text" id="formerName" value={newFormerResidentName} onChange={(e) => setNewFormerResidentName(e.target.value)}
-                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500" placeholder="Nguyễn Văn A" />
-                    </div>
-                    <div>
-                      <label htmlFor="formerEmail" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email:</label>
-                      <input type="email" id="formerEmail" value={newFormerResidentEmail} onChange={(e) => setNewFormerResidentEmail(e.target.value)}
-                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500" placeholder="nguyenvana@example.com" />
-                    </div>
-                    <div>
-                      <label htmlFor="formerPhone" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">SĐT:</label>
-                      <input type="text" id="formerPhone" value={newFormerResidentPhone} onChange={(e) => setNewFormerResidentPhone(e.target.value)}
-                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500" placeholder="0123456789" />
-                    </div>
-                    <div>
-                      <label htmlFor="formerStudentId" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">MSSV:</label>
-                      <input type="text" id="formerStudentId" value={newFormerResidentStudentId} onChange={(e) => setNewFormerResidentStudentId(e.target.value)}
-                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500" placeholder="B1234567" />
-                    </div>
-                    <div>
-                      <label htmlFor="formerBirthday" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày sinh:</label>
-                      <input type="date" id="formerBirthday" value={newFormerResidentBirthday} onChange={(e) => setNewFormerResidentBirthday(e.target.value)}
-                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500" />
-                    </div>
-                    <div>
-                      <label htmlFor="formerDormEntryDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày nhập KTX:</label>
-                      <input type="date" id="formerDormEntryDate" value={newFormerResidentDormEntryDate} onChange={(e) => setNewFormerResidentDormEntryDate(e.target.value)}
-                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500" />
-                    </div>
-                    <div>
-                      <label htmlFor="formerAcademicLevel" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Cấp:</label>
-                      <input type="text" id="formerAcademicLevel" value={newFormerResidentAcademicLevel} onChange={(e) => setNewFormerResidentAcademicLevel(e.target.value)}
-                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500" placeholder="Đại học" />
-                    </div>
-                    <div>
-                      <label htmlFor="formerDeactivatedDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày ra khỏi phòng (Ngày vô hiệu hóa):</label>
-                      <input type="date" id="formerDeactivatedDate" value={newFormerResidentDeactivatedDate} onChange={(e) => setNewFormerResidentDeactivatedDate(e.target.value)}
-                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500" />
-                    </div>
-                  </div>
-                  {/* Toàn bộ div cho input file, progress bar và formerResidentError ĐÃ XÓA */}
-                  <button
-                    type="submit"
-                    className="w-full px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75"
-                    // Thuộc tính disabled={isUploadingFormerResident} đã bị xóa
-                  >
-                    <i className="fas fa-plus-circle mr-2"></i>
-                    Thêm tiền bối
-                  </button>
-                </form>
-              )}
+                    {/* Không hiển thị form thêm tiền bối thủ công cho thành viên */}
+                    {/* Không hiển thị nút "Chuyển người dùng sang tiền bối" cho thành viên */}
 
-              {/* Nút "Chuyển người dùng sang tiền bối" (Nếu bạn vẫn muốn dùng chức năng này cho admin, nó thường được đặt ở Quản lý người ở) */}
-              {userRole === 'admin' && (
-                <button
-                  onClick={() => { alert('Nút này dùng để chuyển người ở hiện tại sang tiền bối từ mục "Quản lý người ở".'); }}
-                  className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 mb-6"
-                >
-                  <i className="fas fa-exchange-alt mr-2"></i> Chuyển người dùng hiện tại sang tiền bối
-                </button>
-              )}
-
-
-              {/* Danh sách các tiền bối đã lưu */}
-              <h3 className="text-xl font-bold text-green-700 dark:text-green-200 mb-4">Danh sách tiền bối</h3>
-              {formerResidents.length === 0 ? (
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có thông tin tiền bối nào được lưu.</p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {formerResidents.map(resident => (
-                    <div key={resident.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                      {/* Toàn bộ phần hiển thị ảnh (resident.photoURL) ĐÃ XÓA */}
-                      <div className="p-4">
-                        <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">{resident.name}</h4>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                            <i className="fas fa-envelope mr-2"></i>Email: {resident.email || 'N/A'}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                            <i className="fas fa-phone mr-2"></i>SĐT: {resident.phoneNumber || 'N/A'}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                            <i className="fas fa-id-badge mr-2"></i>MSSV: {resident.studentId || 'N/A'}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                            <i className="fas fa-birthday-cake mr-2"></i>Ngày sinh: {resident.birthday || 'N/A'}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                            <i className="fas fa-calendar-alt mr-2"></i>Ngày nhập KTX: {resident.dormEntryDate || 'N/A'}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                            <i className="fas fa-graduation-cap mr-2"></i>Cấp: {resident.academicLevel || 'N/A'}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                            <i className="fas fa-door-open mr-2"></i>Ngày ra khỏi phòng: {resident.deactivatedAt && typeof resident.deactivatedAt.toLocaleDateString === 'function' ? resident.deactivatedAt.toLocaleDateString('vi-VN') : (resident.deactivatedAt || 'N/A')}
-                        </p>
-                        {userRole === 'admin' && (
-                          <button
-                            onClick={() => handleDeleteFormerResident(resident.id)} // <-- Đã sửa: chỉ truyền resident.id
-                            className="mt-4 px-4 py-2 bg-red-500 text-white rounded-lg shadow hover:bg-red-600 transition-colors duration-200"
-                          >
-                            <i className="fas fa-trash mr-2"></i>Xóa
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                    <h3 className="text-xl font-bold text-green-700 dark:text-green-200 mb-4">Danh sách tiền bối</h3>
+                    {formerResidents.length === 0 ? (
+                        <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có thông tin tiền bối nào được lưu.</p>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {formerResidents.map(resident => (
+                                <div key={resident.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                                    {/* HIỂN THỊ AVATAR */}
+                                    {resident.photoURL ? ( // Dùng resident.photoURL trực tiếp từ object
+                                        <img src={resident.photoURL} alt={`Avatar của ${resident.name}`} className="w-full h-48 object-cover" />
+                                    ) : (
+                                        <div className="w-full h-48 bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 text-6xl">
+                                            <i className="fas fa-user-circle"></i>
+                                        </div>
+                                    )}
+                                    <div className="p-4">
+                                        <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">{resident.name}</h4>
+                                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                                            <i className="fas fa-envelope mr-2"></i>Email: {resident.email || 'N/A'}
+                                        </p>
+                                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                                            <i className="fas fa-phone mr-2"></i>SĐT: {resident.phoneNumber || 'N/A'}
+                                        </p>
+                                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                                            <i className="fas fa-id-badge mr-2"></i>MSSV: {resident.studentId || 'N/A'}
+                                        </p>
+                                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                                            <i className="fas fa-birthday-cake mr-2"></i>Ngày sinh: {resident.birthday || 'N/A'}
+                                        </p>
+                                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                                            <i className="fas fa-calendar-alt mr-2"></i>Ngày nhập KTX: {resident.dormEntryDate || 'N/A'}
+                                        </p>
+                                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                                            <i className="fas fa-graduation-cap mr-2"></i>Cấp: {resident.academicLevel || 'N/A'}
+                                        </p>
+                                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                                            <i className="fas fa-door-open mr-2"></i>Ngày ra khỏi phòng: {resident.deactivatedAt && typeof resident.deactivatedAt.toLocaleDateString === 'function' ? resident.deactivatedAt.toLocaleDateString('vi-VN') : (resident.deactivatedAt || 'N/A')}
+                                        </p>
+                                        {/* Không hiển thị nút chỉnh sửa/xóa cho thành viên */}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
-              )}
-            </div>
-          );
+            );
           case 'notifications': // Vẫn giữ nguyên cho member
           return (
             <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
