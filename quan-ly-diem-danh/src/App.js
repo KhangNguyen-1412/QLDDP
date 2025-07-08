@@ -3976,7 +3976,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                       id="imageFile"
                       accept="image/*,video/*" // MỚI: Chấp nhận cả ảnh và video
                       multiple // Thêm thuộc tính multiple
-                      onChange={(e) => setNewMemoryImageFile(e.target.files[0])}
+                      onChange={(e) => setNewMemoryImageFile(Array.from(e.target.files))}
                       className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
                     />
                   </div>
@@ -4057,10 +4057,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                     <div
                       key={memory.id}
                       className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer"
-                      onClick={() => {
-                        setSelectedMemoryForLightbox(memory);
-                        setCurrentLightboxIndex(0); // Bắt đầu từ ảnh/video đầu tiên trong album
-                      }}
+                      onClick={() => setSelectedImageToZoom(memory)} // MỚI: Truyền toàn bộ đối tượng memory để có fileType
                     >
                       {memory.fileType === 'video' ? ( // MỚI: Hiển thị video nếu là video
                         <video src={memory.fileUrl} controls className="w-full h-48 object-cover"></video>
@@ -5593,7 +5590,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                       id="imageFile"
                       accept="image/*,video/*"
                       multiple // Thêm thuộc tính multiple
-                      onChange={(e) => setNewMemoryImageFile(e.target.files[0])}
+                      onChange={(e) => setNewMemoryImageFile(Array.from(e.target.files))}
                       className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
                     />
                   </div>
@@ -5675,10 +5672,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                       key={memory.id}
                       className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700"
                       // Click handler sẽ mở lightbox cho ảnh đầu tiên hoặc một gallery
-                      onClick={() => {
-                        setSelectedMemoryForLightbox(memory);
-                        setCurrentLightboxIndex(0); // Bắt đầu từ ảnh/video đầu tiên trong album
-                      }}
+                      onClick={() => setSelectedImageToZoom(memory.files[0])} // Mở ảnh đầu tiên trong lightbox
                     >
                       {/* Hiển thị ảnh/video đầu tiên làm thumbnail */}
                       {memory.files && memory.files.length > 0 && (
