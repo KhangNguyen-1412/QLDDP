@@ -922,59 +922,95 @@ const handleDeleteMemory = async (memoryId, fileUrl, publicId, uploadedByUserId)
 
   // Mới: Hàm để thêm tiền bối thủ công (KHÔNG CÒN XỬ LÝ HÌNH ẢNH)
   const handleAddFormerResidentManually = async (e) => {
-      e.preventDefault(); // Ngăn form submit mặc định
-      if (!db || !auth || userRole !== 'admin') {
-          alert("Bạn không có quyền thêm tiền bối thủ công.");
-          return;
-      }
-      // Đã bỏ newFormerResidentImageFile khỏi điều kiện kiểm tra
-      if (!newFormerResidentName || !newFormerResidentEmail || !newFormerResidentDeactivatedDate) {
-          alert("Vui lòng điền đầy đủ Họ tên, Email, Ngày ra khỏi phòng.");
-          return;
-      }
+    e.preventDefault();
+    setAuthError(''); // Reset authError
+    if (!db || !auth || userRole !== 'admin') {
+        setAuthError("Bạn không có quyền thêm tiền bối thủ công.");
+        return;
+    }
+    if (!newFormerResidentName || !newFormerResidentEmail || !newFormerResidentDeactivatedDate) {
+        setAuthError("Vui lòng điền đầy đủ Họ tên, Email, Ngày ra khỏi phòng.");
+        return;
+    }
 
-      // Các dòng liên quan đến trạng thái upload ảnh tiền bối đã được xóa:
-      // setIsUploadingFormerResident(true);
-      // setFormerResidentUploadProgress(0);
+    // MỚI: Kiểm tra nếu có file avatar được chọn
+    if (newFormerResidentAvatarFile) {
+        setIsUploadingFormerResidentAvatar(true); // Bắt đầu quá trình tải lên avatar
+        setFormerResidentAvatarUploadProgress(0);
+        setFormerResidentAvatarError(''); // Reset lỗi avatar
+    }
 
-      try {
-          // Toàn bộ logic nén và upload ảnh ĐÃ ĐƯỢC XÓA BỎ Ở ĐÂY
+    try {
+        let avatarDownloadURL = null;
 
-          const formerResidentsCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/formerResidents`);
-          // Sử dụng addDoc để Firestore tự tạo ID cho tiền bối thêm thủ công
-          await addDoc(formerResidentsCollectionRef, {
-              name: newFormerResidentName.trim(),
-              email: newFormerResidentEmail.trim(),
-              phoneNumber: newFormerResidentPhone.trim() || null,
-              studentId: newFormerResidentStudentId.trim() || null,
-              birthday: newFormerResidentBirthday.trim() || null,
-              dormEntryDate: newFormerResidentDormEntryDate.trim() || null,
-              academicLevel: newFormerResidentAcademicLevel.trim() || null,
-              deactivatedAt: newFormerResidentDeactivatedDate, // Ngày ra khỏi phòng (String unscrupulous-MM-DD)
-              // photoURL: downloadURL, // Dòng này đã được xóa vì không còn ảnh
-              addedManuallyBy: userId, // Ghi nhận người admin đã thêm
-              createdAt: serverTimestamp() // Thời gian tài liệu được tạo
-          });
+        // MỚI: Tải avatar lên Cloudinary nếu có file được chọn
+        if (newFormerResidentAvatarFile) {
+            const formData = new FormData();
+            formData.append('file', newFormerResidentAvatarFile);
+            formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET_AVATAR);
+            formData.append('folder', 'avatars/former-residents-manual-add'); // Thư mục riêng cho avatar của tiền bối thêm thủ công
 
-          // Reset form
-          setNewFormerResidentName('');
-          setNewFormerResidentEmail('');
-          setNewFormerResidentPhone('');
-          setNewFormerResidentStudentId('');
-          setNewFormerResidentBirthday('');
-          setNewFormerResidentDormEntryDate('');
-          setNewFormerResidentAcademicLevel('');
-          setNewFormerResidentDeactivatedDate('');
-          // Các dòng liên quan đến file ảnh, progress, isUploadingFormerResident, formerResidentError cũng đã được xóa
-          alert('Đã thêm tiền bối thành công!');
-          console.log("Đã thêm tiền bối thủ công thành công!");
-      } catch (error) {
-          console.error("Lỗi khi thêm tiền bối thủ công:", error);
-          alert(`Lỗi khi thêm tiền bối: ${error.message}`);
-      }
-  };
+            try {
+                const response = await axios.post(CLOUDINARY_API_URL_IMAGE_UPLOAD, formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-formdata',
+                    },
+                    onUploadProgress: (progressEvent) => {
+                        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                        setFormerResidentAvatarUploadProgress(percentCompleted);
+                    },
+                });
+                avatarDownloadURL = response.data.secure_url;
+                console.log('Avatar tiền bối tải lên Cloudinary thành công, URL:', avatarDownloadURL);
+            } catch (uploadError) {
+                console.error("Lỗi khi tải ảnh avatar tiền bối lên Cloudinary:", uploadError);
+                setFormerResidentAvatarError(`Lỗi khi tải ảnh avatar: ${uploadError.message}`);
+                setIsUploadingFormerResidentAvatar(false);
+                // Nếu tải ảnh thất bại, hủy toàn bộ quá trình thêm tiền bối
+                return;
+            } finally {
+                setIsUploadingFormerResidentAvatar(false); // Kết thúc trạng thái tải lên avatar
+            }
+        }
 
-  // ... (các hàm xử lý khác của bạn, ví dụ: handleAddFormerResidentManually) ...
+        const formerResidentsCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/formerResidents`);
+        await addDoc(formerResidentsCollectionRef, {
+            name: newFormerResidentName.trim(),
+            email: newFormerResidentEmail.trim(),
+            phoneNumber: newFormerResidentPhone.trim() || null,
+            studentId: newFormerResidentStudentId.trim() || null,
+            birthday: newFormerResidentBirthday.trim() || null,
+            dormEntryDate: newFormerResidentDormEntryDate.trim() || null,
+            academicLevel: newFormerResidentAcademicLevel.trim() || null,
+            deactivatedAt: newFormerResidentDeactivatedDate,
+            photoURL: avatarDownloadURL, // MỚI: Lưu URL của avatar vào Firestore
+            addedManuallyBy: userId,
+            createdAt: serverTimestamp()
+        });
+
+        // Reset form và các trạng thái
+        setNewFormerResidentName('');
+        setNewFormerResidentEmail('');
+        setNewFormerResidentPhone('');
+        setNewFormerResidentStudentId('');
+        setNewFormerResidentBirthday('');
+        setNewFormerResidentDormEntryDate('');
+        setNewFormerResidentAcademicLevel('');
+        setNewFormerResidentDeactivatedDate('');
+        setNewFormerResidentAvatarFile(null); // Reset input file avatar
+        setFormerResidentAvatarUploadProgress(0);
+        setFormerResidentAvatarError(''); // Reset lỗi avatar
+        
+        alert('Đã thêm tiền bối thành công!');
+        console.log("Đã thêm tiền bối thủ công thành công!");
+
+    } catch (error) {
+        console.error("Lỗi khi thêm tiền bối thủ công (Firestore):", error);
+        setAuthError(`Lỗi khi thêm tiền bối: ${error.message}`);
+        setIsUploadingFormerResidentAvatar(false); // Đảm bảo trạng thái upload được reset
+    }
+};
+
 
 // Mới: Hàm để xóa tiền bối thủ công (chỉ xóa tài liệu Firestore)
 const handleDeleteFormerResident = async (residentId) => { // <-- Tham số chỉ là residentId
@@ -3447,6 +3483,23 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                       <input type="date" id="formerDeactivatedDate" value={newFormerResidentDeactivatedDate} onChange={(e) => setNewFormerResidentDeactivatedDate(e.target.value)}
                         className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500" />
                     </div>
+                    {/* MỚI: Phần chọn ảnh đại diện cho tiền bối */}
+                  <div className="md:col-span-2"> {/* Có thể làm cho input này chiếm 2 cột */}
+                    <label htmlFor="formerAvatarFile" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ảnh đại diện (Tùy chọn):</label>
+                    <input
+                      type="file"
+                      id="formerAvatarFile"
+                      accept="image/*"
+                      onChange={(e) => { setNewFormerResidentAvatarFile(e.target.files[0]); setFormerResidentAvatarError(''); }}
+                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+                    />
+                    {isUploadingFormerResidentAvatar && (
+                      <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2">
+                        <div className="bg-green-600 h-2.5 rounded-full" style={{ width: `${formerResidentAvatarUploadProgress}%` }}></div>
+                      </div>
+                    )}
+                    {formerResidentAvatarError && <p className="text-red-500 text-sm mt-2">{formerResidentAvatarError}</p>}
+                  </div>
                   </div>
                   {/* Toàn bộ div cho input file, progress bar và formerResidentError ĐÃ XÓA */}
                   <button
@@ -3523,7 +3576,8 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                                   dormEntryDate: resident.dormEntryDate || '',
                                   academicLevel: resident.academicLevel || '',
                                   // Đảm bảo deactivatedAt là string định dạng YYYY-MM-DD
-                                  deactivatedAt: resident.deactivatedAt instanceof Date ? formatDate(resident.deactivatedAt) : (resident.deactivatedAt || '')
+                                  deactivatedAt: resident.deactivatedAt instanceof Date ? formatDate(resident.deactivatedAt) : (resident.deactivatedAt || ''),
+                                  photoURL: resident.photoURL || null // MỚI: Thêm photoURL vào state
                               })}
                               className="px-4 py-2 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-600 transition-colors duration-200"
                             >
@@ -5523,6 +5577,43 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                           <input type="date" id="editFormerDeactivatedDate" value={editingFormerResident.deactivatedAt}
                               onChange={(e) => setEditingFormerResident({ ...editingFormerResident, deactivatedAt: e.target.value })}
                               className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500" />
+                      </div>
+                      {/* MỚI: Phần chọn ảnh đại diện cho tiền bối (trong modal chỉnh sửa) */}
+                      <div className="mt-8 pt-6 border-t border-gray-300 dark:border-gray-600">
+                          <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-4">Ảnh đại diện</h3>
+                          <div className="flex items-center space-x-4 mb-4">
+                              {/* Hiển thị avatar hiện tại nếu có */}
+                              {editingFormerResident.photoURL ? ( // photoURL từ đối tượng editingFormerResident
+                                  <img src={editingFormerResident.photoURL} alt="Avatar" className="w-24 h-24 rounded-full object-cover shadow-lg border border-gray-200 dark:border-gray-700" />
+                              ) : (
+                                  <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-5xl">
+                                      <i className="fas fa-user-circle"></i>
+                                  </div>
+                              )}
+                              <div>
+                                  <input
+                                      type="file"
+                                      accept="image/*"
+                                      onChange={(e) => { setNewFormerResidentAvatarFile(e.target.files[0]); setFormerResidentAvatarError(''); }}
+                                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                  />
+                                  {isUploadingFormerResidentAvatar && (
+                                      <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2">
+                                          <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${formerResidentAvatarUploadProgress}%` }}></div>
+                                      </div>
+                                  )}
+                                  {formerResidentAvatarError && <p className="text-red-500 text-sm mt-2">{formerResidentAvatarError}</p>}
+                                  <button
+                                      // Gọi hàm tải lên avatar riêng biệt, có thể dùng lại handleUploadFormerResidentAvatar
+                                      onClick={() => handleUploadFormerResidentAvatar(editingFormerResident.id)}
+                                      className="mt-3 px-4 py-2 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+                                      disabled={isUploadingFormerResidentAvatar || !newFormerResidentAvatarFile}
+                                  >
+                                      {isUploadingFormerResidentAvatar ? <i className="fas fa-spinner fa-spin mr-2"></i> : <i className="fas fa-upload mr-2"></i>}
+                                      Cập nhật Avatar
+                                  </button>
+                              </div>
+                          </div>
                       </div>
                       {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
                       <div className="flex justify-between space-x-4 mt-6">
