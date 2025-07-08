@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
@@ -4492,7 +4493,138 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               )}
             </div>
           );
-        // LOẠI BỎ case 'roomMemories' TRÙNG LẶP Ở ĐÂY CHO MEMBER
+          case 'memberRoomMemories': // NAY LÀ CASE RIÊNG CHO MEMBER
+          return (
+              <div className="p-6 bg-indigo-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+                  <h2 className="text-2xl font-bold text-indigo-800 dark:text-indigo-200 mb-5">Kỷ niệm phòng</h2>
+  
+                  {/* Phần lọc và tìm kiếm kỷ niệm - Giữ nguyên cho member để tìm kiếm */}
+                  <div className="mb-8 p-4 bg-gray-100 dark:bg-gray-800 rounded-xl shadow-inner border border-gray-200 dark:border-gray-600">
+                    <h3 className="text-xl font-bold text-gray-700 dark:text-gray-200 mb-4">Tìm kiếm & Lọc kỷ niệm</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label htmlFor="searchMemory" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Tìm kiếm theo tên sự kiện:</label>
+                        <input
+                          type="text"
+                          id="searchMemory"
+                          value={searchTermMemory}
+                          onChange={(e) => setSearchTermMemory(e.target.value)}
+                          className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700"
+                          placeholder="Nhập tên sự kiện..."
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="filterUploader" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Lọc theo người đăng:</label>
+                        <select
+                          id="filterUploader"
+                          value={filterUploaderMemory}
+                          onChange={(e) => setFilterUploaderMemory(e.target.value)}
+                          className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700"
+                        >
+                          <option value="all">Tất cả người đăng</option>
+                          {/* Hiển thị tất cả người dùng trong hệ thống để lọc */}
+                          {allUsersData.map(user => (
+                            <option key={user.id} value={user.id}>{user.fullName || user.email}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+  
+                  {memories.length === 0 ? (
+                      <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có kỷ niệm nào được đăng.</p>
+                  ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {memories.map(memory => (
+                              <div
+                                  key={memory.id}
+                                  className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer"
+                                  onClick={() => {
+                                    setSelectedMemoryForLightbox(memory);
+                                    setCurrentLightboxIndex(0);
+                                  }}
+                              >
+                                  {/* Hiển thị ảnh/video ĐẦU TIÊN làm thumbnail của kỷ niệm */}
+                                  {memory.files && memory.files.length > 0 && (
+                                    memory.files[0].fileType === 'video' ? (
+                                      <video src={memory.files[0].fileUrl} controls className="w-full h-48 object-cover"></video>
+                                    ) : (
+                                      <img src={memory.files[0].fileUrl} alt={memory.eventName} className="w-full h-48 object-cover" />
+                                    )
+                                  )}
+                                  <div className="p-4">
+                                      <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">{memory.eventName}</h4>
+                                      <p className="text-sm text-gray-600 dark:text-gray-300">
+                                          <i className="fas fa-calendar-alt mr-2"></i>Ngày chụp/quay: {memory.photoDate}
+                                      </p>
+                                      <p className="text-sm text-gray-600 dark:text-gray-300">
+                                          <i className="fas fa-upload mr-2"></i>Đăng bởi: {memory.uploadedByName || 'Ẩn danh'} vào {memory.uploadedAt?.toLocaleDateString('vi-VN')}
+                                      </p>
+                                      <p className="text-sm text-gray-600 dark:text-gray-300">
+                                          <i className="fas fa-images mr-2"></i>Số file: {memory.files?.length || 0}
+                                      </p>
+                                      {/* KHÔNG HIỂN THỊ CÁC NÚT CHỈNH SỬA/XÓA CHO MEMBER Ở ĐÂY */}
+                                  </div>
+                              </div>
+                          ))}
+                      </div>
+                  )}
+              </div>
+          );
+          case 'memberFormerResidents': // NAY LÀ CASE RIÊNG CHO MEMBER
+        return (
+            <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">Thông tin tiền bối</h2>
+
+              {/* KHÔNG HIỂN THỊ FORM THÊM TIỀN BỐI THỦ CÔNG CHO MEMBER */}
+              {/* KHÔNG HIỂN THỊ NÚT "Chuyển người dùng sang tiền bối" CHO MEMBER */}
+
+              <h3 className="text-xl font-bold text-green-700 dark:text-green-200 mb-4">Danh sách tiền bối</h3>
+              {formerResidents.length === 0 ? (
+                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có thông tin tiền bối nào được lưu.</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {formerResidents.map(resident => (
+                    <div key={resident.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                      {/* HIỂN THỊ AVATAR */}
+                      {resident.photoURL ? (
+                        <img src={resident.photoURL} alt={`Avatar của ${resident.name}`} className="w-full h-48 object-cover cursor-pointer" onClick={() => setSelectedImageToZoom({ fileUrl: resident.photoURL, fileType: 'image', eventName: `Avatar của ${resident.name}` })} />
+                      ) : (
+                        <div className="w-full h-48 bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 text-6xl">
+                          <i className="fas fa-user-circle"></i>
+                        </div>
+                      )}
+                      <div className="p-4">
+                        <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">{resident.name}</h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          <i className="fas fa-envelope mr-2"></i>Email: {resident.email || 'N/A'}
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          <i className="fas fa-phone mr-2"></i>SĐT: {resident.phoneNumber || 'N/A'}
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          <i className="fas fa-id-badge mr-2"></i>MSSV: {resident.studentId || 'N/A'}
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          <i className="fas fa-birthday-cake mr-2"></i>Ngày sinh: {resident.birthday || 'N/A'}
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          <i className="fas fa-calendar-alt mr-2"></i>Ngày nhập KTX: {resident.dormEntryDate || 'N/A'}
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          <i className="fas fa-graduation-cap mr-2"></i>Cấp: {resident.academicLevel || 'N/A'}
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          <i className="fas fa-door-open mr-2"></i>Ngày ra khỏi phòng: {resident.deactivatedAt && typeof resident.deactivatedAt.toLocaleDateString === 'function' ? resident.deactivatedAt.toLocaleDateString('vi-VN') : (resident.deactivatedAt || 'N/A')}
+                        </p>
+                        {/* KHÔNG HIỂN THỊ CÁC NÚT CHỈNH SỬA/XÓA CHO MEMBER Ở ĐÂY */}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
         case 'memberProfileEdit': // Chỉnh sửa thông tin cá nhân (thành viên có thể tự chỉnh sửa)
           return (
             <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
