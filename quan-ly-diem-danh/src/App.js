@@ -51,6 +51,8 @@ function App() {
   const [residents, setResidents] = useState([]);
   const [newResidentName, setNewResidentName] = useState('');
   const [showInactiveResidents, setShowInactiveResidents] = useState(false);
+  // Thêm vào danh sách useState của bạn
+  const [authMode, setAuthMode] = useState('login'); // 'login' hoặc 'register'
 
   const [currentElectricityReading, setCurrentElectricityReading] = useState('');
   const [currentWaterReading, setCurrentWaterReading] = useState('');
@@ -5242,12 +5244,12 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
             )}
           </div> */}
 
-          {userId ? (
+{userId ? (
             renderSection()
           ) : (
-              // Nếu chưa đăng nhập, hiển thị TOÀN BỘ KHU VỰC XÁC THỰC NGƯỜI DÙNG để họ có thể đăng nhập/đăng ký
-              <div className="mb-8 p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg mx-auto max-w-lg"> {/* Thêm mx-auto max-w-lg để căn giữa và giới hạn chiều rộng */}
-              <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5 text-center">Đăng nhập / Đăng ký</h2> {/* Đổi tiêu đề */}
+              // Thay thế khối này
+              <div className="mb-8 p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg mx-auto max-w-lg">
+              <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5 text-center">Đăng nhập / Đăng ký</h2>
               {!isAuthReady ? (
                 <p className="text-blue-600 dark:text-blue-300 text-center text-lg">Đang kết nối Firebase...</p>
               ) : (
