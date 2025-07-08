@@ -15,7 +15,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 
 // Firebase Config - Moved outside the component to be a constant
 const firebaseConfig = {
-  apiKey: "AIzaSyBMx17aRieYRx2DiUfVzC7iJPXOJwNiy0", // Thay bằng API Key thực tế của bạn
+  apiKey: "AIzaSyBMx17aRieYRxF2DiUfVzC7iJPXOJwNiy0",
   authDomain: "qlddv2.firebaseapp.com",
   projectId: "qlddv2",
   storageBucket: "qlddv2.firebasestorage.app",
