@@ -627,56 +627,59 @@ const handleSendCustomNotification = async (e) => {
   // --- Các hàm xác thực ---
   const handleSignUp = async () => {
     setAuthError('');
-    if (!auth || !db) { // Đảm bảo db cũng sẵn sàng
+    if (!auth || !db) {
       setAuthError("Hệ thống xác thực chưa sẵn sàng.");
       return;
     }
-    if (email.trim() === '' || password.trim() === '' || fullName.trim() === '') { // Validate full name
+    if (email.trim() === '' || password.trim() === '' || fullName.trim() === '') {
       setAuthError("Vui lòng nhập Email, Mật khẩu và Họ tên đầy đủ.");
       return;
     }
     try {
-      // Kiểm tra xem tên đầy đủ đã được liên kết với một cư dân khác chưa
+      // 1. TẠO TÀI KHOẢN NGƯỜI DÙNG TRONG FIREBASE AUTHENTICATION ĐẦU TIÊN
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      console.log("Đăng ký tài khoản Auth thành công! UID:", userCredential.user.uid);
+
+      // 2. TẠO TÀI LIỆU NGƯỜI DÙNG TRONG FIRESTORE SAU KHI TẠO AUTH ACCOUNT
+      // Lúc này request.auth đã có giá trị và userCredential.user.uid == userId, nên quyền create sẽ được cấp
+      await setDoc(doc(db, `artifacts/${currentAppId}/public/data/users`, userCredential.user.uid), {
+        email: userCredential.user.email,
+        fullName: fullName.trim(),
+        role: 'member', // Vai trò mặc định cho người đăng ký mới
+        createdAt: serverTimestamp()
+      });
+      console.log("Đã tạo tài liệu user trong Firestore.");
+
+      // 3. BÂY GIỜ MỚI THỰC HIỆN CÁC TRUY VẤN FIRESTORE KHÁC (ví dụ: kiểm tra cư dân)
       const residentsCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/residents`);
       const qResidentByName = query(residentsCollectionRef, where("name", "==", fullName.trim()));
       const residentSnapByNameCheck = await getDocs(qResidentByName);
 
       if (!residentSnapByNameCheck.empty) {
         const matchedResidentCheck = residentSnapByNameCheck.docs[0];
-        if (matchedResidentCheck.data().linkedUserId) {
-          setAuthError(`Họ tên "${fullName.trim()}" đã được liên kết với một tài khoản khác. Vui lòng sử dụng họ tên khác hoặc liên hệ quản trị viên.`);
-          return;
+        if (matchedResidentCheck.data().linkedUserId && matchedResidentCheck.data().linkedUserId !== userCredential.user.uid) {
+          // Nếu đã liên kết với người dùng khác, cảnh báo (không ngăn chặn đăng ký)
+          console.warn(`Họ tên "${fullName.trim()}" đã được liên kết với tài khoản khác. Tài khoản này vẫn được tạo nhưng cần Admin kiểm tra liên kết.`);
+          // Bạn có thể chọn thông báo lỗi và không cho đăng ký nếu bạn muốn ngăn chặn hoàn toàn việc này.
+          // setAuthError(`Họ tên "${fullName.trim()}" đã được liên kết với một tài khoản khác.`);
+          // await userCredential.user.delete(); // Xóa tài khoản Auth vừa tạo nếu muốn ngăn chặn
+          // return;
+        } else {
+          // Cập nhật tài liệu người dùng để lưu linkedResidentId
+          await updateDoc(doc(db, `artifacts/${currentAppId}/public/data/users`, userCredential.user.uid), { linkedResidentId: matchedResidentCheck.id });
+          console.log(`Đã liên kết cư dân "${fullName.trim()}" với người dùng mới đăng ký.`);
         }
-      }
-
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      console.log("Đăng ký thành công!");
-
-      // Sau khi đăng ký thành công, tạo tài liệu người dùng trong Firestore
-      await setDoc(doc(db, `artifacts/${currentAppId}/public/data/users`, userCredential.user.uid), {
-        email: userCredential.user.email,
-        fullName: fullName.trim(), // Save full name
-        role: 'member', // Vai trò mặc định cho người đăng ký mới
-        createdAt: serverTimestamp()
-      });
-
-      // Cố gắng liên kết với một cư dân hiện có theo tên (lần nữa, sau khi đã kiểm tra)
-      // Lần này chỉ để cập nhật linkedUserId trong tài liệu cư dân nếu nó chưa được liên kết
-      if (!residentSnapByNameCheck.empty) { // Nếu tìm thấy cư dân trùng tên
-        const matchedResident = residentSnapByNameCheck.docs[0];
-        await updateDoc(doc(db, `artifacts/${currentAppId}/public/data/users`, userCredential.user.uid), { linkedResidentId: matchedResident.id });
-        console.log(`Đã liên kết cư dân "${fullName.trim()}" với người dùng mới đăng ký.`);
       } else {
         console.log(`Không tìm thấy cư dân có tên "${fullName.trim()}". Admin có thể cần thêm/liên kết thủ công.`);
       }
 
-      setUserRole('member'); // Đặt vai trò ngay lập lập tức trong trạng thái
+      setUserRole('member'); // Đặt vai trò ngay lập tức trong trạng thái
+      alert("Đăng ký tài khoản thành công!");
     } catch (error) {
       console.error("Lỗi đăng ký:", error.code, error.message);
       setAuthError(`Lỗi đăng ký: ${error.message}`);
     }
   };
-
   const handleSignIn = async () => {
     setAuthError('');
     if (!auth) {
