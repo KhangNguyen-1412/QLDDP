@@ -41,7 +41,85 @@ const CLOUDINARY_API_URL_AUTO_UPLOAD = `https://api.cloudinary.com/v1_1/${CLOUDI
 // KẾT THÚC KHAI BÁO CLOUDINARY
 // ===========================================
 
+// Hàm trợ giúp để xác định mùa dựa trên tháng hiện tại
+const getSeason = (date) => {
+  const month = date.getMonth() + 1; // getMonth() trả về từ 0-11
+
+  if (month >= 3 && month <= 5) { // Tháng 3, 4, 5
+    return 'spring';
+  } else if (month >= 6 && month <= 8) { // Tháng 6, 7, 8
+    return 'summer';
+  } else if (month >= 9 && month <= 11) { // Tháng 9, 10, 11
+    return 'autumn';
+  } else { // Tháng 12, 1, 2
+    return 'winter';
+  }
+};
+
+// Hàm tạo các phần tử hiệu ứng mùa
+const generateSeasonalEffectElement = (season, count = 20) => {
+    const elements = [];
+    const minSize = 5; // Kích thước tối thiểu của hạt/tia
+    const maxSize = 15; // Kích thước tối đa
+    const minDuration = 5; // Thời gian rơi/hiển thị tối thiểu (giây)
+    const maxDuration = 15; // Thời gian rơi/hiển thị tối đa (giây)
+    const minDelay = 0; // Độ trễ bắt đầu tối thiểu
+    const maxDelay = 7; // Độ trễ bắt đầu tối đa
+
+    for (let i = 0; i < count; i++) {
+        const size = Math.random() * (maxSize - minSize) + minSize;
+        const duration = Math.random() * (maxDuration - minDuration) + minDuration;
+        const delay = Math.random() * (maxDelay - minDelay) + minDelay; // Tránh tất cả rơi cùng lúc
+        const startX = Math.random() * 100; // Vị trí X bắt đầu (0-100vw)
+        const xEnd = (Math.random() - 0.5) * 50; // Vị trí X kết thúc (dịch chuyển +/- 25vw)
+
+        let className = '';
+        let style = {
+            width: `${size}px`,
+            height: `${size}px`,
+            left: `${startX}vw`,
+            animationDuration: `${duration}s`,
+            animationDelay: `${delay}s`,
+            '--x-end': `${xEnd}vw` // Biến CSS để điều khiển vị trí kết thúc theo chiều ngang
+        };
+
+        switch (season) {
+            case 'spring':
+                className = 'flower-petal';
+                break;
+            case 'summer':
+                className = 'sun-beam';
+                style.width = `${size * 5}px`; // Tia nắng lớn hơn
+                style.height = `${size * 5}px`;
+                style.animationDuration = '8s'; // Ánh nắng thường có thời gian cố định hơn
+                style.animationDelay = `${delay * 2}s`; // Delay lâu hơn cho tia nắng
+                style.left = `${Math.random() * 80}vw`; // Vị trí tia nắng từ trên xuống
+                style.top = `${Math.random() * 30}vh`; // Vị trí tia nắng từ trên xuống
+                break;
+            case 'autumn':
+                className = 'falling-leaf';
+                style.borderRadius = '2px'; /* Hình dáng lá */
+                style.transform = `rotate(${Math.random() * 360}deg)`; // Lá xoay ngẫu nhiên
+                style.backgroundColor = `hsl(${Math.random() * 60 + 10}, 80%, 50%)`; /* Màu lá ngẫu nhiên (đỏ, cam, vàng) */
+                break;
+            case 'winter':
+                className = 'snowflake';
+                break;
+            default:
+                break;
+        }
+
+        elements.push(React.createElement('div', { key: i, className: className, style: style }));
+    }
+    return elements;
+};
+
 function App() {
+  // Các state liên quan tới theme mùa
+  const [currentSeason, setCurrentSeason] = useState('');
+  const [currentSeasonTheme, setCurrentSeasonTheme] = useState('');
+  const [seasonalEffectElements, setSeasonalEffectElements] = useState([]);
+
   const [db, setDb] = useState(null);
   const [auth, setAuth] = useState(null);
   const [userId, setUserId] = useState(null);
@@ -235,6 +313,26 @@ const handleAddMemory = async (e) => {
     }
   };
 
+  // MỚI: Effect để xác định mùa và áp dụng theme tương ứng
+  useEffect(() => {
+    const updateSeasonTheme = () => {
+      const today = new Date();
+      const season = getSeason(today); // Xác định mùa hiện tại
+      setCurrentSeason(season); // Cập nhật state mùa
+      setCurrentSeasonTheme(`theme-${season}`); // Cập nhật class theme (ví dụ: 'theme-summer')
+
+      // Tạo các phần tử hiệu ứng dựa trên mùa
+      // Ít tia nắng hơn (5), nhiều hoa/lá/tuyết hơn (50)
+      setSeasonalEffectElements(generateSeasonalEffectElement(season, season === 'summer' ? 5 : 50));
+    };
+
+    updateSeasonTheme(); // Chạy lần đầu khi component mount
+
+    // Thiết lập interval để kiểm tra lại mỗi ngày để tự động chuyển theme khi sang ngày/tháng mới
+    const dailyCheckInterval = setInterval(updateSeasonTheme, 1000 * 60 * 60 * 24); // Kiểm tra mỗi 24 giờ
+
+    return () => clearInterval(dailyCheckInterval); // Dọn dẹp interval khi component unmount
+  }, []); // Dependency rỗng, chạy một lần khi component mount
 
   // Effect để áp dụng lớp chủ đề cho phần tử HTML và lưu vào bộ nhớ cục bộ
   useEffect(() => {
@@ -4841,6 +4939,9 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-100 to-purple-200 dark:from-gray-900 dark:to-gray-700 flex flex-col font-inter">
+      <div className="seasonal-effect">
+        {seasonalEffectElements.map((el, index) => React.cloneElement(el, { key: index }))}
+      </div>
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 shadow-md p-4 flex justify-between items-center sticky top-0 z-30">
         <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Quản lý phòng</h1>
@@ -4891,6 +4992,8 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
             <i className="fas fa-bars text-xl"></i>
           </button>
         </div>
+
+
       </header>
 
       {/* Main Content Area */}
