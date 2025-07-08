@@ -5527,8 +5527,9 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
 
       {editingFormerResident && (
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
-              <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md">
-                  <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">Chỉnh sửa thông tin tiền bối</h3>
+            <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col">
+              <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">Chỉnh sửa thông tin tiền bối</h3>
+                <div className="flex-1 overflow-y-auto pr-2">
                   <form onSubmit={handleUpdateFormerResident} className="space-y-4">
                       <div>
                           <label htmlFor="editFormerName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Họ tên:</label>
@@ -5614,8 +5615,12 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                                   </button>
                               </div>
                           </div>
+                      
                       </div>
-                      {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
+                      
+                  </form>
+                </div>
+                {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
                       <div className="flex justify-between space-x-4 mt-6">
                           <button
                               type="submit"
@@ -5631,7 +5636,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                               Hủy
                           </button>
                       </div>
-                  </form>
               </div>
           </div>
       )}
