@@ -3904,11 +3904,11 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               )}
             </div>
           );
-        case 'roomMemories': // <--- DI CHUYỂN TOÀN BỘ CASE NÀY LÊN TRÊN default
+          case 'roomMemories': // <--- DI CHUYỂN TOÀN BỘ CASE NÀY LÊN TRÊN default
           return (
             <div className="p-6 bg-indigo-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
               <h2 className="text-2xl font-bold text-indigo-800 dark:text-indigo-200 mb-5">Kỷ niệm phòng</h2>
-
+        
               {/*Form đăng ảnh/video kỷ niệm*/}
               <form
                 onSubmit={handleAddMemory}
@@ -3988,7 +3988,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                   </button>
                 </div>
               </form>
-
+        
               {/* Danh sách các kỷ niệm đã đăng */}
               <h3 className="text-xl font-bold text-indigo-700 dark:text-indigo-200 mb-4">Các kỷ niệm đã đăng</h3>
               {/* MỚI: Phần lọc và tìm kiếm kỷ niệm */}
@@ -3998,8 +3998,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                   <div>
                     <label
                       htmlFor="searchMemory"
-                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                    >
+                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
                       Tìm kiếm theo tên sự kiện:
                     </label>
                     <input
@@ -4051,12 +4050,18 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                         setCurrentLightboxIndex(0); // Bắt đầu từ ảnh/video đầu tiên
                       }}
                     >
-                      {memory.fileType === 'video' ? ( // MỚI: Hiển thị video nếu là video
-                        <video src={memory.fileUrl} controls className="w-full h-48 object-cover"></video>
-                      ) : (
-                        // Hiển thị ảnh nếu là ảnh hoặc loại khác
-                        <img src={memory.fileUrl} alt={memory.eventName} className="w-full h-48 object-cover" />
-                      )}
+                      {/* Hiển thị ảnh/video đầu tiên làm thumbnail */}
+                      {memory.files &&
+                        memory.files.length > 0 &&
+                        (memory.files[0].fileType === 'video' ? (
+                          <video src={memory.files[0].fileUrl} controls className="w-full h-48 object-cover"></video>
+                        ) : (
+                          <img
+                            src={memory.files[0].fileUrl}
+                            alt={memory.eventName}
+                            className="w-full h-48 object-cover"
+                          />
+                        ))}
                       <div className="p-4">
                         <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">
                           {memory.eventName}
@@ -4067,6 +4072,9 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                         <p className="text-sm text-gray-600 dark:text-gray-300">
                           <i className="fas fa-upload mr-2"></i>Đăng bởi: {memory.uploadedByName || 'Ẩn danh'} vào{' '}
                           {memory.uploadedAt?.toLocaleDateString('vi-VN')}
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          <i className="fas fa-images mr-2"></i>Số file: {memory.files?.length || 0}
                         </p>
                         {/* MỚI: Nút xóa cho admin HOẶC người đăng tải */}
                         {(userRole === 'admin' || userId === memory.uploadedBy) && (
@@ -4092,7 +4100,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               )}
             </div>
           );
-        case 'formerResidents': // Thông tin tiền bối
+          case 'formerResidents': // Thông tin tiền bối
           return (
             <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
               <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">Thông tin tiền bối</h2>
