@@ -193,6 +193,7 @@ function App() {
   const [memberBirthday, setMemberBirthday] = useState('');
   const [memberStudentId, setMemberStudentId] = useState('');
   const [editProfileMode, setEditProfileMode] = useState(false);
+  const [updateSuccessMessage, setUpdateSuccessMessage] = useState('');
 
   const [allUsersData, setAllUsersData] = useState([]);
 
@@ -1264,6 +1265,7 @@ const handleEditCommonResidentDetails = (resident) => {
 
 const handleUpdateCommonResidentDetails = async () => {
   setAuthError('');
+  setUpdateSuccessMessage('');
   if (!db || !userId || userRole !== 'admin') {
    setAuthError('Bạn không có quyền thực hiện thao tác này.');
    return;
@@ -1329,10 +1331,15 @@ const handleUpdateCommonResidentDetails = async () => {
    setEditCommonStudentId('');
    setSelectedAvatarFile(null);
    setTempAvatarUrl('');
-   alert('Đã cập nhật thông tin thành viên thành công!');
+
+   // THÔNG BÁO CẬP NHẬT THÀNH CÔNG
+  setUpdateSuccessMessage('Cập nhật thông tin thành viên thành công! 🎉');
+  setTimeout(() => setUpdateSuccessMessage(''), 5000); // Xóa thông báo sau 5 giây
+
   } catch (error) {
    console.error('Lỗi khi cập nhật thông tin thành viên:', error);
    setAuthError(`Lỗi khi cập nhật thông tin thành viên: ${error.message}`);
+   setTimeout(() => setAuthError(''), 7000); // Xóa lỗi sau 7 giây
   }
  };
 
@@ -7642,7 +7649,10 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 )}
               </div>
 
-              {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
+              {/* Thông báo lỗi */}
+            {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
+              {/* Thông báo thành công */}
+              {updateSuccessMessage && <p className="text-green-600 text-sm text-center mt-4">{updateSuccessMessage}</p>}
               <div className="flex justify-between space-x-4 mt-6">
                 <button
                   onClick={handleUpdateCommonResidentDetails}
