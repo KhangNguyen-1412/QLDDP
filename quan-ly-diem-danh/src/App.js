@@ -477,126 +477,150 @@ function App() {
       console.log('5. setDb và setAuth đã được gọi. Đang chờ onAuthStateChanged...');
 
       const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
-        console.log('6. onAuthStateChanged đã được kích hoạt. Người dùng hiện tại:', user ? user.uid : 'null');
+        console.log("6. onAuthStateChanged đã được kích hoạt. Người dùng hiện tại:", user ? user.uid : 'null');
         if (user) {
-          setUserId(user.uid);
-          console.log('7. Người dùng đã xác thực (UID):', user.uid);
-
-          // Lấy vai trò người dùng và fullName từ Firestore
-          const userDocRef = doc(firestoreDb, `artifacts/${currentAppId}/public/data/users`, user.uid);
-          const userDocSnap = await getDoc(userDocRef);
-          let fetchedPhotoURL = null; // MỚI: Thêm để lấy photoURL
-          let fetchedRole = 'member'; // Mặc định là member
-          let fetchedFullName = user.email; // Mặc định là email nếu không có fullName
-          let linkedResidentId = null; // ID cư dân được liên kết
-
-          // New fields
-          let fetchedPhoneNumber = '';
-          let fetchedAcademicLevel = '';
-          let fetchedDormEntryDate = '';
-          let fetchedBirthday = '';
-          let fetchedStudentId = '';
-
-          if (userDocSnap.exists()) {
-            const userData = userDocSnap.data();
-            if (userData.role) {
-              fetchedRole = userData.role;
+            // MỚI: KIỂM TRA EMAIL ĐÃ XÁC MINH CHƯA
+            // Luôn reload để đảm bảo user.emailVerified là trạng thái mới nhất từ Firebase Auth server
+            await user.reload(); 
+            if (!user.emailVerified) {
+                console.log("Email chưa được xác minh cho UID:", user.uid);
+                setUserId(null); // Không đặt userId, coi như chưa đăng nhập đầy đủ
+                setUserRole(null);
+                setLoggedInResidentProfile(null);
+                setActiveSection('dashboard'); // Đặt lại phần hoạt động
+                setAuthError("Tài khoản của bạn chưa được xác minh email. Vui lòng kiểm tra hộp thư đến và nhấp vào liên kết xác minh. Bạn cũng có thể sử dụng nút 'Gửi lại email xác minh' bên dưới.");
+                setIsAuthReady(true); // Đã sẵn sàng nhưng không cho phép truy cập đầy đủ
+                return; // Rất quan trọng: Dừng xử lý tiếp nếu chưa xác minh
             }
-            if (userData.fullName) {
-              fetchedFullName = userData.fullName;
-            }
-            if (userData.linkedResidentId) {
-              linkedResidentId = userData.linkedResidentId;
-            }
-            if (userData.photoURL) {
-              // MỚI: Lấy photoURL
-              fetchedPhotoURL = userData.photoURL;
-            }
-            // Fetch new fields
-            fetchedPhoneNumber = userData.phoneNumber || '';
-            fetchedAcademicLevel = userData.academicLevel || '';
-            fetchedDormEntryDate = userData.dormEntryDate || '';
-            fetchedBirthday = userData.birthday || '';
-            fetchedStudentId = userData.studentId || '';
-          } else {
-            // Nếu tài liệu người dùng không tồn tại, tạo nó với vai trò mặc định
-            await setDoc(
-              userDocRef,
-              { email: user.email, fullName: user.email, role: 'member', createdAt: serverTimestamp() },
-              { merge: true },
-            );
-          }
-          setUserAvatarUrl(fetchedPhotoURL); // MỚI: Cập nhật state avatar URL
-          setUserRole(fetchedRole);
-          setFullName(fetchedFullName); // Cập nhật fullName cho state
-          console.log('8. Vai trò người dùng:', fetchedRole);
-
-          // Set states for editable profile fields
-          setMemberPhoneNumber(fetchedPhoneNumber);
-          setMemberAcademicLevel(fetchedAcademicLevel);
-          setMemberDormEntryDate(fetchedDormEntryDate);
-          setMemberBirthday(fetchedBirthday);
-          setMemberStudentId(fetchedStudentId);
-
-          // Tìm hồ sơ cư dân được liên kết
-          const residentsCollectionRef = collection(firestoreDb, `artifacts/${currentAppId}/public/data/residents`);
-          let currentLoggedInResidentProfile = null;
-
-          if (linkedResidentId) {
-            // Ưu tiên tìm theo linkedResidentId đã lưu trong tài liệu người dùng
-            const residentDoc = await getDoc(doc(residentsCollectionRef, linkedResidentId));
-            if (residentDoc.exists()) {
-              currentLoggedInResidentProfile = { id: residentDoc.id, ...residentDoc.data() };
-              console.log('9. Hồ sơ cư dân được liên kết (từ linkedResidentId):', currentLoggedInResidentProfile.name);
+    
+            // --- NẾU EMAIL ĐÃ ĐƯỢC XÁC MINH, TIẾP TỤC XỬ LÝ NHƯ BÌNH THƯỜNG ---
+            setUserId(user.uid);
+            console.log("7. Người dùng đã xác thực (UID):", user.uid);
+    
+            // ... (logic hiện có để lấy vai trò người dùng, fullName, linkedResidentId, v.v. - không thay đổi) ...
+            // BẮT ĐẦU: Logic hiện có để lấy vai trò người dùng
+            const userDocRef = doc(firestoreDb, `artifacts/${currentAppId}/public/data/users`, user.uid);
+            const userDocSnap = await getDoc(userDocRef);
+            let fetchedPhotoURL = null;
+            let fetchedRole = 'member';
+            let fetchedFullName = user.email;
+            let linkedResidentId = null;
+    
+            let fetchedPhoneNumber = '';
+            let fetchedAcademicLevel = '';
+            let fetchedDormEntryDate = '';
+            let fetchedBirthday = '';
+            let fetchedStudentId = '';
+    
+            if (userDocSnap.exists()) {
+                const userData = userDocSnap.data();
+                if (userData.role) {
+                    fetchedRole = userData.role;
+                }
+                if (userData.fullName) {
+                    fetchedFullName = userData.fullName;
+                }
+                if (userData.linkedResidentId) {
+                    linkedResidentId = userData.linkedResidentId;
+                }
+                if (userData.photoURL) {
+                    fetchedPhotoURL = userData.photoURL;
+                }
+                fetchedPhoneNumber = userData.phoneNumber || '';
+                fetchedAcademicLevel = userData.academicLevel || '';
+                fetchedDormEntryDate = userData.dormEntryDate || '';
+                fetchedBirthday = userData.birthday || '';
+                fetchedStudentId = userData.studentId || '';
             } else {
-              console.log('9. linkedResidentId trong tài liệu người dùng không hợp lệ hoặc cư dân không tồn tại.');
-              linkedResidentId = null; // Đặt lại nếu không tìm thấy
+                // Nếu tài liệu người dùng không tồn tại, tạo nó với vai trò mặc định
+                await setDoc(userDocRef, { 
+                    email: user.email, 
+                    fullName: user.email, 
+                    role: 'member', 
+                    createdAt: serverTimestamp(),
+                    emailVerified: user.emailVerified // Đảm bảo trường này được lưu
+                }, { merge: true });
+                // Sau khi tạo tài liệu, đọc lại để có dữ liệu đầy đủ cho các state bên dưới
+                const newUserDocSnap = await getDoc(userDocRef);
+                if (newUserDocSnap.exists()) {
+                    const newUserData = newUserDocSnap.data();
+                    fetchedRole = newUserData.role;
+                    fetchedFullName = newUserData.fullName;
+                    linkedResidentId = newUserData.linkedResidentId; // Có thể null nếu chưa có
+                    fetchedPhotoURL = newUserData.photoURL;
+                    fetchedPhoneNumber = newUserData.phoneNumber || '';
+                    fetchedAcademicLevel = newUserData.academicLevel || '';
+                    fetchedDormEntryDate = newUserData.dormEntryDate || '';
+                    fetchedBirthday = newUserData.birthday || '';
+                    fetchedStudentId = newUserData.studentId || '';
+                }
             }
-          }
-
-          if (!currentLoggedInResidentProfile && fetchedFullName) {
-            // Nếu chưa có hồ sơ cư dân liên kết, thử tìm theo tên đầy đủ
-            const qResidentByName = query(residentsCollectionRef, where('name', '==', fetchedFullName));
-            const residentSnapByName = await getDocs(qResidentByName);
-
-            if (!residentSnapByName.empty) {
-              const matchedResident = residentSnapByName.docs[0];
-              // Chỉ liên kết nếu cư dân chưa được liên kết với người dùng khác
-              if (!matchedResident.data().linkedUserId || matchedResident.data().linkedUserId === user.uid) {
-                // Cập nhật tài liệu người dùng để lưu linkedResidentId
-                await updateDoc(userDocRef, { linkedResidentId: matchedResident.id });
-                currentLoggedInResidentProfile = { id: matchedResident.id, ...matchedResident.data() };
-                console.log('9. Đã tìm và liên kết hồ sơ cư dân theo tên:', currentLoggedInResidentProfile.name);
-              } else {
-                console.log(`Cư dân "${fetchedFullName}" đã được liên kết với một người dùng khác.`);
-              }
-            } else {
-              console.log(`Không tìm thấy hồ sơ cư dân có tên "${fetchedFullName}".`);
+            setUserAvatarUrl(fetchedPhotoURL);
+            setUserRole(fetchedRole);
+            setFullName(fetchedFullName);
+            console.log("8. Vai trò người dùng:", fetchedRole);
+    
+            setMemberPhoneNumber(fetchedPhoneNumber);
+            setMemberAcademicLevel(fetchedAcademicLevel);
+            setMemberDormEntryDate(fetchedDormEntryDate);
+            setMemberBirthday(fetchedBirthday);
+            setMemberStudentId(fetchedStudentId);
+    
+            const residentsCollectionRef = collection(firestoreDb, `artifacts/${currentAppId}/public/data/residents`);
+            let currentLoggedInResidentProfile = null;
+    
+            if (linkedResidentId) {
+                const residentDoc = await getDoc(doc(residentsCollectionRef, linkedResidentId));
+                if (residentDoc.exists()) {
+                    currentLoggedInResidentProfile = { id: residentDoc.id, ...residentDoc.data() };
+                    console.log("9. Hồ sơ cư dân được liên kết (từ linkedResidentId):", currentLoggedInResidentProfile.name);
+                } else {
+                    console.log("9. linkedResidentId trong tài liệu người dùng không hợp lệ hoặc cư dân không tồn tại.");
+                    linkedResidentId = null;
+                }
             }
-          }
-          setLoggedInResidentProfile(currentLoggedInResidentProfile);
-          console.log(
-            `DEBUG AUTH: User ID: ${user.uid}, User Role: ${fetchedRole}, Linked Resident: ${currentLoggedInResidentProfile ? currentLoggedInResidentProfile.name : 'None'}`,
-          );
+    
+            if (!currentLoggedInResidentProfile && fetchedFullName) {
+                const qResidentByName = query(residentsCollectionRef, where("name", "==", fetchedFullName));
+                const residentSnapByName = await getDocs(qResidentByName);
+    
+                if (!residentSnapByName.empty) {
+                    const matchedResident = residentSnapByName.docs[0];
+                    if (!matchedResident.data().linkedUserId || matchedResident.data().linkedUserId === user.uid) {
+                        await updateDoc(userDocRef, { linkedResidentId: matchedResident.id });
+                        currentLoggedInResidentProfile = { id: matchedResident.id, ...matchedResident.data() };
+                        console.log("9. Đã tìm và liên kết hồ sơ cư dân theo tên:", currentLoggedInResidentProfile.name);
+                    } else {
+                        console.log(`Cư dân "${fetchedFullName}" đã được liên kết với một người dùng khác.`);
+                    }
+                } else {
+                    console.log(`Không tìm thấy hồ sơ cư dân có tên "${fetchedFullName}". Admin có thể cần thêm/liên kết thủ công.`);
+                }
+            }
+            setLoggedInResidentProfile(currentLoggedInResidentProfile);
+            console.log(`DEBUG AUTH: User ID: ${user.uid}, User Role: ${fetchedRole}, Linked Resident: ${currentLoggedInResidentProfile ? currentLoggedInResidentProfile.name : 'None'}`);
+            // KẾT THÚC: Logic hiện có để lấy vai trò người dùng
+            
+            setIsAuthReady(true);
+            console.log("9. Trạng thái xác thực Firebase đã sẵn sàng: ", true);
         } else {
-          setUserId(null);
-          setUserRole(null); // Xóa vai trò khi đăng xuất
-          setLoggedInResidentProfile(null); // Xóa hồ sơ cư dân liên kết
-          setActiveSection('dashboard'); // Đặt lại phần hoạt động
-          // Reset profile edit states
-          setFullName('');
-          setEmail('');
-          setPassword('');
-          setMemberPhoneNumber('');
-          setMemberAcademicLevel('');
-          setMemberDormEntryDate('');
-          setMemberBirthday('');
-          setMemberStudentId('');
-          setUserAvatarUrl(null); // MỚI: Reset avatar URL khi đăng xuất
+            setUserId(null);
+            setUserRole(null);
+            setLoggedInResidentProfile(null);
+            setActiveSection('dashboard');
+            setFullName('');
+            setEmail('');
+            setPassword('');
+            setMemberPhoneNumber('');
+            setMemberAcademicLevel('');
+            setMemberDormEntryDate('');
+            setMemberBirthday('');
+            setMemberStudentId('');
+            setUserAvatarUrl(null);
+            setIsAuthReady(true);
+            console.log("9. Trạng thái xác thực Firebase đã sẵn sàng: ", true);
         }
-        setIsAuthReady(true);
-        console.log('9. Trạng thái xác thực Firebase đã sẵn sàng: ', true);
-      });
+    });
 
       return () => {
         console.log('Hủy đăng ký lắng nghe trạng thái xác thực.');
@@ -904,84 +928,150 @@ function App() {
   const handleSignUp = async () => {
     setAuthError('');
     if (!auth || !db) {
-      setAuthError('Hệ thống xác thực chưa sẵn sàng.');
-      return;
+        setAuthError("Hệ thống xác thực chưa sẵn sàng.");
+        return;
     }
     if (email.trim() === '' || password.trim() === '' || fullName.trim() === '') {
-      setAuthError('Vui lòng nhập Email, Mật khẩu và Họ tên đầy đủ.');
-      return;
+        setAuthError("Vui lòng nhập Email, Mật khẩu và Họ tên đầy đủ.");
+        return;
     }
     try {
-      // 1. TẠO TÀI KHOẢN NGƯỜI DÙNG TRONG FIREBASE AUTHENTICATION ĐẦU TIÊN
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      console.log('Đăng ký tài khoản Auth thành công! UID:', userCredential.user.uid);
+        // 1. TẠO TÀI KHOẢN NGƯỜI DÙNG TRONG FIREBASE AUTHENTICATION
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        console.log("Đăng ký tài khoản Auth thành công! UID:", user.uid);
 
-      // 2. TẠO TÀI LIỆU NGƯỜI DÙNG TRONG FIRESTORE SAU KHI TẠO AUTH ACCOUNT
-      // Lúc này request.auth đã có giá trị và userCredential.user.uid == userId, nên quyền create sẽ được cấp
-      await setDoc(doc(db, `artifacts/${currentAppId}/public/data/users`, userCredential.user.uid), {
-        email: userCredential.user.email,
-        fullName: fullName.trim(),
-        role: 'member', // Vai trò mặc định cho người đăng ký mới
-        createdAt: serverTimestamp(),
-      });
-      console.log('Đã tạo tài liệu user trong Firestore.');
+        // MỚI: GỬI EMAIL XÁC MINH NGAY SAU KHI ĐĂNG KÝ
+        await sendEmailVerification(user);
+        console.log("Đã gửi email xác minh đến:", user.email);
 
-      // 3. BÂY GIỜ MỚI THỰC HIỆN CÁC TRUY VẤN FIRESTORE KHÁC (ví dụ: kiểm tra cư dân)
-      const residentsCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/residents`);
-      const qResidentByName = query(residentsCollectionRef, where('name', '==', fullName.trim()));
-      const residentSnapByNameCheck = await getDocs(qResidentByName);
+        // 2. TẠO TÀI LIỆU NGƯỜI DÙNG TRONG FIRESTORE SAU KHI TẠO AUTH ACCOUNT
+        await setDoc(doc(db, `artifacts/${currentAppId}/public/data/users`, user.uid), {
+            email: user.email,
+            fullName: fullName.trim(),
+            role: 'member', // Vai trò mặc định cho người đăng ký mới
+            createdAt: serverTimestamp(),
+            emailVerified: false // MỚI: Thêm trường này để theo dõi trạng thái xác minh
+        });
+        console.log("Đã tạo tài liệu user trong Firestore.");
 
-      if (!residentSnapByNameCheck.empty) {
-        const matchedResidentCheck = residentSnapByNameCheck.docs[0];
-        if (
-          matchedResidentCheck.data().linkedUserId &&
-          matchedResidentCheck.data().linkedUserId !== userCredential.user.uid
-        ) {
-          // Nếu đã liên kết với người dùng khác, cảnh báo (không ngăn chặn đăng ký)
-          console.warn(
-            `Họ tên "${fullName.trim()}" đã được liên kết với tài khoản khác. Tài khoản này vẫn được tạo nhưng cần Admin kiểm tra liên kết.`,
-          );
-          // Bạn có thể chọn thông báo lỗi và không cho đăng ký nếu bạn muốn ngăn chặn hoàn toàn việc này.
-          // setAuthError(`Họ tên "${fullName.trim()}" đã được liên kết với một tài khoản khác.`);
-          // await userCredential.user.delete(); // Xóa tài khoản Auth vừa tạo nếu muốn ngăn chặn
-          // return;
+        // 3. THỰC HIỆN CÁC TRUY VẤN FIRESTORE KHÁC (ví dụ: kiểm tra cư dân và liên kết)
+        const residentsCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/residents`);
+        const qResidentByName = query(residentsCollectionRef, where("name", "==", fullName.trim()));
+        const residentSnapByNameCheck = await getDocs(qResidentByName);
+
+        if (!residentSnapByNameCheck.empty) {
+            const matchedResidentCheck = residentSnapByNameCheck.docs[0];
+            if (matchedResidentCheck.data().linkedUserId && matchedResidentCheck.data().linkedUserId !== user.uid) {
+                console.warn(`Họ tên "${fullName.trim()}" đã được liên kết với tài khoản khác. Tài khoản này vẫn được tạo nhưng cần Admin kiểm tra liên kết.`);
+            } else {
+                await updateDoc(doc(db, `artifacts/${currentAppId}/public/data/users`, user.uid), { linkedResidentId: matchedResidentCheck.id });
+                console.log(`Đã liên kết cư dân "${fullName.trim()}" với người dùng mới đăng ký.`);
+            }
         } else {
-          // Cập nhật tài liệu người dùng để lưu linkedResidentId
-          await updateDoc(doc(db, `artifacts/${currentAppId}/public/data/users`, userCredential.user.uid), {
-            linkedResidentId: matchedResidentCheck.id,
-          });
-          console.log(`Đã liên kết cư dân "${fullName.trim()}" với người dùng mới đăng ký.`);
+            console.log(`Không tìm thấy cư dân có tên "${fullName.trim()}". Admin có thể cần thêm/liên kết thủ công.`);
         }
-      } else {
-        console.log(`Không tìm thấy cư dân có tên "${fullName.trim()}". Admin có thể cần thêm/liên kết thủ công.`);
-      }
 
-      setUserRole('member'); // Đặt vai trò ngay lập tức trong trạng thái
-      alert('Đăng ký tài khoản thành công!');
+        // THÔNG BÁO CHO NGƯỜI DÙNG CẦN XÁC MINH EMAIL
+        alert("Đăng ký tài khoản thành công! Vui lòng kiểm tra email của bạn để xác minh tài khoản trước khi đăng nhập. Nếu không nhận được email, bạn có thể sử dụng nút 'Gửi lại email xác minh' bên dưới.");
+        
+        // Chuyển về chế độ đăng nhập để họ có thể thử đăng nhập sau khi xác minh
+        setAuthMode('login');
+        setEmail(''); // Xóa email/password khỏi form đăng ký
+        setPassword('');
+        setFullName('');
+
     } catch (error) {
-      console.error('Lỗi đăng ký:', error.code, error.message);
-      setAuthError(`Lỗi đăng ký: ${error.message}`);
+        console.error("Lỗi đăng ký:", error.code, error.message);
+        setAuthError(`Lỗi đăng ký: ${error.message}`);
     }
   };
+
   const handleSignIn = async () => {
     setAuthError('');
     if (!auth) {
-      setAuthError('Hệ thống xác thực chưa sẵn sàng.');
-      return;
+        setAuthError("Hệ thống xác thực chưa sẵn sàng.");
+        return;
     }
     if (email.trim() === '' || password.trim() === '') {
-      setAuthError('Vui lòng nhập Email và Mật khẩu.');
-      return;
+        setAuthError("Vui lòng nhập Email và Mật khẩu.");
+        return;
     }
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      console.log('Đăng nhập thành công!');
-      // Vai trò và hồ sơ cư dân sẽ được lấy bởi trình lắng nghe onAuthStateChanged
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        // MỚI: KIỂM TRA TRẠNG THÁI XÁC MINH EMAIL SAU KHI ĐĂNG NHẬP
+        // Đảm bảo thông tin user là mới nhất
+        await user.reload(); 
+        if (!user.emailVerified) {
+            await signOut(auth); // Đăng xuất họ ngay lập tức
+            setAuthError("Email của bạn chưa được xác minh. Vui lòng kiểm tra hộp thư đến và nhấp vào liên kết xác minh. Nếu không nhận được email, bạn có thể sử dụng nút 'Gửi lại email xác minh' bên dưới.");
+            return; // Dừng hàm handleSignIn ở đây
+        }
+
+        console.log("Đăng nhập thành công!");
+        // Vai trò và hồ sơ cư dân sẽ được lấy bởi trình lắng nghe onAuthStateChanged
+        setAuthError(''); // Xóa lỗi xác thực nếu có
+        setEmail('');
+        setPassword('');
+
     } catch (error) {
-      console.error('Lỗi đăng nhập:', error.code, error.message);
-      setAuthError(`Lỗi đăng nhập: ${error.message}`);
+        console.error("Lỗi đăng nhập:", error.code, error.message);
+        // Cung cấp thông báo lỗi rõ ràng hơn
+        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+            setAuthError("Email hoặc mật khẩu không đúng.");
+        } else if (error.code === 'auth/invalid-email') {
+            setAuthError("Địa chỉ email không hợp lệ.");
+        } else if (error.code === 'auth/too-many-requests') {
+            setAuthError("Bạn đã thử đăng nhập quá nhiều lần. Vui lòng thử lại sau.");
+        } else {
+            setAuthError(`Lỗi đăng nhập: ${error.message}`);
+        }
     }
   };
+
+  // Thêm hàm này ở đâu đó gần các hàm xác thực khác (handleSignUp, handleSignIn)
+const handleResendVerificationEmail = async () => {
+  setAuthError('');
+  setForgotPasswordMessage(''); // Dùng lại message của forgot password để hiển thị thông báo
+
+  const user = auth.currentUser;
+
+  // Kiểm tra nếu không có người dùng hiện tại, hoặc người dùng hiện tại không khớp với email đang nhập
+  if (!user || user.email !== email.trim()) {
+      // Cố gắng đăng nhập người dùng một cách "thầm lặng" để lấy đối tượng user
+      // Đôi khi, user.currentUser có thể null nếu họ vừa đăng ký nhưng chưa có tương tác
+      if (email.trim() && password.trim()) {
+          try {
+              const credential = await signInWithEmailAndPassword(auth, email.trim(), password.trim());
+              user = credential.user; // Cập nhật user nếu đăng nhập thành công
+              if (!user) throw new Error("Không thể lấy thông tin người dùng.");
+          } catch (err) {
+              setForgotPasswordMessage("Vui lòng nhập đúng email và mật khẩu tài khoản bạn vừa đăng ký để gửi lại email xác minh.");
+              return;
+          }
+      } else {
+           setForgotPasswordMessage("Vui lòng nhập email và mật khẩu tài khoản bạn vừa đăng ký để gửi lại email xác minh.");
+           return;
+      }
+  }
+
+  try {
+      await sendEmailVerification(user);
+      setForgotPasswordMessage("Đã gửi lại email xác minh thành công! Vui lòng kiểm tra hộp thư đến của bạn.");
+  } catch (error) {
+      console.error("Lỗi khi gửi lại email xác minh:", error);
+      if (error.code === 'auth/too-many-requests') {
+          setForgotPasswordMessage("Bạn đã gửi yêu cầu quá nhiều lần. Vui lòng thử lại sau ít phút.");
+      } else if (error.code === 'auth/invalid-action_code' || error.code === 'auth/user-disabled') {
+          setForgotPasswordMessage("Tài khoản này đã bị vô hiệu hóa hoặc có vấn đề. Vui lòng liên hệ quản trị viên.");
+      }
+      else {
+          setForgotPasswordMessage(`Lỗi: ${error.message}`);
+      }
+  }
+};
 
   const handleSignOut = async () => {
     setAuthError('');
@@ -6676,6 +6766,15 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                   >
                     Quên mật khẩu?
                   </button>
+                  {/* MỚI: Nút Gửi lại email xác minh (chỉ hiển thị khi có lỗi xác minh email) */}
+                  {authError.includes("chưa được xác minh") && ( // Chỉ hiển thị khi có thông báo lỗi email chưa xác minh
+                    <button
+                      onClick={handleResendVerificationEmail}
+                      className="w-full mt-2 text-indigo-600 dark:text-indigo-400 hover:underline text-sm font-semibold"
+                    >
+                      Gửi lại email xác minh
+                    </button>
+                  )}
                 </div>
               )}
             </div>
