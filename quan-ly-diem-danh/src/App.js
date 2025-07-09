@@ -2186,14 +2186,14 @@ function App() {
       return;
     }
 
-    // Cả Admin và Member đã đăng nhập đều cần truy vấn tất cả bản ghi điểm danh để hiển thị.
-    // Quyền GHI sẽ được kiểm soát bởi Firebase Security Rules và thuộc tính 'disabled' của checkbox.
-    if (userRole === 'admin' || (userRole === 'member' && loggedInResidentProfile)) {
-      q = query(dailyPresenceCollectionRef); // Truy vấn tất cả các bản ghi cho cả admin và thành viên đã xác thực.
-    } else {
-      // Nếu không có vai trò hoặc không phải là thành viên đã xác thực (ví dụ: khách, hoặc thành viên không có hồ sơ liên kết),
-      // thì không truy vấn dữ liệu điểm danh.
-      setMonthlyAttendanceData({}); // Xóa dữ liệu cũ.
+    // Một thành viên chỉ có thể chuyển đổi điểm danh của chính hồ sơ cư dân được liên kết
+    if (userRole === 'member' && loggedInResidentProfile && residentId !== loggedInResidentProfile.id) {
+      setAuthError('Bạn chỉ có thể điểm danh cho bản thân.');
+      return;
+    }
+    // Nếu thành viên chưa có hồ sơ cư dân liên kết
+    if (userRole === 'member' && !loggedInResidentProfile) {
+      setAuthError('Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.');
       return;
     }
 
