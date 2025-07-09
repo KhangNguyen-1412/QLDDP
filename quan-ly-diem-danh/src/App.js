@@ -1165,8 +1165,6 @@ const handleResendVerificationEmail = async () => {
     }
   };
 
-  // Mới: Hàm để xóa một kỷ niệm (chỉ admin)
-  // Trong hàm handleDeleteMemory
   // Trong hàm handleDeleteMemory
   // MỚI: Hàm để xóa một kỷ niệm (admin có thể xóa bất kỳ, người đăng tải có thể xóa của chính họ)
   const handleDeleteMemory = async (memoryId, files, uploadedByUserId) => {
@@ -1215,6 +1213,118 @@ const handleResendVerificationEmail = async () => {
       setMemoryError(`Lỗi khi xóa kỷ niệm: ${error.message}`);
     }
   };
+
+  // NEW: State cho việc chỉnh sửa thông tin thành viên trong Common Room Info
+  const [editingCommonResidentData, setEditingCommonResidentData] = useState(null); // Lưu thông tin cư dân từ 'residents'
+  const [editingCommonResidentUserLinkedData, setEditingCommonResidentUserLinkedData] = useState(null); // Lưu thông tin user liên kết
+
+  // Các state cho form chỉnh sửa trong modal
+  const [editCommonFullName, setEditCommonFullName] = useState('');
+  const [editCommonEmail, setEditCommonEmail] = useState(''); // Email của user (chỉ hiển thị, không chỉnh sửa)
+  const [editCommonPhoneNumber, setEditCommonPhoneNumber] = useState('');
+  const [editCommonAcademicLevel, setEditCommonAcademicLevel] = useState('');
+  const [editCommonDormEntryDate, setEditCommonDormEntryDate] = useState('');
+  const [editCommonBirthday, setEditCommonBirthday] = useState('');
+  const [editCommonStudentId, setEditCommonStudentId] = useState('');
+
+// NEW: Hàm để mở modal chỉnh sửa thông tin thành viên trong "Thông tin phòng chung"
+const handleEditCommonResidentDetails = (resident) => {
+  // Chỉ admin mới có quyền chỉnh sửa thông tin chung của người khác
+  if (userRole !== 'admin') {
+    setAuthError('Bạn không có quyền chỉnh sửa thông tin này.');
+    return;
+  }
+
+  const linkedUser = allUsersData.find(user => user.linkedResidentId === resident.id);
+
+  setEditingCommonResidentData(resident);
+  setEditingCommonResidentUserLinkedData(linkedUser || null);
+
+  // Nạp dữ liệu vào các state của form chỉnh sửa
+  setEditCommonFullName(linkedUser?.fullName || resident.name);
+  setEditCommonEmail(linkedUser?.email || '');
+  setEditCommonPhoneNumber(linkedUser?.phoneNumber || '');
+  setEditCommonAcademicLevel(linkedUser?.academicLevel || '');
+  setEditCommonDormEntryDate(linkedUser?.dormEntryDate || '');
+  setEditCommonBirthday(linkedUser?.birthday || '');
+  setEditCommonStudentId(linkedUser?.studentId || '');
+  setAuthError(''); // Clear any previous auth errors
+};
+
+// NEW: Hàm để lưu thông tin đã chỉnh sửa từ modal "Thông tin phòng chung"
+const handleUpdateCommonResidentDetails = async () => {
+  setAuthError('');
+  if (!db || !userId || userRole !== 'admin') {
+    setAuthError('Bạn không có quyền thực hiện thao tác này.');
+    return;
+  }
+  if (!editingCommonResidentData) {
+    setAuthError('Không có thông tin thành viên để cập nhật.');
+    return;
+  }
+  if (!editCommonFullName.trim()) {
+    setAuthError('Họ tên không được để trống.');
+    return;
+  }
+
+  try {
+    // 1. Cập nhật tài liệu resident (chỉ tên)
+    const residentDocRef = doc(db, `artifacts/${currentAppId}/public/data/residents`, editingCommonResidentData.id);
+    await updateDoc(residentDocRef, {
+      name: editCommonFullName.trim(),
+      lastUpdatedBy: userId,
+      lastUpdatedAt: serverTimestamp(),
+    });
+    console.log('Đã cập nhật tên cư dân trong collection residents.');
+
+    // 2. Cập nhật tài liệu user liên kết (nếu có)
+    if (editingCommonResidentUserLinkedData) {
+      const userDocRef = doc(db, `artifacts/${currentAppId}/public/data/users`, editingCommonResidentUserLinkedData.id);
+      await updateDoc(userDocRef, {
+        fullName: editCommonFullName.trim(),
+        // email: editCommonEmail.trim(), // Không chỉnh sửa email tài khoản qua đây
+        phoneNumber: editCommonPhoneNumber.trim(),
+        academicLevel: editCommonAcademicLevel.trim(),
+        dormEntryDate: editCommonDormEntryDate.trim(),
+        birthday: editCommonBirthday.trim(),
+        studentId: editCommonStudentId.trim(),
+        lastUpdatedBy: userId,
+        lastUpdatedAt: serverTimestamp(),
+      });
+      console.log('Đã cập nhật thông tin cá nhân trong collection users.');
+    }
+
+    setEditingCommonResidentData(null); // Đóng modal
+    setEditingCommonResidentUserLinkedData(null);
+    // Reset các state của form
+    setEditCommonFullName('');
+    setEditCommonEmail('');
+    setEditCommonPhoneNumber('');
+    setEditCommonAcademicLevel('');
+    setEditCommonDormEntryDate('');
+    setEditCommonBirthday('');
+    setEditCommonStudentId('');
+    alert('Đã cập nhật thông tin thành viên thành công!');
+  } catch (error) {
+    console.error('Lỗi khi cập nhật thông tin thành viên:', error);
+    setAuthError(`Lỗi khi cập nhật thông tin thành viên: ${error.message}`);
+  }
+};
+
+// NEW: Hàm để đóng modal chỉnh sửa mà không lưu
+const handleCancelCommonResidentEdit = () => {
+  setEditingCommonResidentData(null);
+  setEditingCommonResidentUserLinkedData(null);
+  setAuthError('');
+  // Reset các state của form
+  setEditCommonFullName('');
+  setEditCommonEmail('');
+  setEditCommonPhoneNumber('');
+  setEditCommonAcademicLevel('');
+  setEditCommonDormEntryDate('');
+  setEditCommonBirthday('');
+  setEditCommonStudentId('');
+};
 
   // Mới: Hàm để chuyển một người dùng/cư dân sang danh sách tiền bối (chỉ admin)
   const handleMoveToFormerResidents = async (residentId, userIdToDeactivate) => {
@@ -4044,6 +4154,11 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                         <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">
                           Trạng thái
                         </th>
+                        {userRole === 'admin' && (
+                          <th className="py-3 px-4 text-center text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">
+                            Hành động
+                          </th>
+                        )}
                       </tr>
                     </thead>
                     <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
@@ -4068,6 +4183,16 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                                 {resident.isActive ? 'Hoạt động' : 'Vô hiệu hóa'}
                               </span>
                             </td>
+                            {userRole === 'admin' && (
+                              <td className="py-3 px-4 text-center">
+                                <button
+                                  onClick={() => handleEditCommonResidentDetails(resident)}
+                                  className="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg shadow-sm hover:bg-blue-600 transition-colors"
+                                >
+                                  Điều chỉnh
+                                </button>
+                              </td>
+                            )}
                           </tr>
                         );
                       })}
@@ -7280,6 +7405,142 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
             >
               &times;
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* NEW: Modal chỉnh sửa thông tin thành viên trong "Thông tin phòng chung" */}
+      {editingCommonResidentData && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
+              Điều chỉnh thông tin thành viên
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <label
+                  htmlFor="editCommonFullNameInput"
+                  className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                >
+                  Họ tên:
+                </label>
+                <input
+                  type="text"
+                  id="editCommonFullNameInput"
+                  value={editCommonFullName}
+                  onChange={(e) => setEditCommonFullName(e.target.value)}
+                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                />
+              </div>
+              {editingCommonResidentUserLinkedData && ( // Chỉ hiển thị nếu có user liên kết
+                <div>
+                  <label
+                    htmlFor="editCommonEmailInput"
+                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                  >
+                    Email (Tài khoản):
+                  </label>
+                  <input
+                    type="email"
+                    id="editCommonEmailInput"
+                    value={editCommonEmail}
+                    readOnly // Thường không cho phép chỉnh sửa email tài khoản ở đây
+                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none bg-gray-100 dark:bg-gray-700 cursor-not-allowed"
+                  />
+                </div>
+              )}
+              <div>
+                <label
+                  htmlFor="editCommonPhoneNumber"
+                  className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                >
+                  Số điện thoại:
+                </label>
+                <input
+                  type="text"
+                  id="editCommonPhoneNumber"
+                  value={editCommonPhoneNumber}
+                  onChange={(e) => setEditCommonPhoneNumber(e.target.value)}
+                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="editCommonAcademicLevel"
+                  className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                >
+                  Email trường:
+                </label>
+                <input
+                  type="text"
+                  id="editCommonAcademicLevel"
+                  value={editCommonAcademicLevel}
+                  onChange={(e) => setEditCommonAcademicLevel(e.target.value)}
+                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="editCommonDormEntryDate"
+                  className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                >
+                  Ngày nhập KTX:
+                </label>
+                <input
+                  type="date"
+                  id="editCommonDormEntryDate"
+                  value={editCommonDormEntryDate}
+                  onChange={(e) => setEditCommonDormEntryDate(e.target.value)}
+                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="editCommonBirthday"
+                  className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                >
+                  Ngày sinh:
+                </label>
+                <input
+                  type="date"
+                  id="editCommonBirthday"
+                  value={editCommonBirthday}
+                  onChange={(e) => setEditCommonBirthday(e.target.value)}
+                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="editCommonStudentId"
+                  className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                >
+                  Mã số sinh viên:
+                </label>
+                <input
+                  type="text"
+                  id="editCommonStudentId"
+                  value={editCommonStudentId}
+                  onChange={(e) => setEditCommonStudentId(e.target.value)}
+                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                />
+              </div>
+
+              {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
+              <div className="flex justify-between space-x-4 mt-6">
+                <button
+                  onClick={handleUpdateCommonResidentDetails}
+                  className="flex-1 px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+                >
+                  <i className="fas fa-save mr-2"></i> Lưu thay đổi
+                </button>
+                <button
+                  onClick={handleCancelCommonResidentEdit}
+                  className="flex-1 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
+                >
+                  Hủy
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
