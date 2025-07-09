@@ -4267,10 +4267,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                         </div>
                         )}
                       </div>
-
-                    </div>
-                  ))}
-                  {/* MỚI: PHẦN ĐIỀU KHIỂN PHÂN TRANG */}
+                      {/* MỚI: PHẦN ĐIỀU KHIỂN PHÂN TRANG */}
                   {totalPagesMemories > 1 && (
                     <div className="flex justify-center items-center mt-8 space-x-4">
                       <button
@@ -4293,6 +4290,9 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                     </div>
                   )}
                   {/* KẾT THÚC PHẦN ĐIỀU KHIỂN PHÂN TRANG */}
+                    </div>
+                  ))}
+                  
                 </div>
               )}
             </div>
@@ -5921,9 +5921,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                           </div>
                         )}
                       </div>
-                    </div>
-                  ))}
-                  {/* MỚI: PHẦN ĐIỀU KHIỂN PHÂN TRANG */}
+                      {/* MỚI: PHẦN ĐIỀU KHIỂN PHÂN TRANG */}
                   {totalPagesMemories > 1 && (
                     <div className="flex justify-center items-center mt-8 space-x-4">
                       <button
@@ -5946,6 +5944,9 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                     </div>
                   )}
                   {/* KẾT THÚC PHẦN ĐIỀU KHIỂN PHÂN TRANG */}
+                    </div>
+                  ))}
+                  
                 </div>
               )}
             </div>
