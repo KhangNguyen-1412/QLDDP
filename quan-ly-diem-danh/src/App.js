@@ -135,6 +135,7 @@ const generateSeasonalEffectElement = (season, count = 20) => {
 };
 
 function App() {
+  const [storage, setStorage] = useState(null);
   // Các state liên quan tới theme mùa
   const [currentSeason, setCurrentSeason] = useState('');
   const [currentSeasonTheme, setCurrentSeasonTheme] = useState('');
@@ -261,12 +262,12 @@ function App() {
 
   const hasInitialized = useRef(false);
 
-  const [selectedNotificationDetails, setSelectedNotificationDetails] = useState(null); // Mới: Để hiển thị chi tiết thông báo
+  const [selectedNotificationDetails, setSelectedNotificationDetails] = useState(null); // Để hiển thị chi tiết thông báo
 
   // New state for Image Lightbox/Zoom
   const [selectedImageToZoom, setSelectedImageToZoom] = useState(null); // Lưu URL của ảnh muốn phóng to
 
-  // Mới: Hàm để thêm một kỷ niệm mới
+  // Hàm để thêm một kỷ niệm mới
   const handleAddMemory = async (e) => {
     e.preventDefault();
     setMemoryError('');
@@ -480,7 +481,7 @@ function App() {
       const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
         console.log("6. onAuthStateChanged đã được kích hoạt. Người dùng hiện tại:", user ? user.uid : 'null');
         if (user) {
-            // MỚI: KIỂM TRA EMAIL ĐÃ XÁC MINH CHƯA
+            // KIỂM TRA EMAIL ĐÃ XÁC MINH CHƯA
             // Luôn reload để đảm bảo user.emailVerified là trạng thái mới nhất từ Firebase Auth server
             await user.reload(); 
             if (!user.emailVerified) {
@@ -770,20 +771,20 @@ function App() {
       q,
       (snapshot) => {
         const fetchedFormerResidents = [];
-        const newFormerResidentAvatarUrls = {}; // MỚI: Để lưu URLs avatar
+        const newFormerResidentAvatarUrls = {}; // Để lưu URLs avatar
         snapshot.forEach((docSnap) => {
           const data = docSnap.data();
           if (data.deactivatedAt && typeof data.deactivatedAt.toDate === 'function') {
             data.deactivatedAt = data.deactivatedAt.toDate();
           }
           if (data.photoURL) {
-            // MỚI: Lưu photoURL nếu có
+            // Lưu photoURL nếu có
             newFormerResidentAvatarUrls[docSnap.id] = data.photoURL;
           }
           fetchedFormerResidents.push({ id: docSnap.id, ...data });
         });
         setFormerResidents(fetchedFormerResidents);
-        setFormerResidentAvatarUrls(newFormerResidentAvatarUrls); // MỚI: Cập nhật state
+        setFormerResidentAvatarUrls(newFormerResidentAvatarUrls); // Cập nhật state
         console.log('Đã cập nhật thông tin tiền bối:', fetchedFormerResidents);
       },
       (error) => {
@@ -797,7 +798,7 @@ function App() {
     };
   }, [db, isAuthReady, userId]); // Giữ nguyên dependencies
 
-  // Mới: Hàm để admin gửi thông báo tùy chỉnh
+  // Hàm để admin gửi thông báo tùy chỉnh
   const handleSendCustomNotification = async (e) => {
     e.preventDefault();
     setCustomNotificationError('');
@@ -845,7 +846,7 @@ function App() {
   const [totalPagesMemories, setTotalPagesMemories] = useState(1);
   const [totalMemoriesCount, setTotalMemoriesCount] = useState(0); // Tổng số bài kỷ niệm
 
-  // MỚI: Lắng nghe cập nhật Kỷ niệm phòng
+  // Lắng nghe cập nhật Kỷ niệm phòng
   useEffect(() => {
     if (!db || !isAuthReady || userId === null) {
       console.log('Lắng nghe kỷ niệm: Đang chờ DB, Auth hoặc User ID sẵn sàng.');
@@ -942,7 +943,7 @@ function App() {
         const user = userCredential.user;
         console.log("Đăng ký tài khoản Auth thành công! UID:", user.uid);
 
-        // MỚI: GỬI EMAIL XÁC MINH NGAY SAU KHI ĐĂNG KÝ
+        // GỬI EMAIL XÁC MINH NGAY SAU KHI ĐĂNG KÝ
         await sendEmailVerification(user);
         console.log("Đã gửi email xác minh đến:", user.email);
 
@@ -952,7 +953,7 @@ function App() {
             fullName: fullName.trim(),
             role: 'member', // Vai trò mặc định cho người đăng ký mới
             createdAt: serverTimestamp(),
-            emailVerified: false // MỚI: Thêm trường này để theo dõi trạng thái xác minh
+            emailVerified: false // Thêm trường này để theo dõi trạng thái xác minh
         });
         console.log("Đã tạo tài liệu user trong Firestore.");
 
@@ -1002,7 +1003,7 @@ function App() {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
-        // MỚI: KIỂM TRA TRẠNG THÁI XÁC MINH EMAIL SAU KHI ĐĂNG NHẬP
+        // KIỂM TRA TRẠNG THÁI XÁC MINH EMAIL SAU KHI ĐĂNG NHẬP
         // Đảm bảo thông tin user là mới nhất
         await user.reload(); 
         if (!user.emailVerified) {
@@ -1166,7 +1167,7 @@ const handleResendVerificationEmail = async () => {
   };
 
   // Trong hàm handleDeleteMemory
-  // MỚI: Hàm để xóa một kỷ niệm (admin có thể xóa bất kỳ, người đăng tải có thể xóa của chính họ)
+  // Hàm để xóa một kỷ niệm (admin có thể xóa bất kỳ, người đăng tải có thể xóa của chính họ)
   const handleDeleteMemory = async (memoryId, files, uploadedByUserId) => {
     setMemoryError('');
     if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) {
@@ -1227,6 +1228,10 @@ const handleResendVerificationEmail = async () => {
   const [editCommonBirthday, setEditCommonBirthday] = useState('');
   const [editCommonStudentId, setEditCommonStudentId] = useState('');
 
+  // NEW: State for avatar upload in the edit modal
+  const [selectedAvatarFile, setSelectedAvatarFile] = useState(null);
+  const [tempAvatarUrl, setTempAvatarUrl] = useState('');
+
 // NEW: Hàm để mở modal chỉnh sửa thông tin thành viên trong "Thông tin phòng chung"
 const handleEditCommonResidentDetails = (resident) => {
   // Chỉ admin mới có quyền chỉnh sửa thông tin chung của người khác
@@ -1248,68 +1253,88 @@ const handleEditCommonResidentDetails = (resident) => {
   setEditCommonDormEntryDate(linkedUser?.dormEntryDate || '');
   setEditCommonBirthday(linkedUser?.birthday || '');
   setEditCommonStudentId(linkedUser?.studentId || '');
+
+  // NEW: Set the temporary avatar URL for preview
+  setTempAvatarUrl(linkedUser?.avatarUrl || '');
+  setSelectedAvatarFile(null); // Reset selected file when opening modal
+
   setAuthError(''); // Clear any previous auth errors
+  
 };
 
-// NEW: Hàm để lưu thông tin đã chỉnh sửa từ modal "Thông tin phòng chung"
 const handleUpdateCommonResidentDetails = async () => {
   setAuthError('');
   if (!db || !userId || userRole !== 'admin') {
-    setAuthError('Bạn không có quyền thực hiện thao tác này.');
-    return;
+   setAuthError('Bạn không có quyền thực hiện thao tác này.');
+   return;
   }
   if (!editingCommonResidentData) {
-    setAuthError('Không có thông tin thành viên để cập nhật.');
-    return;
+   setAuthError('Không có thông tin thành viên để cập nhật.');
+   return;
   }
   if (!editCommonFullName.trim()) {
-    setAuthError('Họ tên không được để trống.');
-    return;
+   setAuthError('Họ tên không được để trống.');
+   return;
   }
-
+ 
   try {
-    // 1. Cập nhật tài liệu resident (chỉ tên)
-    const residentDocRef = doc(db, `artifacts/${currentAppId}/public/data/residents`, editingCommonResidentData.id);
-    await updateDoc(residentDocRef, {
-      name: editCommonFullName.trim(),
-      lastUpdatedBy: userId,
-      lastUpdatedAt: serverTimestamp(),
-    });
-    console.log('Đã cập nhật tên cư dân trong collection residents.');
-
-    // 2. Cập nhật tài liệu user liên kết (nếu có)
-    if (editingCommonResidentUserLinkedData) {
-      const userDocRef = doc(db, `artifacts/${currentAppId}/public/data/users`, editingCommonResidentUserLinkedData.id);
-      await updateDoc(userDocRef, {
-        fullName: editCommonFullName.trim(),
-        // email: editCommonEmail.trim(), // Không chỉnh sửa email tài khoản qua đây
-        phoneNumber: editCommonPhoneNumber.trim(),
-        academicLevel: editCommonAcademicLevel.trim(),
-        dormEntryDate: editCommonDormEntryDate.trim(),
-        birthday: editCommonBirthday.trim(),
-        studentId: editCommonStudentId.trim(),
-        lastUpdatedBy: userId,
-        lastUpdatedAt: serverTimestamp(),
-      });
-      console.log('Đã cập nhật thông tin cá nhân trong collection users.');
+   let avatarUrl = null;
+   // Upload avatar if a new file has been selected
+   if (selectedAvatarFile && editingCommonResidentUserLinkedData?.id) {
+    avatarUrl = await uploadAvatar(editingCommonResidentUserLinkedData.id);
+    if (!avatarUrl) {
+     return; // Stop if avatar upload failed
     }
-
-    setEditingCommonResidentData(null); // Đóng modal
-    setEditingCommonResidentUserLinkedData(null);
-    // Reset các state của form
-    setEditCommonFullName('');
-    setEditCommonEmail('');
-    setEditCommonPhoneNumber('');
-    setEditCommonAcademicLevel('');
-    setEditCommonDormEntryDate('');
-    setEditCommonBirthday('');
-    setEditCommonStudentId('');
-    alert('Đã cập nhật thông tin thành viên thành công!');
+   }
+ 
+   // 1. Cập nhật tài liệu resident (chỉ tên)
+   const residentDocRef = doc(db, `artifacts/${currentAppId}/public/data/residents`, editingCommonResidentData.id);
+   await updateDoc(residentDocRef, {
+    name: editCommonFullName.trim(),
+    lastUpdatedBy: userId,
+    lastUpdatedAt: serverTimestamp(),
+   });
+   console.log('Đã cập nhật tên cư dân trong collection residents.');
+ 
+   // 2. Cập nhật tài liệu user liên kết (nếu có)
+   if (editingCommonResidentUserLinkedData) {
+    const updateData = {
+     fullName: editCommonFullName.trim(),
+     phoneNumber: editCommonPhoneNumber.trim(),
+     academicLevel: editCommonAcademicLevel.trim(),
+     dormEntryDate: editCommonDormEntryDate.trim(),
+     birthday: editCommonBirthday.trim(),
+     studentId: editCommonStudentId.trim(),
+     lastUpdatedBy: userId,
+     lastUpdatedAt: serverTimestamp(),
+    };
+    // Add avatar URL to the update data if it was uploaded
+    if (avatarUrl) {
+     updateData.avatarUrl = avatarUrl;
+    }
+    const userDocRef = doc(db, `artifacts/${currentAppId}/public/data/users`, editingCommonResidentUserLinkedData.id);
+    await updateDoc(userDocRef, updateData);
+    console.log('Đã cập nhật thông tin cá nhân trong collection users.');
+   }
+ 
+   setEditingCommonResidentData(null); // Đóng modal
+   setEditingCommonResidentUserLinkedData(null);
+   // Reset các state của form
+   setEditCommonFullName('');
+   setEditCommonEmail('');
+   setEditCommonPhoneNumber('');
+   setEditCommonAcademicLevel('');
+   setEditCommonDormEntryDate('');
+   setEditCommonBirthday('');
+   setEditCommonStudentId('');
+   setSelectedAvatarFile(null);
+   setTempAvatarUrl('');
+   alert('Đã cập nhật thông tin thành viên thành công!');
   } catch (error) {
-    console.error('Lỗi khi cập nhật thông tin thành viên:', error);
-    setAuthError(`Lỗi khi cập nhật thông tin thành viên: ${error.message}`);
+   console.error('Lỗi khi cập nhật thông tin thành viên:', error);
+   setAuthError(`Lỗi khi cập nhật thông tin thành viên: ${error.message}`);
   }
-};
+ };
 
 // NEW: Hàm để đóng modal chỉnh sửa mà không lưu
 const handleCancelCommonResidentEdit = () => {
@@ -1326,7 +1351,53 @@ const handleCancelCommonResidentEdit = () => {
   setEditCommonStudentId('');
 };
 
-  // Mới: Hàm để chuyển một người dùng/cư dân sang danh sách tiền bối (chỉ admin)
+// NEW: Function to handle file selection for avatar
+const handleAvatarFileChange = (event) => {
+  const file = event.target.files?.[0];
+  if (file) {
+   setSelectedAvatarFile(file);
+   // Create a temporary URL for preview
+   setTempAvatarUrl(URL.createObjectURL(file));
+  }
+ };
+ 
+ // NEW: Function to handle avatar upload to Firebase Storage
+ const uploadAvatar = async (userId) => {
+  if (!db || !storage || !selectedAvatarFile) {
+   return null;
+  }
+ 
+  setIsUploadingAvatar(true);
+  setAvatarUploadProgress(0);
+  const avatarStorageRef = ref(storage, `avatars/${userId}/${selectedAvatarFile.name}`);
+  const uploadTask = uploadBytesResumable(avatarStorageRef, selectedAvatarFile);
+ 
+  return new Promise((resolve, reject) => {
+   uploadTask.on(
+    'state_changed',
+    (snapshot) => {
+     const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+     setAvatarUploadProgress(progress);
+     console.log('Upload is ' + progress + '% done');
+    },
+    (error) => {
+     setIsUploadingAvatar(false);
+     console.error('Error uploading avatar:', error);
+     setAuthError('Lỗi khi tải lên ảnh đại diện.');
+     reject(error);
+    },
+    async () => {
+     // Upload completed successfully, now we can get the download URL
+     const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+     setIsUploadingAvatar(false);
+     setAvatarUploadProgress(0);
+     resolve(downloadURL);
+    }
+   );
+  });
+ };
+
+  // Hàm để chuyển một người dùng/cư dân sang danh sách tiền bối (chỉ admin)
   const handleMoveToFormerResidents = async (residentId, userIdToDeactivate) => {
     setAuthError(''); // Reset authError
     if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) {
@@ -1410,7 +1481,7 @@ const handleCancelCommonResidentEdit = () => {
     }
   };
 
-  // Mới: Hàm để thêm tiền bối thủ công (KHÔNG CÒN XỬ LÝ HÌNH ẢNH)
+  // Hàm để thêm tiền bối thủ công (KHÔNG CÒN XỬ LÝ HÌNH ẢNH)
   const handleAddFormerResidentManually = async (e) => {
     e.preventDefault();
     setAuthError(''); // Reset authError
@@ -1423,7 +1494,7 @@ const handleCancelCommonResidentEdit = () => {
       return;
     }
 
-    // MỚI: Kiểm tra nếu có file avatar được chọn
+    // Kiểm tra nếu có file avatar được chọn
     if (newFormerResidentAvatarFile) {
       setIsUploadingFormerResidentAvatar(true); // Bắt đầu quá trình tải lên avatar
       setFormerResidentAvatarUploadProgress(0);
@@ -1433,7 +1504,7 @@ const handleCancelCommonResidentEdit = () => {
     try {
       let avatarDownloadURL = null;
 
-      // MỚI: Tải avatar lên Cloudinary nếu có file được chọn
+      // Tải avatar lên Cloudinary nếu có file được chọn
       if (newFormerResidentAvatarFile) {
         const formData = new FormData();
         formData.append('file', newFormerResidentAvatarFile);
@@ -1473,7 +1544,7 @@ const handleCancelCommonResidentEdit = () => {
         dormEntryDate: newFormerResidentDormEntryDate.trim() || null,
         academicLevel: newFormerResidentAcademicLevel.trim() || null,
         deactivatedAt: newFormerResidentDeactivatedDate,
-        photoURL: avatarDownloadURL, // MỚI: Lưu URL của avatar vào Firestore
+        photoURL: avatarDownloadURL, // Lưu URL của avatar vào Firestore
         addedManuallyBy: userId,
         createdAt: serverTimestamp(),
       });
@@ -1500,7 +1571,7 @@ const handleCancelCommonResidentEdit = () => {
     }
   };
 
-  // Mới: Hàm để xóa tiền bối thủ công (chỉ xóa tài liệu Firestore)
+  // Hàm để xóa tiền bối thủ công (chỉ xóa tài liệu Firestore)
   const handleDeleteFormerResident = async (residentId) => {
     // <-- Tham số chỉ là residentId
     if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) {
@@ -1551,7 +1622,7 @@ const handleCancelCommonResidentEdit = () => {
     }
   };
 
-  // Mới: Hàm đánh dấu thông báo đã đọc
+  // Hàm đánh dấu thông báo đã đọc
   const markNotificationAsRead = async (notificationId) => {
     if (!db || !userId) {
       console.error('DB hoặc User ID chưa sẵn sàng để đánh dấu thông báo đã đọc.');
@@ -1567,7 +1638,7 @@ const handleCancelCommonResidentEdit = () => {
     }
   };
 
-  // Mới: Hàm xóa thông báo (chỉ admin)
+  // Hàm xóa thông báo (chỉ admin)
   const deleteNotification = async (notificationId) => {
     if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) {
       alert('Bạn không có quyền xóa thông báo.');
@@ -1598,7 +1669,7 @@ const handleCancelCommonResidentEdit = () => {
   const [selectedMemoryForLightbox, setSelectedMemoryForLightbox] = useState(null); // Lưu toàn bộ đối tượng memory
   const [currentLightboxIndex, setCurrentLightboxIndex] = useState(0); // Index của file đang hiển thị
 
-  // Mới: Hàm đổi mật khẩu
+  // Hàm đổi mật khẩu
   const handleChangePassword = async () => {
     setPasswordChangeMessage('');
     if (!auth || !userId) {
@@ -1787,7 +1858,7 @@ const handleCancelCommonResidentEdit = () => {
     };
   }, [db, isAuthReady, userId, userRole]); // Thêm userRole vào dependency
 
-  // Mới: Lắng nghe cập nhật Lịch sử hóa đơn
+  // Lắng nghe cập nhật Lịch sử hóa đơn
   useEffect(() => {
     if (!db || !isAuthReady || userId === null) {
       console.log('Lắng nghe lịch sử hóa đơn: Đang chờ DB, Auth hoặc User ID sẵn sàng.');
@@ -1832,7 +1903,7 @@ const handleCancelCommonResidentEdit = () => {
     };
   }, [db, isAuthReady, userId, userRole]); // Thêm userRole vào dependency
 
-  // Mới: Lắng nghe cập nhật Lịch sử chia sẻ chi phí
+  // Lắng nghe cập nhật Lịch sử chia sẻ chi phí
   useEffect(() => {
     if (!db || !isAuthReady || userId === null) {
       console.log('Lắng nghe lịch sử chia tiền: Đang chờ DB, Auth hoặc User ID sẵn sàng.');
@@ -1860,7 +1931,7 @@ const handleCancelCommonResidentEdit = () => {
         history.sort((a, b) => (b.calculatedDate || 0) - (a.calculatedDate || 0));
         setCostSharingHistory(history);
         console.log('Đã cập nhật lịch sử chia tiền:', history);
-        // MỚI: CẬP NHẬT remainingFund TỪ BẢN GHI MỚI NHẤT
+        // CẬP NHẬT remainingFund TỪ BẢN GHI MỚI NHẤT
         if (history.length > 0) {
           setRemainingFund(history[0].remainingFund || 0);
         } else {
@@ -1878,7 +1949,7 @@ const handleCancelCommonResidentEdit = () => {
     };
   }, [db, isAuthReady, userId]); // userRole không còn là dependency trực tiếp ở đây
 
-  // Mới: Lắng nghe cập nhật Lịch trực phòng
+  // Lắng nghe cập nhật Lịch trực phòng
   useEffect(() => {
     if (!db || !isAuthReady || userId === null) {
       console.log('Lắng nghe lịch trực phòng: Đang chờ DB, Auth hoặc User ID sẵn sàng.');
@@ -1922,7 +1993,7 @@ const handleCancelCommonResidentEdit = () => {
     };
   }, [db, isAuthReady, userId]); // userRole không còn là dependency trực tiếp ở đây
 
-  // Mới: Lắng nghe cập nhật Phân công kệ giày
+  // Lắng nghe cập nhật Phân công kệ giày
   useEffect(() => {
     if (!db || !isAuthReady || userId === null) {
       console.log('Lắng nghe gán kệ giày: Đang chờ DB, Auth hoặc User ID sẵn sàng.');
@@ -1963,7 +2034,7 @@ const handleCancelCommonResidentEdit = () => {
     };
   }, [db, isAuthReady, userId]);
 
-  // Mới: Effect để tính toán thống kê tiêu thụ hàng tháng
+  // Effect để tính toán thống kê tiêu thụ hàng tháng
   useEffect(() => {
     // Chỉ admin mới cần thống kê tiêu thụ
     if (userRole !== 'admin') {
@@ -2000,7 +2071,7 @@ const handleCancelCommonResidentEdit = () => {
     console.log('Đã cập nhật thống kê tiêu thụ hàng tháng:', sortedStats);
   }, [billHistory, userRole]); // Thêm userRole vào dependency
 
-  // Mới: Lắng nghe tất cả dữ liệu người dùng để hiển thị trong "Thông tin phòng chung"
+  // Lắng nghe tất cả dữ liệu người dùng để hiển thị trong "Thông tin phòng chung"
   useEffect(() => {
     if (!db || !isAuthReady || userId === null) {
       console.log('Lắng nghe tất cả người dùng: Đang chờ DB, Auth hoặc User ID sẵn sàng.');
@@ -2038,7 +2109,7 @@ const handleCancelCommonResidentEdit = () => {
     };
   }, [db, isAuthReady, userId]); // userId is still relevant for the collection path.
 
-  // MỚI: Lắng nghe cập nhật Kỷ niệm phòng
+  // Lắng nghe cập nhật Kỷ niệm phòng
   useEffect(() => {
     if (!db || !isAuthReady || userId === null) {
       console.log('Lắng nghe kỷ niệm: Đang chờ DB, Auth hoặc User ID sẵn sàng.');
@@ -2096,7 +2167,7 @@ const handleCancelCommonResidentEdit = () => {
     };
   }, [db, isAuthReady, userId, searchTermMemory, filterUploaderMemory]);
 
-  // Mới: Lắng nghe cập nhật Thông tin tiền bối
+  // Lắng nghe cập nhật Thông tin tiền bối
   useEffect(() => {
     if (!db || !isAuthReady || userId === null) {
       console.log('Lắng nghe tiền bối: Đang chờ DB, Auth hoặc User ID sẵn sàng.');
@@ -2133,7 +2204,7 @@ const handleCancelCommonResidentEdit = () => {
     };
   }, [db, isAuthReady, userId]);
 
-  // Mới: Lắng nghe thông báo
+  // Lắng nghe thông báo
   useEffect(() => {
     if (!db || !isAuthReady || userId === null) {
       console.log('Lắng nghe thông báo: Đang chờ DB, Auth hoặc User ID sẵn sàng.');
@@ -2182,11 +2253,10 @@ const handleCancelCommonResidentEdit = () => {
 
   // Thêm `notificationError` vào useEffect để reset lỗi khi chuyển section
   useEffect(() => {
-    // ... (các reset trạng thái đã có) ...
-    setNotificationError(''); // Mới: reset lỗi thông báo
+    setNotificationError(''); // reset lỗi thông báo
   }, [activeSection]);
 
-  // Mới: useEffect để kiểm tra và tạo thông báo sinh nhật
+  // useEffect để kiểm tra và tạo thông báo sinh nhật
   useEffect(() => {
     if (!db || !isAuthReady || userId === null || !allUsersData.length || !residents.length) {
       return; // Chờ tất cả dữ liệu sẵn sàng
@@ -2621,7 +2691,7 @@ const handleCancelCommonResidentEdit = () => {
 
       console.log('Đã tính toán số ngày có mặt và chi phí trung bình.');
 
-      // Mới: TẠO THÔNG BÁO TIỀN ĐIỆN NƯỚC CHO TỪNG THÀNH VIÊN (Đoạn này đã đúng)
+      // TẠO THÔNG BÁO TIỀN ĐIỆN NƯỚC CHO TỪNG THÀNH VIÊN (Đoạn này đã đúng)
       for (const resident of residents.filter((res) => res.isActive)) {
         const userLinkedToResident = allUsersData.find((user) => user.linkedResidentId === resident.id);
         if (userLinkedToResident) {
@@ -2741,7 +2811,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
     }
   };
 
-  // Mới: Hàm để thêm một công việc vệ sinh
+  // Hàm để thêm một công việc vệ sinh
   const handleAddCleaningTask = async () => {
     setAuthError('');
     setBillingError(''); // Đặt lại billingError
@@ -2778,7 +2848,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
     }
   };
 
-  // Mới: Hàm để chuyển đổi trạng thái hoàn thành công việc vệ sinh
+  // Hàm để chuyển đổi trạng thái hoàn thành công việc vệ sinh
   const handleToggleCleaningTaskCompletion = async (taskId, currentStatus) => {
     setAuthError('');
     if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) {
@@ -2796,7 +2866,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
     }
   };
 
-  // Mới: Hàm để xóa một công việc vệ sinh
+  // Hàm để xóa một công việc vệ sinh
   const handleDeleteCleaningTask = async (taskId, taskName) => {
     setAuthError('');
     if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) {
@@ -2814,7 +2884,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
     }
   };
 
-  // Mới: Hàm để chuyển đổi trạng thái thanh toán cá nhân trong một bản ghi chia sẻ chi phí
+  // Hàm để chuyển đổi trạng thái thanh toán cá nhân trong một bản ghi chia sẻ chi phí
   const handleToggleIndividualPaymentStatus = async (costSharingId, residentId, currentStatus) => {
     setAuthError('');
     if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) {
@@ -2872,7 +2942,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
     }
   };
 
-  // Mới: Hàm để gán cư dân vào kệ giày
+  // Hàm để gán cư dân vào kệ giày
   const handleAssignShoeRack = async () => {
     setAuthError('');
     setBillingError(''); // Đặt lại billingError
@@ -2926,7 +2996,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
     }
   };
 
-  // Mới: Hàm để xóa một phân công kệ giày
+  // Hàm để xóa một phân công kệ giày
   const handleClearShoeRackAssignment = async (shelfNumber) => {
     setAuthError('');
     if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) {
@@ -2944,7 +3014,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
     }
   };
 
-  // Mới: Hàm để tạo lịch vệ sinh bằng Gemini API
+  // Hàm để tạo lịch vệ sinh bằng Gemini API
   const handleGenerateCleaningSchedule = async () => {
     setAuthError('');
     setBillingError('');
@@ -3044,7 +3114,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
     }
   };
 
-  // Mới: Hàm để lưu các công việc vệ sinh đã tạo vào Firestore
+  // Hàm để lưu các công việc vệ sinh đã tạo vào Firestore
   const handleSaveGeneratedTasks = async () => {
     setAuthError('');
     if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) {
@@ -3090,7 +3160,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
           createdAt: serverTimestamp(),
         });
 
-        // Mới: TẠO THÔNG BÁO LỊCH TRỰC CHO NGƯỜI ĐƯỢC PHÂN CÔNG
+        // TẠO THÔNG BÁO LỊCH TRỰC CHO NGƯỜI ĐƯỢC PHÂN CÔNG
         const userLinkedToResident = allUsersData.find((user) => user.linkedResidentId === residentId);
         if (userLinkedToResident) {
           const message = `Bạn có công việc trực phòng "${task.taskName}" vào ngày ${task.date}.`;
@@ -3109,7 +3179,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
     }
   };
 
-  // Mới: Hàm để thành viên đánh dấu đã đóng tiền của họ
+  // Hàm để thành viên đánh dấu đã đóng tiền của họ
   const handleMarkMyPaymentAsPaid = async () => {
     setAuthError('');
     if (!db || !userId || userRole !== 'member' || !loggedInResidentProfile) {
@@ -3195,13 +3265,13 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
     // Logic cho Admin
     if (userRole === 'admin' || userId === 'BJHeKQkyE9VhWCpMfaONEf2N28H2') {
       switch (activeSection) {
-        case 'dashboard': // MỚI: Dashboard cho Admin
+        case 'dashboard': // Dashboard cho Admin
           // Lọc các nhiệm vụ trực phòng sắp tới cho Admin (tất cả các nhiệm vụ chưa hoàn thành)
           const upcomingAdminCleaningTasks = cleaningSchedule
             .filter((task) => !task.isCompleted && new Date(task.date) >= new Date())
             .sort((a, b) => new Date(a.date) - new Date(b.date)); // Sắp xếp theo ngày tăng dần
 
-          // MỚI: CHUẨN BỊ DỮ LIỆU CHO BIỂU ĐỒ TIÊU THỤ ĐIỆN NƯỚC
+          // CHUẨN BỊ DỮ LIỆU CHO BIỂU ĐỒ TIÊU THỤ ĐIỆN NƯỚC
           const chartData = Object.entries(monthlyConsumptionStats).map(([month, stats]) => ({
             month: month, // Ví dụ: "2025-06"
             điện: stats.electricity, // Dữ liệu điện
@@ -3974,7 +4044,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 </button>
               </div>
               <button
-                onClick={() => setShowGenerateScheduleModal(true)} // Mới: Nút để mở modal tạo lịch
+                onClick={() => setShowGenerateScheduleModal(true)} // Nút để mở modal tạo lịch
                 className="w-full px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl shadow-md hover:bg-indigo-700 transition-all duration-300"
                 disabled={residents.filter((res) => res.isActive !== false).length === 0} // Vô hiệu hóa nếu không có cư dân hoạt động
               >
@@ -4260,7 +4330,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                     <input
                       type="file"
                       id="imageFile"
-                      accept="image/*,video/*" // MỚI: Chấp nhận cả ảnh và video
+                      accept="image/*,video/*" // Chấp nhận cả ảnh và video
                       multiple // Thêm thuộc tính multiple
                       onChange={(e) => setNewMemoryImageFile(Array.from(e.target.files))}
                       className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
@@ -4289,7 +4359,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
         
               {/* Danh sách các kỷ niệm đã đăng */}
               <h3 className="text-xl font-bold text-indigo-700 dark:text-indigo-200 mb-4">Các kỷ niệm đã đăng</h3>
-              {/* MỚI: Phần lọc và tìm kiếm kỷ niệm */}
+              {/* Phần lọc và tìm kiếm kỷ niệm */}
               <div className="mb-8 p-4 bg-gray-100 dark:bg-gray-800 rounded-xl shadow-inner border border-gray-200 dark:border-gray-600">
                 <h3 className="text-xl font-bold text-gray-700 dark:text-gray-200 mb-4">Tìm kiếm & Lọc kỷ niệm</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -4374,7 +4444,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                         <p className="text-sm text-gray-600 dark:text-gray-300">
                           <i className="fas fa-images mr-2"></i>Số file: {memory.files?.length || 0}
                         </p>
-                        {/* MỚI: Nút xóa cho admin HOẶC người đăng tải */}
+                        {/* Nút xóa cho admin HOẶC người đăng tải */}
                         {(userRole === 'admin' || userId === memory.uploadedBy) && (
                           <div className="flex mt-4 space-x-2">
                           <button
@@ -4392,7 +4462,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                         </div>
                         )}
                       </div>
-                      {/* MỚI: PHẦN ĐIỀU KHIỂN PHÂN TRANG */}
+                      {/* PHẦN ĐIỀU KHIỂN PHÂN TRANG */}
                   {totalPagesMemories > 1 && (
                     <div className="flex justify-center items-center mt-8 space-x-4">
                       <button
@@ -4560,7 +4630,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                         className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500"
                       />
                     </div>
-                    {/* MỚI: Phần chọn ảnh đại diện cho tiền bối */}
+                    {/* Phần chọn ảnh đại diện cho tiền bối */}
                     <div className="md:col-span-2">
                       {' '}
                       {/* Có thể làm cho input này chiếm 2 cột */}
@@ -4694,7 +4764,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                                     resident.deactivatedAt instanceof Date
                                       ? formatDate(resident.deactivatedAt)
                                       : resident.deactivatedAt || '',
-                                  photoURL: resident.photoURL || null, // MỚI: Thêm photoURL vào state
+                                  photoURL: resident.photoURL || null, // Thêm photoURL vào state
                                 })
                               }
                               className="px-4 py-2 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-600 transition-colors duration-200"
@@ -4939,7 +5009,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
             </div>
           );
 
-        case 'adminProfileEdit': // Mới: Chỉnh sửa thông tin cá nhân cho Admin
+        case 'adminProfileEdit': // Chỉnh sửa thông tin cá nhân cho Admin
           return (
             <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
               <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Chỉnh sửa hồ sơ của tôi</h2>
@@ -5095,7 +5165,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 </button>
                 {/* Có thể thêm nút "Hủy" nếu muốn, nhưng admin sẽ không có chế độ "editProfileMode" như member */}
 
-                {/* Mới: Phần đổi mật khẩu */}
+                {/* Phần đổi mật khẩu */}
                 <div className="mt-10 pt-6 border-t border-gray-300 dark:border-gray-600">
                   <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-4">Đổi mật khẩu</h3>
                   <div className="space-y-4">
@@ -5245,7 +5315,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
           ? `${costSharingHistory[0].periodStart} - ${costSharingHistory[0].periodEnd}`
           : 'N/A';
       switch (activeSection) {
-        case 'dashboard': // MỚI: Dashboard cho Thành viên
+        case 'dashboard': // Dashboard cho Thành viên
           return (
             <div className="p-6 bg-gray-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
               <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-5">Dashboard Tổng quan</h2>
@@ -5362,7 +5432,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                     </thead>
                     <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
                       {displayedResidents.map((resident) => {
-                        // MỚI: Xác định xem hàng này có phải của người dùng đang đăng nhập không
+                        // Xác định xem hàng này có phải của người dùng đang đăng nhập không
                         const isMyRow = loggedInResidentProfile && resident.id === loggedInResidentProfile.id;
                         return (
                           <tr
@@ -5386,7 +5456,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                                     type="checkbox"
                                     checked={isPresent}
                                     onChange={() => handleToggleDailyPresence(resident.id, day)}
-                                    disabled={!isMyRow} // MỚI: Vô hiệu hóa nếu là member và không phải hàng của mình
+                                    disabled={!isMyRow} // Vô hiệu hóa nếu là member và không phải hàng của mình
                                     className="form-checkbox h-5 w-5 text-green-600 dark:text-green-400 rounded focus:ring-green-500 cursor-pointer"
                                   />
                                 </td>
@@ -5789,7 +5859,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                   </button>
                 </div>
               )}
-              {/* Mới: Phần đổi mật khẩu */}
+              {/* Phần đổi mật khẩu */}
               <div className="mt-10 pt-6 border-t border-gray-300 dark:border-gray-600">
                 <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-4">Đổi mật khẩu</h3>
                 <div className="space-y-4">
@@ -5940,7 +6010,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
 
               {/* Danh sách các kỷ niệm đã đăng */}
               <h3 className="text-xl font-bold text-indigo-700 dark:text-indigo-200 mb-4">Các kỷ niệm đã đăng</h3>
-              {/* MỚI: Phần lọc và tìm kiếm kỷ niệm */}
+              {/* Phần lọc và tìm kiếm kỷ niệm */}
               <div className="mb-8 p-4 bg-gray-100 dark:bg-gray-800 rounded-xl shadow-inner border border-gray-200 dark:border-gray-600">
                 <h3 className="text-xl font-bold text-gray-700 dark:text-gray-200 mb-4">Tìm kiếm & Lọc kỷ niệm</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -6046,7 +6116,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                           </div>
                         )}
                       </div>
-                      {/* MỚI: PHẦN ĐIỀU KHIỂN PHÂN TRANG */}
+                      {/* PHẦN ĐIỀU KHIỂN PHÂN TRANG */}
                   {totalPagesMemories > 1 && (
                     <div className="flex justify-center items-center mt-8 space-x-4">
                       <button
@@ -6076,7 +6146,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               )}
             </div>
           );
-        case 'formerResidents': // MỚI: Thông tin tiền bối (Dành cho THÀNH VIÊN)
+        case 'formerResidents': // Thông tin tiền bối (Dành cho THÀNH VIÊN)
           return (
             <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
               <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">Thông tin tiền bối</h2>
@@ -6257,7 +6327,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 </div>
               )}
 
-              {/* Mới: Phần đổi mật khẩu */}
+              {/* Phần đổi mật khẩu */}
               <div className="mt-10 pt-6 border-t border-gray-300 dark:border-gray-600">
                 <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-4">Đổi mật khẩu</h3>
                 <div className="space-y-4">
@@ -6894,7 +6964,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                   >
                     Quên mật khẩu?
                   </button>
-                  {/* MỚI: Nút Gửi lại email xác minh (chỉ hiển thị khi có lỗi xác minh email) */}
+                  {/* Nút Gửi lại email xác minh (chỉ hiển thị khi có lỗi xác minh email) */}
                   {authError.includes("chưa được xác minh") && ( // Chỉ hiển thị khi có thông báo lỗi email chưa xác minh
                     <button
                       onClick={handleResendVerificationEmail}
@@ -7000,7 +7070,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                   Số tiền mỗi người cần đóng:
                 </p>
                 
-                {/* DÒNG MỚI: CONTAINER CUỘN CHO DANH SÁCH CHI PHÍ CÁ NHÂN */}
+                {/* DÒNG CONTAINER CUỘN CHO DANH SÁCH CHI PHÍ CÁ NHÂN */}
                 <div className="max-h-40 overflow-y-auto pr-2 border rounded-lg border-gray-200 dark:border-gray-700"> {/* Đặt max-h và overflow-y-auto ở đây */}
                   <ul className="space-y-2 pl-4 py-2"> {/* Thêm padding cho ul */}
                     {Object.entries(selectedCostSharingDetails.individualCosts || {}).map(([residentId, data]) => {
@@ -7524,6 +7594,53 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                   className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
                 />
               </div>
+              <div>
+                <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                Ảnh đại diện:
+                </label>
+                <div className="flex items-center space-x-4 mb-2">
+                <div className="relative w-20 h-20 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
+                  {tempAvatarUrl ? (
+                  <img src={tempAvatarUrl} alt="Avatar Preview" className="w-full h-full object-cover" />
+                  ) : (
+                  <svg className="mx-auto my-auto h-12 w-12 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                    <path fillRule="evenodd" d="M18.675 13.5a.75.75 0 00-.75-.75h-7.5a.75.75 0 000 1.5h7.5a.75.75 0 00.75-.75zM12 16a.75.75 0 01-.75-.75V9.75a.75.75 0 011.5 0v5.5a.75.75 0 01-.75.75z" clipRule="evenodd" />
+                    <path d="M12 22.75c-5.962 0-10.75-4.788-10.75-10.75S6.038 1.25 12 1.25s10.75 4.788 10.75 10.75-4.788 10.75-10.75 10.75zM12 2.75a9.25 9.25 0 00-9.25 9.25c0 4.142 2.684 7.709 6.36 9.088a.75.75 0 01-.724.868h-.008c-.398.11-.83.174-1.296.174-.23 0-.46-.01-.688-.03a.75.75 0 01-.495-.664c-1.462-3.48-1.214-7.44.705-10.66a.75.75 0 011.198.603 7.75 7.75 0 01-.012 9.395c-.862 1.75-1.393 3.727-1.55 5.812a.75.75 0 01-.757.693h-.005a.75.75 0 01-.688-.74c.155-2.168.67-4.18 1.517-5.967a9.25 9.25 0 009.25-9.25z" />
+                  </svg>
+                  )}
+                </div>
+                <label htmlFor="avatarUpload" className="cursor-pointer text-blue-600 hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-400">
+                  Chọn ảnh
+                </label>
+                <input
+                  type="file"
+                  id="avatarUpload"
+                  accept="image/*"
+                  className="sr-only"
+                  onChange={handleAvatarFileChange}
+                />
+                {selectedAvatarFile && (
+                  <button
+                  type="button"
+                  onClick={() => { setSelectedAvatarFile(null); setTempAvatarUrl(editingCommonResidentUserLinkedData?.avatarUrl || ''); }}
+                  className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-500 text-xs"
+                  >
+                  Hủy chọn
+                  </button>
+                )}
+                </div>
+                {isUploadingAvatar && (
+                <div className="relative pt-1">
+                  <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-blue-200 dark:bg-blue-900">
+                  <div
+                    style={{ width: `${avatarUploadProgress}%` }}
+                    className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500 dark:bg-blue-500 transition-all duration-500"
+                  ></div>
+                  </div>
+                  <p className="text-gray-500 dark:text-gray-400 text-xs text-right">{Math.round(avatarUploadProgress)}%</p>
+                </div>
+                )}
+              </div>
 
               {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
               <div className="flex justify-between space-x-4 mt-6">
@@ -7545,7 +7662,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
         </div>
       )}
 
-      {/*  MỚI: Modal hiển thị ảnh/video phóng to (Lightbox) */}
+      {/*  Modal hiển thị ảnh/video phóng to (Lightbox) */}
       {selectedImageToZoom && (
         <div
           className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
@@ -7557,7 +7674,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
           >
             {' '}
             {/* Ngăn chặn sự kiện nổi bọt trên nội dung */}
-            {selectedImageToZoom.fileType === 'video' ? ( // MỚI: Hiển thị video nếu là video
+            {selectedImageToZoom.fileType === 'video' ? ( // Hiển thị video nếu là video
               <video
                 src={selectedImageToZoom.fileUrl}
                 controls
@@ -7719,7 +7836,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                     className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-                {/* MỚI: Phần chọn ảnh đại diện cho tiền bối (trong modal chỉnh sửa) */}
+                {/* Phần chọn ảnh đại diện cho tiền bối (trong modal chỉnh sửa) */}
                 <div className="mt-8 pt-6 border-t border-gray-300 dark:border-gray-600">
                   <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-4">Ảnh đại diện</h3>
                   <div className="flex items-center space-x-4 mb-4">
