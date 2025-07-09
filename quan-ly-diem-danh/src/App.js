@@ -1501,14 +1501,11 @@ function App() {
     const dailyPresenceCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/dailyPresence`);
     let q;
 
-    if (userRole === 'member' && loggedInResidentProfile) {
-      // Thành viên chỉ truy vấn điểm danh của chính hồ sơ cư dân được liên kết
-      q = query(dailyPresenceCollectionRef, where('residentId', '==', loggedInResidentProfile.id));
-    } else if (userRole === 'admin') {
-      // Admin truy vấn tất cả
-      q = query(dailyPresenceCollectionRef);
+    // Cả Admin và Member đã đăng nhập đều cần truy vấn tất cả bản ghi điểm danh để hiển thị
+    if (userRole === 'member' || userRole === 'admin') { // Nếu là thành viên hoặc admin
+      q = query(dailyPresenceCollectionRef); // Truy vấn tất cả các bản ghi
     } else {
-      // Nếu không phải admin và không có hồ sơ cư dân liên kết, không truy vấn gì cả
+      // Nếu không có vai trò hoặc chưa đăng nhập, không truy vấn gì cả
       setMonthlyAttendanceData({}); // Xóa dữ liệu cũ
       return;
     }
@@ -5149,11 +5146,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                     <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
                       {displayedResidents.map((resident) => {
                         // MỚI: Xác định xem hàng này có phải của người dùng đang đăng nhập không
-                        const isMyRow =
-                          userRole === 'member' &&
-                          loggedInResidentProfile &&
-                          resident.id === loggedInResidentProfile.id;
-
+                        const isMyRow = loggedInResidentProfile && resident.id === loggedInResidentProfile.id;
                         return (
                           <tr
                             key={resident.id}
@@ -5176,7 +5169,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                                     type="checkbox"
                                     checked={isPresent}
                                     onChange={() => handleToggleDailyPresence(resident.id, day)}
-                                    disabled={userRole === 'member' && !isMyRow} // MỚI: Vô hiệu hóa nếu là member và không phải hàng của mình
+                                    disabled={!isMyRow} // MỚI: Vô hiệu hóa nếu là member và không phải hàng của mình
                                     className="form-checkbox h-5 w-5 text-green-600 dark:text-green-400 rounded focus:ring-green-500 cursor-pointer"
                                   />
                                 </td>
