@@ -4279,226 +4279,154 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               )}
             </div>
           );
-          case 'roomMemories': // <--- DI CHUYỂN TOÀN BỘ CASE NÀY LÊN TRÊN default
-          return (
-            <div className="p-6 bg-indigo-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-indigo-800 dark:text-indigo-200 mb-5">Kỷ niệm phòng</h2>
-        
-              {/*Form đăng ảnh/video kỷ niệm*/}
-              <form
-                onSubmit={handleAddMemory}
-                className="mb-8 p-4 bg-indigo-100 dark:bg-gray-800 rounded-xl shadow-inner border border-indigo-200 dark:border-gray-600"
-              >
-                <h3 className="text-xl font-bold text-indigo-700 dark:text-indigo-200 mb-4">
-                  Đăng kỷ niệm mới (ảnh/video)
-                </h3>{' '}
-                {/* Sửa tiêu đề */}
-                <div className="space-y-4">
-                  <div>
-                    <label
-                      htmlFor="eventName"
-                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                    >
-                      Sự kiện:
-                    </label>
-                    <input
-                      type="text"
-                      id="eventName"
-                      value={newMemoryEventName}
-                      onChange={(e) => setNewMemoryEventName(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700"
-                      placeholder="Ví dụ: Sinh nhật tháng 10"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="photoDate"
-                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                    >
-                      Ngày chụp/quay:
-                    </label>{' '}
-                    {/* Sửa nhãn */}
-                    <input
-                      type="date"
-                      id="photoDate"
-                      value={newMemoryPhotoDate}
-                      onChange={(e) => setNewMemoryPhotoDate(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="imageFile"
-                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                    >
-                      Chọn ảnh hoặc video:
-                    </label>{' '}
-                    {/* Sửa nhãn */}
-                    <input
-                      type="file"
-                      id="imageFile"
-                      accept="image/*,video/*" // Chấp nhận cả ảnh và video
-                      multiple // Thêm thuộc tính multiple
-                      onChange={(e) => setNewMemoryImageFile(Array.from(e.target.files))}
-                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                    />
-                  </div>
-                  {isUploadingMemory && (
-                    <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-                      <div className="bg-indigo-600 h-2.5 rounded-full" style={{ width: `${uploadProgress}%` }}></div>
-                    </div>
-                  )}
-                  {memoryError && <p className="text-red-500 text-sm text-center mt-4">{memoryError}</p>}
-                  <button
-                    type="submit"
-                    className="w-full px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl shadow-md hover:bg-indigo-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-75"
-                    disabled={isUploadingMemory}
+          case 'roomMemories':
+            return (
+              <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+                <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">Kỷ niệm phòng</h2>
+  
+                <div className="mb-4 flex flex-col sm:flex-row items-center justify-between space-y-3 sm:space-y-0 sm:space-x-4">
+                  {/* Search Term Input */}
+                  <input
+                    type="text"
+                    placeholder="Tìm kiếm theo tên sự kiện..."
+                    value={searchTermMemory}
+                    onChange={(e) => setSearchTermMemory(e.target.value)}
+                    className="flex-grow shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full sm:w-auto py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white dark:bg-gray-700"
+                  />
+                  {/* Filter by Uploader */}
+                  <select
+                    value={filterUploaderMemory}
+                    onChange={(e) => setFilterUploaderMemory(e.target.value)}
+                    className="shadow-sm border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white dark:bg-gray-700"
                   >
-                    {isUploadingMemory ? (
-                      <i className="fas fa-spinner fa-spin mr-2"></i>
-                    ) : (
-                      <i className="fas fa-upload mr-2"></i>
-                    )}
-                    Đăng kỷ niệm
-                  </button>
-                </div>
-              </form>
-        
-              {/* Danh sách các kỷ niệm đã đăng */}
-              <h3 className="text-xl font-bold text-indigo-700 dark:text-indigo-200 mb-4">Các kỷ niệm đã đăng</h3>
-              {/* Phần lọc và tìm kiếm kỷ niệm */}
-              <div className="mb-8 p-4 bg-gray-100 dark:bg-gray-800 rounded-xl shadow-inner border border-gray-200 dark:border-gray-600">
-                <h3 className="text-xl font-bold text-gray-700 dark:text-gray-200 mb-4">Tìm kiếm & Lọc kỷ niệm</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label
-                      htmlFor="searchMemory"
-                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                      Tìm kiếm theo tên sự kiện:
-                    </label>
-                    <input
-                      type="text"
-                      id="searchMemory"
-                      value={searchTermMemory}
-                      onChange={(e) => setSearchTermMemory(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700"
-                      placeholder="Nhập tên sự kiện..."
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="filterUploader"
-                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                    >
-                      Lọc theo người đăng:
-                    </label>
-                    <select
-                      id="filterUploader"
-                      value={filterUploaderMemory}
-                      onChange={(e) => setFilterUploaderMemory(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    >
-                      <option value="all">Tất cả người đăng</option>
-                      {/* Hiển thị tất cả người dùng trong hệ thống để lọc */}
-                      {allUsersData.map((user) => (
+                    <option value="all">Tất cả người đăng</option>
+                    {allUsersData
+                      .filter((user) => user.role === 'member' || user.role === 'admin')
+                      .map((user) => (
                         <option key={user.id} value={user.id}>
                           {user.fullName || user.email}
                         </option>
                       ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-              {memories.length === 0 ? (
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
-                  Chưa có kỷ niệm nào được đăng.
-                </p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {memories.map((memory) => (
-                    <div
-                      key={memory.id}
-                      className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer"
-                      onClick={() => {
-                        // CHÍNH XÁC: Mở lightbox đa ảnh
-                        setSelectedMemoryForLightbox(memory);
-                        setCurrentLightboxIndex(0); // Bắt đầu từ ảnh/video đầu tiên
-                      }}
+                  </select>
+                  {/* Add Memory Button (Only for logged-in users) */}
+                  {userId && ( // Only show if user is logged in
+                    <button
+                      onClick={() => setActiveSection('addMemory')}
+                      className="px-6 py-2 bg-yellow-600 text-white font-semibold rounded-xl shadow-md hover:bg-yellow-700 transition-all duration-300 w-full sm:w-auto"
                     >
-                      {/* Hiển thị ảnh/video đầu tiên làm thumbnail */}
-                      {memory.files &&
-                        memory.files.length > 0 &&
-                        (memory.files[0].fileType === 'video' ? (
-                          <video src={memory.files[0].fileUrl} controls className="w-full h-48 object-cover"></video>
-                        ) : (
-                          <img
-                            src={memory.files[0].fileUrl}
-                            alt={memory.eventName}
-                            className="w-full h-48 object-cover"
-                          />
-                        ))}
-                      <div className="p-4">
-                        <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">
-                          {memory.eventName}
-                        </h4>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                          <i className="fas fa-calendar-alt mr-2"></i>Ngày chụp/quay: {memory.photoDate}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                          <i className="fas fa-upload mr-2"></i>Đăng bởi: {memory.uploadedByName || 'Ẩn danh'} vào{' '}
-                          {memory.uploadedAt?.toLocaleDateString('vi-VN')}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                          <i className="fas fa-images mr-2"></i>Số file: {memory.files?.length || 0}
-                        </p>
-                        {/* Nút xóa cho admin HOẶC người đăng tải */}
-                        {(userRole === 'admin' || userId === memory.uploadedBy) && (
-                          <div className="flex mt-4 space-x-2">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleEditMemory(memory); }} // Nút chỉnh sửa
-                            className="px-4 py-2 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-600 transition-colors duration-200"
-                          >
-                            <i className="fas fa-edit mr-2"></i>Chỉnh sửa
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleDeleteMemory(memory.id, memory.files, memory.uploadedBy); }} // Truyền mảng files
-                            className="px-4 py-2 bg-red-500 text-white rounded-lg shadow hover:bg-red-600 transition-colors duration-200"
-                          >
-                            <i className="fas fa-trash mr-2"></i>Xóa
-                          </button>
-                        </div>
-                        )}
-                      </div>
-                      {/* PHẦN ĐIỀU KHIỂN PHÂN TRANG */}
-                  {totalPagesMemories > 1 && (
-                    <div className="flex justify-center items-center mt-8 space-x-4">
-                      <button
-                        onClick={() => setCurrentPageMemories(prev => Math.max(1, prev - 1))}
-                        disabled={currentPageMemories === 1}
-                        className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                      >
-                        Trang trước
-                      </button>
-                      <span className="text-gray-700 dark:text-gray-300 font-medium">
-                        Trang {currentPageMemories} / {totalPagesMemories}
-                      </span>
-                      <button
-                        onClick={() => setCurrentPageMemories(prev => Math.min(totalPagesMemories, prev + 1))}
-                        disabled={currentPageMemories === totalPagesMemories}
-                        className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                      >
-                        Trang sau
-                      </button>
-                    </div>
+                      <i className="fas fa-plus mr-2"></i> Thêm kỷ niệm
+                    </button>
                   )}
-                  {/* KẾT THÚC PHẦN ĐIỀU KHIỂN PHÂN TRANG */}
-                    </div>
-                  ))}
-                  
                 </div>
-              )}
-            </div>
-          );
+  
+                {memoryError && <p className="text-red-500 text-sm text-center my-4">{memoryError}</p>}
+  
+                {memories.length === 0 ? (
+                  <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
+                    Chưa có kỷ niệm nào được thêm.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {memories.map((memory) => (
+                      <div
+                        key={memory.id}
+                        className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden transition-transform transform hover:scale-105 duration-200"
+                      >
+                        {/* Media (Image/Video) Preview */}
+                        <div className="relative aspect-video bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                          {memory.files && memory.files.length > 0 ? (
+                            <>
+                              {memory.files[0].fileType === 'image' ? (
+                                <img
+                                  src={memory.files[0].fileUrl}
+                                  alt={memory.eventName}
+                                  className="w-full h-full object-cover cursor-pointer"
+                                  onClick={() => setSelectedMemoryForLightbox(memory)}
+                                />
+                              ) : (
+                                <video
+                                  src={memory.files[0].fileUrl}
+                                  controls
+                                  className="w-full h-full object-cover"
+                                  onClick={() => setSelectedMemoryForLightbox(memory)}
+                                />
+                              )}
+                              {memory.files.length > 1 && (
+                                <span className="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded-full">
+                                  {memory.files.length} ảnh/video
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <div className="text-gray-500 dark:text-gray-400">Không có ảnh</div>
+                          )}
+                        </div>
+  
+                        {/* Memory Details */}
+                        <div className="p-4">
+                          <h3 className="font-bold text-lg text-gray-800 dark:text-gray-200 mb-2 truncate">
+                            {memory.eventName}
+                          </h3>
+                          <p className="text-gray-600 dark:text-gray-400 text-sm mb-1">
+                            Ngày chụp: {memory.photoDate}
+                          </p>
+                          <p className="text-gray-600 dark:text-gray-400 text-sm mb-3">
+                            Đăng bởi:{' '}
+                            <span className="font-medium">
+                              {memory.uploadedByName ||
+                                allUsersData.find((u) => u.id === memory.uploadedBy)?.fullName ||
+                                'Người dùng ẩn danh'}
+                            </span>
+                          </p>
+                          {/* Actions: Edit/Delete (Only for Admin or Uploader) */}
+                          {(userRole === 'admin' || userId === memory.uploadedBy) && (
+                            <div className="flex justify-end space-x-2">
+                              <button
+                                onClick={() => handleEditMemory(memory)}
+                                className="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600 transition-colors"
+                              >
+                                Chỉnh sửa
+                              </button>
+                              <button
+                                onClick={() =>
+                                  handleDeleteMemory(memory.id, memory.files, memory.uploadedBy)
+                                }
+                                className="px-3 py-1 bg-red-500 text-white text-xs rounded-lg hover:bg-red-600 transition-colors"
+                              >
+                                Xóa
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+  
+                {/* Pagination Controls */}
+                {totalMemoriesCount > itemsPerPageMemories && ( // Only show if more than one page
+                  <div className="flex justify-center items-center space-x-4 mt-8">
+                    <button
+                      onClick={() => setCurrentPageMemories((prev) => Math.max(1, prev - 1))}
+                      disabled={currentPageMemories === 1}
+                      className="px-4 py-2 bg-yellow-500 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Trang trước
+                    </button>
+                    <span className="text-gray-800 dark:text-gray-200 font-medium">
+                      Trang {currentPageMemories} / {totalPagesMemories}
+                    </span>
+                    <button
+                      onClick={() => setCurrentPageMemories((prev) => Math.min(totalPagesMemories, prev + 1))}
+                      disabled={currentPageMemories === totalPagesMemories}
+                      className="px-4 py-2 bg-yellow-500 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Trang sau
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
           case 'formerResidents': // Thông tin tiền bối
           return (
             <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
@@ -5935,225 +5863,156 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               </div>
             </div>
           );
-        case 'roomMemories':
-          return (
-            <div className="p-6 bg-indigo-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-indigo-800 dark:text-indigo-200 mb-5">Kỷ niệm phòng</h2>
-
-              {/* Phần đăng ảnh kỷ niệm */}
-              <form
-                onSubmit={handleAddMemory}
-                className="mb-8 p-4 bg-indigo-100 dark:bg-gray-800 rounded-xl shadow-inner border border-indigo-200 dark:border-gray-600 "
-              >
-                <h3 className="text-xl font-bold text-indigo-700 dark:text-indigo-200 mb-4">Đăng ảnh kỷ niệm mới</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label
-                      htmlFor="eventName"
-                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                    >
-                      Sự kiện:
-                    </label>
-                    <input
-                      type="text"
-                      id="eventName"
-                      value={newMemoryEventName}
-                      onChange={(e) => setNewMemoryEventName(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700"
-                      placeholder="Ví dụ: Sinh nhật tháng 10"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="photoDate"
-                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                    >
-                      Ngày chụp/quay:
-                    </label>
-                    <input
-                      type="date"
-                      id="photoDate"
-                      value={newMemoryPhotoDate}
-                      onChange={(e) => setNewMemoryPhotoDate(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="imageFile"
-                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                    >
-                      Chọn ảnh hoặc video:
-                    </label>
-                    <input
-                      type="file"
-                      id="imageFile"
-                      accept="image/*,video/*"
-                      multiple // Thêm thuộc tính multiple
-                      onChange={(e) => setNewMemoryImageFile(Array.from(e.target.files))}
-                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                    />
-                  </div>
-                  {isUploadingMemory && (
-                    <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-                      <div className="bg-indigo-600 h-2.5 rounded-full" style={{ width: `${uploadProgress}%` }}></div>
-                    </div>
-                  )}
-                  {memoryError && <p className="text-red-500 text-sm text-center mt-4">{memoryError}</p>}
-                  <button
-                    type="submit"
-                    className="w-full px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl shadow-md hover:bg-indigo-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-75"
-                    disabled={isUploadingMemory}
+          case 'roomMemories':
+            return (
+              <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+                <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">Kỷ niệm phòng</h2>
+  
+                <div className="mb-4 flex flex-col sm:flex-row items-center justify-between space-y-3 sm:space-y-0 sm:space-x-4">
+                  {/* Search Term Input */}
+                  <input
+                    type="text"
+                    placeholder="Tìm kiếm theo tên sự kiện..."
+                    value={searchTermMemory}
+                    onChange={(e) => setSearchTermMemory(e.target.value)}
+                    className="flex-grow shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full sm:w-auto py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white dark:bg-gray-700"
+                  />
+                  {/* Filter by Uploader */}
+                  <select
+                    value={filterUploaderMemory}
+                    onChange={(e) => setFilterUploaderMemory(e.target.value)}
+                    className="shadow-sm border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white dark:bg-gray-700"
                   >
-                    {isUploadingMemory ? (
-                      <i className="fas fa-spinner fa-spin mr-2"></i>
-                    ) : (
-                      <i className="fas fa-upload mr-2"></i>
-                    )}
-                    Đăng kỷ niệm
-                  </button>
-                </div>
-              </form>
-
-              {/* Danh sách các kỷ niệm đã đăng */}
-              <h3 className="text-xl font-bold text-indigo-700 dark:text-indigo-200 mb-4">Các kỷ niệm đã đăng</h3>
-              {/* Phần lọc và tìm kiếm kỷ niệm */}
-              <div className="mb-8 p-4 bg-gray-100 dark:bg-gray-800 rounded-xl shadow-inner border border-gray-200 dark:border-gray-600">
-                <h3 className="text-xl font-bold text-gray-700 dark:text-gray-200 mb-4">Tìm kiếm & Lọc kỷ niệm</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label
-                      htmlFor="searchMemory"
-                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                    >
-                      Tìm kiếm theo tên sự kiện:
-                    </label>
-                    <input
-                      type="text"
-                      id="searchMemory"
-                      value={searchTermMemory}
-                      onChange={(e) => setSearchTermMemory(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700"
-                      placeholder="Nhập tên sự kiện..."
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="filterUploader"
-                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                    >
-                      Lọc theo người đăng:
-                    </label>
-                    <select
-                      id="filterUploader"
-                      value={filterUploaderMemory}
-                      onChange={(e) => setFilterUploaderMemory(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    >
-                      <option value="all">Tất cả người đăng</option>
-                      {/* Hiển thị tất cả người dùng trong hệ thống để lọc */}
-                      {allUsersData.map((user) => (
+                    <option value="all">Tất cả người đăng</option>
+                    {allUsersData
+                      .filter((user) => user.role === 'member' || user.role === 'admin')
+                      .map((user) => (
                         <option key={user.id} value={user.id}>
                           {user.fullName || user.email}
                         </option>
                       ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-              {memories.length === 0 ? (
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
-                  Chưa có kỷ niệm nào được đăng.
-                </p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {memories.map((memory) => (
-                    <div
-                      key={memory.id}
-                      className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700"
-                      // Click handler sẽ mở lightbox cho ảnh đầu tiên hoặc một gallery
-                      onClick={() => setSelectedImageToZoom(memory.files[0])} // Mở ảnh đầu tiên trong lightbox
+                  </select>
+                  {/* Add Memory Button (Only for logged-in users) */}
+                  {userId && ( // Only show if user is logged in
+                    <button
+                      onClick={() => setActiveSection('addMemory')}
+                      className="px-6 py-2 bg-yellow-600 text-white font-semibold rounded-xl shadow-md hover:bg-yellow-700 transition-all duration-300 w-full sm:w-auto"
                     >
-                      {/* Hiển thị ảnh/video đầu tiên làm thumbnail */}
-                      {memory.files &&
-                        memory.files.length > 0 &&
-                        (memory.files[0].fileType === 'video' ? (
-                          <video src={memory.files[0].fileUrl} controls className="w-full h-48 object-cover"></video>
-                        ) : (
-                          <img
-                            src={memory.files[0].fileUrl}
-                            alt={memory.eventName}
-                            className="w-full h-48 object-cover"
-                          />
-                        ))}
-                      <div className="p-4">
-                        <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">
-                          {memory.eventName}
-                        </h4>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                          <i className="fas fa-calendar-alt mr-2"></i>Ngày chụp/quay: {memory.photoDate}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                          <i className="fas fa-upload mr-2"></i>Đăng bởi: {memory.uploadedByName || 'Ẩn danh'} vào{' '}
-                          {memory.uploadedAt?.toLocaleDateString('vi-VN')}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                          <i className="fas fa-images mr-2"></i>Số file: {memory.files?.length || 0}
-                        </p>
-                        {(userRole === 'admin' || userId === memory.uploadedBy) && (
-                          <div className="flex mt-4 space-x-2">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEditMemory(memory);
-                              }} // Nút chỉnh sửa
-                              className="px-4 py-2 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-600 transition-colors duration-200"
-                            >
-                              <i className="fas fa-edit mr-2"></i>Chỉnh sửa
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteMemory(memory.id, memory.files, memory.uploadedBy);
-                              }} // Truyền mảng files
-                              className="px-4 py-2 bg-red-500 text-white rounded-lg shadow hover:bg-red-600 transition-colors duration-200"
-                            >
-                              <i className="fas fa-trash mr-2"></i>Xóa
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                      {/* PHẦN ĐIỀU KHIỂN PHÂN TRANG */}
-                  {totalPagesMemories > 1 && (
-                    <div className="flex justify-center items-center mt-8 space-x-4">
-                      <button
-                        onClick={() => setCurrentPageMemories(prev => Math.max(1, prev - 1))}
-                        disabled={currentPageMemories === 1}
-                        className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                      >
-                        Trang trước
-                      </button>
-                      <span className="text-gray-700 dark:text-gray-300 font-medium">
-                        Trang {currentPageMemories} / {totalPagesMemories}
-                      </span>
-                      <button
-                        onClick={() => setCurrentPageMemories(prev => Math.min(totalPagesMemories, prev + 1))}
-                        disabled={currentPageMemories === totalPagesMemories}
-                        className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                      >
-                        Trang sau
-                      </button>
-                    </div>
+                      <i className="fas fa-plus mr-2"></i> Thêm kỷ niệm
+                    </button>
                   )}
-                  {/* KẾT THÚC PHẦN ĐIỀU KHIỂN PHÂN TRANG */}
-                    </div>
-                  ))}
-                  
                 </div>
-              )}
-            </div>
-          );
-        case 'formerResidents': // Thông tin tiền bối (Dành cho THÀNH VIÊN)
+  
+                {memoryError && <p className="text-red-500 text-sm text-center my-4">{memoryError}</p>}
+  
+                {memories.length === 0 ? (
+                  <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
+                    Chưa có kỷ niệm nào được thêm.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {memories.map((memory) => (
+                      <div
+                        key={memory.id}
+                        className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden transition-transform transform hover:scale-105 duration-200"
+                      >
+                        {/* Media (Image/Video) Preview */}
+                        <div className="relative aspect-video bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                          {memory.files && memory.files.length > 0 ? (
+                            <>
+                              {memory.files[0].fileType === 'image' ? (
+                                <img
+                                  src={memory.files[0].fileUrl}
+                                  alt={memory.eventName}
+                                  className="w-full h-full object-cover cursor-pointer"
+                                  onClick={() => setSelectedMemoryForLightbox(memory)}
+                                />
+                              ) : (
+                                <video
+                                  src={memory.files[0].fileUrl}
+                                  controls
+                                  className="w-full h-full object-cover"
+                                  onClick={() => setSelectedMemoryForLightbox(memory)}
+                                />
+                              )}
+                              {memory.files.length > 1 && (
+                                <span className="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded-full">
+                                  {memory.files.length} ảnh/video
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <div className="text-gray-500 dark:text-gray-400">Không có ảnh</div>
+                          )}
+                        </div>
+  
+                        {/* Memory Details */}
+                        <div className="p-4">
+                          <h3 className="font-bold text-lg text-gray-800 dark:text-gray-200 mb-2 truncate">
+                            {memory.eventName}
+                          </h3>
+                          <p className="text-gray-600 dark:text-gray-400 text-sm mb-1">
+                            Ngày chụp: {memory.photoDate}
+                          </p>
+                          <p className="text-gray-600 dark:text-gray-400 text-sm mb-3">
+                            Đăng bởi:{' '}
+                            <span className="font-medium">
+                              {memory.uploadedByName ||
+                                allUsersData.find((u) => u.id === memory.uploadedBy)?.fullName ||
+                                'Người dùng ẩn danh'}
+                            </span>
+                          </p>
+                          {/* Actions: Edit/Delete (Only for Admin or Uploader) */}
+                          {/* Logic này đã bao gồm việc giới hạn cho member */}
+                          {(userRole === 'admin' || userId === memory.uploadedBy) && (
+                            <div className="flex justify-end space-x-2">
+                              <button
+                                onClick={() => handleEditMemory(memory)}
+                                className="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600 transition-colors"
+                              >
+                                Chỉnh sửa
+                              </button>
+                              <button
+                                onClick={() =>
+                                  handleDeleteMemory(memory.id, memory.files, memory.uploadedBy)
+                                }
+                                className="px-3 py-1 bg-red-500 text-white text-xs rounded-lg hover:bg-red-600 transition-colors"
+                              >
+                                Xóa
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+  
+                {/* Pagination Controls */}
+                {totalMemoriesCount > itemsPerPageMemories && ( // Only show if more than one page
+                  <div className="flex justify-center items-center space-x-4 mt-8">
+                    <button
+                      onClick={() => setCurrentPageMemories((prev) => Math.max(1, prev - 1))}
+                      disabled={currentPageMemories === 1}
+                      className="px-4 py-2 bg-yellow-500 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Trang trước
+                    </button>
+                    <span className="text-gray-800 dark:text-gray-200 font-medium">
+                      Trang {currentPageMemories} / {totalPagesMemories}
+                    </span>
+                    <button
+                      onClick={() => setCurrentPageMemories((prev) => Math.min(totalPagesMemories, prev + 1))}
+                      disabled={currentPageMemories === totalPagesMemories}
+                      className="px-4 py-2 bg-yellow-500 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Trang sau
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          case 'formerResidents': // Thông tin tiền bối (Dành cho THÀNH VIÊN)
           return (
             <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
               <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">Thông tin tiền bối</h2>
@@ -7650,7 +7509,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               </div>
 
               {/* Thông báo lỗi */}
-            {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
+              {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
               {/* Thông báo thành công */}
               {updateSuccessMessage && <p className="text-green-600 text-sm text-center mt-4">{updateSuccessMessage}</p>}
               <div className="flex justify-between space-x-4 mt-6">
