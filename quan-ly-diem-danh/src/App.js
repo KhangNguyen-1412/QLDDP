@@ -8,6 +8,7 @@ import {
   onAuthStateChanged,
   sendPasswordResetEmail,
   updatePassword,
+  sendEmailVerification,
 } from 'firebase/auth';
 import {
   getFirestore,
