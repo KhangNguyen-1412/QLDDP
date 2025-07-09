@@ -4266,32 +4266,33 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                           </button>
                         </div>
                         )}
-                        {/* MỚI: PHẦN ĐIỀU KHIỂN PHÂN TRANG */}
-                        {totalPagesMemories > 1 && (
-                          <div className="flex justify-center items-center mt-8 space-x-4">
-                            <button
-                              onClick={() => setCurrentPageMemories(prev => Math.max(1, prev - 1))}
-                              disabled={currentPageMemories === 1}
-                              className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                            >
-                              Trang trước
-                            </button>
-                            <span className="text-gray-700 dark:text-gray-300 font-medium">
-                              Trang {currentPageMemories} / {totalPagesMemories}
-                            </span>
-                            <button
-                              onClick={() => setCurrentPageMemories(prev => Math.min(totalPagesMemories, prev + 1))}
-                              disabled={currentPageMemories === totalPagesMemories}
-                              className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                            >
-                              Trang sau
-                            </button>
-                          </div>
-                        )}
-                        {/* KẾT THÚC PHẦN ĐIỀU KHIỂN PHÂN TRANG */}
                       </div>
+
                     </div>
                   ))}
+                  {/* MỚI: PHẦN ĐIỀU KHIỂN PHÂN TRANG */}
+                  {totalPagesMemories > 1 && (
+                    <div className="flex justify-center items-center mt-8 space-x-4">
+                      <button
+                        onClick={() => setCurrentPageMemories(prev => Math.max(1, prev - 1))}
+                        disabled={currentPageMemories === 1}
+                        className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                      >
+                        Trang trước
+                      </button>
+                      <span className="text-gray-700 dark:text-gray-300 font-medium">
+                        Trang {currentPageMemories} / {totalPagesMemories}
+                      </span>
+                      <button
+                        onClick={() => setCurrentPageMemories(prev => Math.min(totalPagesMemories, prev + 1))}
+                        disabled={currentPageMemories === totalPagesMemories}
+                        className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                      >
+                        Trang sau
+                      </button>
+                    </div>
+                  )}
+                  {/* KẾT THÚC PHẦN ĐIỀU KHIỂN PHÂN TRANG */}
                 </div>
               )}
             </div>
@@ -5919,32 +5920,32 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                             </button>
                           </div>
                         )}
-                        {/* MỚI: PHẦN ĐIỀU KHIỂN PHÂN TRANG */}
-                        {totalPagesMemories > 1 && (
-                          <div className="flex justify-center items-center mt-8 space-x-4">
-                            <button
-                              onClick={() => setCurrentPageMemories(prev => Math.max(1, prev - 1))}
-                              disabled={currentPageMemories === 1}
-                              className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                            >
-                              Trang trước
-                            </button>
-                            <span className="text-gray-700 dark:text-gray-300 font-medium">
-                              Trang {currentPageMemories} / {totalPagesMemories}
-                            </span>
-                            <button
-                              onClick={() => setCurrentPageMemories(prev => Math.min(totalPagesMemories, prev + 1))}
-                              disabled={currentPageMemories === totalPagesMemories}
-                              className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                            >
-                              Trang sau
-                            </button>
-                          </div>
-                        )}
-                        {/* KẾT THÚC PHẦN ĐIỀU KHIỂN PHÂN TRANG */}
                       </div>
                     </div>
                   ))}
+                  {/* MỚI: PHẦN ĐIỀU KHIỂN PHÂN TRANG */}
+                  {totalPagesMemories > 1 && (
+                    <div className="flex justify-center items-center mt-8 space-x-4">
+                      <button
+                        onClick={() => setCurrentPageMemories(prev => Math.max(1, prev - 1))}
+                        disabled={currentPageMemories === 1}
+                        className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                      >
+                        Trang trước
+                      </button>
+                      <span className="text-gray-700 dark:text-gray-300 font-medium">
+                        Trang {currentPageMemories} / {totalPagesMemories}
+                      </span>
+                      <button
+                        onClick={() => setCurrentPageMemories(prev => Math.min(totalPagesMemories, prev + 1))}
+                        disabled={currentPageMemories === totalPagesMemories}
+                        className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                      >
+                        Trang sau
+                      </button>
+                    </div>
+                  )}
+                  {/* KẾT THÚC PHẦN ĐIỀU KHIỂN PHÂN TRANG */}
                 </div>
               )}
             </div>
