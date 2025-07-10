@@ -4436,6 +4436,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                     Chưa có kỷ niệm nào được thêm.
                   </p>
                 ) : (
+                  <div className="**max-h-[60vh]** **overflow-y-auto** **pr-2**">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {memories.map((memory) => (
                       <div
@@ -4510,6 +4511,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                         </div>
                       </div>
                     ))}
+                  </div>
                   </div>
                 )}
 
@@ -6084,6 +6086,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                     Chưa có kỷ niệm nào được thêm.
                   </p>
                 ) : (
+                  <div className="**max-h-[60vh]** **overflow-y-auto** **pr-2**">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {memories.map((memory) => (
                       <div
@@ -6158,6 +6161,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                         </div>
                       </div>
                     ))}
+                  </div>
                   </div>
                 )}
 
@@ -6447,7 +6451,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-100 to-purple-200 dark:from-gray-900 dark:to-gray-700 flex flex-col font-inter overflow-hidde">
+    <div className="h-screen bg-gradient-to-br from-blue-100 to-purple-200 dark:from-gray-900 dark:to-gray-700 flex flex-col font-inter overflow-hidde">
       <div className="seasonal-effect">
         {seasonalEffectElements.map((el, index) => React.cloneElement(el, { key: index }))}
       </div>
