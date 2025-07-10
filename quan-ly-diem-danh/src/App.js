@@ -847,84 +847,94 @@ function App() {
   const [totalPagesMemories, setTotalPagesMemories] = useState(1);
   const [totalMemoriesCount, setTotalMemoriesCount] = useState(0); // Tổng số bài kỷ niệm
 
-  // Lắng nghe cập nhật Kỷ niệm phòng
-  useEffect(() => {
-    if (!db || !isAuthReady || userId === null) {
-      console.log('Lắng nghe kỷ niệm: Đang chờ DB, Auth hoặc User ID sẵn sàng.');
-      return;
-    }
-    console.log('Bắt đầu lắng nghe cập nhật kỷ niệm phòng...');
+// Lắng nghe cập nhật Kỷ niệm phòng
+useEffect(() => {
+  if (!db || !isAuthReady || userId === null) {
+    console.log('Lắng nghe kỷ niệm: Đang chờ DB, Auth hoặc User ID sẵn sàng.');
+    return;
+  }
+  console.log('Bắt đầu lắng nghe cập nhật kỷ niệm phòng...');
 
-    const memoriesCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/memories`);
-    let q = query(memoriesCollectionRef);
+  const memoriesCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/memories`);
+  let q = query(memoriesCollectionRef);
 
-    // Áp dụng bộ lọc người đăng nếu có
-    if (filterUploaderMemory !== 'all') {
-      q = query(q, where('uploadedBy', '==', filterUploaderMemory));
-    }
+  // Áp dụng bộ lọc người đăng nếu có
+  if (filterUploaderMemory !== 'all') {
+    q = query(q, where('uploadedBy', '==', filterUploaderMemory));
+  }
 
-    // Áp dụng tìm kiếm theo tên sự kiện nếu có
-    if (searchTermMemory.trim() !== '') {
-      // Lưu ý: Tìm kiếm '==' chỉ khớp chính xác. Để tìm kiếm một phần, bạn cần giải pháp khác (ví dụ: Algolia Search hoặc Cloud Functions)
-      q = query(q, where('eventName', '==', searchTermMemory.trim()));
-    }
+  // Áp dụng tìm kiếm theo tên sự kiện nếu có
+  if (searchTermMemory.trim() !== '') {
+    // Lưu ý: Tìm kiếm '==' chỉ khớp chính xác. Để tìm kiếm một phần, bạn cần giải pháp khác (ví dụ: Algolia Search hoặc Cloud Functions)
+    q = query(q, where('eventName', '==', searchTermMemory.trim()));
+  }
 
-    // Sắp xếp theo photoDate giảm dần, sau đó theo uploadedAt giảm dần nếu photoDate giống nhau
-    q = query(q, orderBy('photoDate', 'desc'), orderBy('uploadedAt', 'desc'));
+  // Sắp xếp theo photoDate giảm dần, sau đó theo uploadedAt giảm dần nếu photoDate giống nhau
+  // CHÚ Ý: Đảm bảo photoDate có thể so sánh được (ví dụ: định dạng YYYY-MM-DD)
+  // Firestore yêu cầu các trường trong orderBy phải được index
+  q = query(q, orderBy('photoDate', 'desc'), orderBy('uploadedAt', 'desc')); // Đã có rồi, rất tốt!
 
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const allFetchedMemories = [];
-        snapshot.forEach((docSnap) => {
-          const data = docSnap.data();
-          if (data.uploadedAt && typeof data.uploadedAt.toDate === 'function') {
-            data.uploadedAt = data.uploadedAt.toDate();
+  const unsubscribe = onSnapshot(
+    q,
+    (snapshot) => {
+      const allFetchedMemories = [];
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        if (data.uploadedAt && typeof data.uploadedAt.toDate === 'function') {
+          data.uploadedAt = data.uploadedAt.toDate();
+        }
+        // Đảm bảo 'files' là một mảng, nếu không thì tạo một mảng từ fileUrl cũ
+        if (!data.files) {
+          data.files = [];
+          if (data.fileUrl) {
+            // Kiểm tra nếu có fileUrl cũ (single file)
+            data.files.push({
+              fileUrl: data.fileUrl,
+              publicId: data.publicId,
+              fileType: data.fileType || (data.fileUrl.match(/\.(mp4|mov|avi|wmv|flv)$/i) ? 'video' : 'image'), // Đoán loại nếu không có
+            });
           }
-          // Đảm bảo 'files' là một mảng, nếu không thì tạo một mảng từ fileUrl cũ
-          if (!data.files) {
-            data.files = [];
-            if (data.fileUrl) {
-              // Kiểm tra nếu có fileUrl cũ (single file)
-              data.files.push({
-                fileUrl: data.fileUrl,
-                publicId: data.publicId,
-                fileType: data.fileType || (data.fileUrl.match(/\.(mp4|mov|avi|wmv|flv)$/i) ? 'video' : 'image'), // Đoán loại nếu không có
-              });
-            }
-          }
-          // Xóa các trường cũ không cần thiết nếu bạn đã chuyển hoàn toàn sang 'files'
-          delete data.fileUrl;
-          delete data.publicId;
-          delete data.fileType;
+        }
+        // Xóa các trường cũ không cần thiết nếu bạn đã chuyển hoàn toàn sang 'files'
+        delete data.fileUrl;
+        delete data.publicId;
+        delete data.fileType;
 
-          allFetchedMemories.push({ id: docSnap.id, ...data });
-        });
+        allFetchedMemories.push({ id: docSnap.id, ...data });
+      });
 
-        // Cập nhật tổng số bài kỷ niệm
-        setTotalMemoriesCount(allFetchedMemories.length);
+      // Cập nhật tổng số bài kỷ niệm
+      setTotalMemoriesCount(allFetchedMemories.length);
 
-        // Tính tổng số trang (làm tròn lên)
-        setTotalPagesMemories(Math.ceil(allFetchedMemories.length / itemsPerPageMemories));
+      // Tính tổng số trang (làm tròn lên)
+      setTotalPagesMemories(Math.ceil(allFetchedMemories.length / itemsPerPageMemories));
 
-        // Lọc dữ liệu cho trang hiện tại (PHÂN TRANG CLIENT-SIDE)
-        const startIndex = (currentPageMemories - 1) * itemsPerPageMemories;
-        const endIndex = startIndex + itemsPerPageMemories;
-        const memoriesForCurrentPage = allFetchedMemories.slice(startIndex, endIndex);
+      // Lọc dữ liệu cho trang hiện tại (PHÂN TRANG CLIENT-SIDE)
+      const startIndex = (currentPageMemories - 1) * itemsPerPageMemories;
+      const endIndex = startIndex + itemsPerPageMemories;
+      const memoriesForCurrentPage = allFetchedMemories.slice(startIndex, endIndex);
 
-        setMemories(memoriesForCurrentPage); // Cập nhật state 'memories' chỉ với các bài của trang hiện tại
-        console.log('Đã cập nhật kỷ niệm phòng (có bộ lọc và phân trang):', memoriesForCurrentPage);
-      },
-      (error) => {
-        console.error('Lỗi khi tải dữ liệu kỷ niệm (có bộ lọc):', error);
-      },
-    );
+      // Đặt lại trang hiện tại về 1 nếu thay đổi bộ lọc/tìm kiếm mà không có đủ trang
+      // Hoặc nếu trang hiện tại vượt quá tổng số trang mới
+      if (currentPageMemories > Math.ceil(allFetchedMemories.length / itemsPerPageMemories) && allFetchedMemories.length > 0) {
+        setCurrentPageMemories(1);
+      } else if (allFetchedMemories.length === 0) { // Nếu không có kỷ niệm nào, đảm bảo currentPageMemories là 1
+          setCurrentPageMemories(1);
+      }
 
-    return () => {
-      console.log('Hủy đăng ký lắng nghe kỷ niệm.');
-      unsubscribe();
-    };
-  }, [db, isAuthReady, userId, searchTermMemory, filterUploaderMemory, currentPageMemories, itemsPerPageMemories]); // THÊM currentPageMemories và itemsPerPageMemories vào dependencies
+      setMemories(memoriesForCurrentPage); // Cập nhật state 'memories' chỉ với các bài của trang hiện tại
+      console.log('Đã cập nhật kỷ niệm phòng (có bộ lọc và phân trang):', memoriesForCurrentPage);
+    },
+    (error) => {
+      console.error('Lỗi khi tải dữ liệu kỷ niệm (có bộ lọc):', error);
+    },
+  );
+
+  return () => {
+    console.log('Hủy đăng ký lắng nghe kỷ niệm.');
+    unsubscribe();
+  };
+}, [db, isAuthReady, userId, searchTermMemory, filterUploaderMemory, currentPageMemories, itemsPerPageMemories]); // THÊM currentPageMemories và itemsPerPageMemories vào dependencies
 
   // --- Các hàm xác thực ---
   const handleSignUp = async () => {
@@ -2186,64 +2196,6 @@ const handleAvatarFileChange = (event) => {
       unsubscribe();
     };
   }, [db, isAuthReady, userId]); // userId is still relevant for the collection path.
-
-  // Lắng nghe cập nhật Kỷ niệm phòng
-  useEffect(() => {
-    if (!db || !isAuthReady || userId === null) {
-      console.log('Lắng nghe kỷ niệm: Đang chờ DB, Auth hoặc User ID sẵn sàng.');
-      return;
-    }
-    console.log('Bắt đầu lắng nghe cập nhật kỷ niệm phòng...');
-
-    const memoriesCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/memories`);
-    let q = query(memoriesCollectionRef);
-
-    if (filterUploaderMemory !== 'all') {
-      q = query(q, where('uploadedBy', '==', filterUploaderMemory));
-    }
-
-    if (searchTermMemory.trim() !== '') {
-      q = query(q, where('eventName', '==', searchTermMemory.trim()));
-    }
-
-    q = query(q, orderBy('uploadedAt', 'desc'));
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const fetchedMemories = [];
-        snapshot.forEach((docSnap) => {
-          const data = docSnap.data();
-          if (data.uploadedAt && typeof data.uploadedAt.toDate === 'function') {
-            data.uploadedAt = data.uploadedAt.toDate();
-          }
-          // Đảm bảo 'files' là một mảng, nếu không thì tạo một mảng từ fileUrl cũ
-          if (!data.files) {
-            data.files = [];
-            if (data.fileUrl) {
-              // Kiểm tra nếu có fileUrl cũ (single file)
-              data.files.push({
-                fileUrl: data.fileUrl,
-                publicId: data.publicId,
-                fileType: data.fileType || (data.fileUrl.match(/\.(mp4|mov|avi|wmv|flv)$/i) ? 'video' : 'image'), // Đoán loại nếu không có
-              });
-            }
-          }
-          fetchedMemories.push({ id: docSnap.id, ...data });
-        });
-        setMemories(fetchedMemories);
-        console.log('Đã cập nhật kỷ niệm phòng (có bộ lọc):', fetchedMemories);
-      },
-      (error) => {
-        console.error('Lỗi khi tải dữ liệu kỷ niệm (có bộ lọc):', error);
-      },
-    );
-
-    return () => {
-      console.log('Hủy đăng ký lắng nghe kỷ niệm.');
-      unsubscribe();
-    };
-  }, [db, isAuthReady, userId, searchTermMemory, filterUploaderMemory]);
 
   // Lắng nghe cập nhật Thông tin tiền bối
   useEffect(() => {
