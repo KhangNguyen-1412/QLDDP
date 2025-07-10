@@ -869,7 +869,6 @@ function App() {
       q = query(q, where('eventName', '==', searchTermMemory.trim()));
     }
 
-    // SẮP XẾP HÌNH THEO THỜI GIAN CHỤP GẦN ĐÂY NHẤT
     // Sắp xếp theo photoDate giảm dần, sau đó theo uploadedAt giảm dần nếu photoDate giống nhau
     q = query(q, orderBy('photoDate', 'desc'), orderBy('uploadedAt', 'desc'));
 
@@ -2337,69 +2336,67 @@ const handleAvatarFileChange = (event) => {
 
   // useEffect để kiểm tra và tạo thông báo sinh nhật
   useEffect(() => {
+    // Đảm bảo tất cả dữ liệu cần thiết đã được tải và người dùng đã đăng nhập
     if (!db || !isAuthReady || userId === null || !allUsersData.length || !residents.length) {
-      return; // Chờ tất cả dữ liệu sẵn sàng
+      console.log("Birthday notification check: Waiting for DB, Auth, User ID, allUsersData, or residents to be ready.");
+      return;
     }
 
     const checkBirthdays = async () => {
       const today = new Date();
       const currentYear = today.getFullYear();
-      const twoWeeksFromNow = new Date();
-      twoWeeksFromNow.setDate(today.getDate() + 14); // Kiểm tra trong 2 tuần tới
-
-      // Lấy tất cả thông báo sinh nhật đã tồn tại trong năm nay để tránh trùng lặp
-      const notificationsCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/notifications`);
-      const qExistingBirthdays = query(
-        notificationsCollectionRef,
-        where('type', '==', 'birthday'),
-        where('createdAt', '>=', new Date(currentYear, 0, 1)), // Từ đầu năm
-        where('createdAt', '<=', new Date(currentYear, 11, 31, 23, 59, 59)), // Đến cuối năm
-      );
-      const existingBirthdayNotificationsSnap = await getDocs(qExistingBirthdays);
-      const existingBirthdayNotifications = {}; // { residentId: true }
-      existingBirthdayNotificationsSnap.forEach((docSnap) => {
-        const data = docSnap.data();
-        // Kiểm tra xem thông báo này có phải cho cùng một năm sinh nhật không
-        if (data.relatedId && data.message.includes(`sinh nhật ${currentYear}`)) {
-          // Dựa vào message để kiểm tra năm
-          existingBirthdayNotifications[data.relatedId] = true;
-        }
-      });
+      // Chúng ta sẽ kiểm tra sinh nhật chỉ cho ngày hôm nay để đơn giản hóa logic "một lần"
+      const currentMonth = today.getMonth() + 1; // getMonth() trả về 0-11
+      const currentDay = today.getDate();
 
       residents
-        .filter((res) => res.isActive)
-        .forEach((resident) => {
-          // Chỉ cư dân đang hoạt động
+        .filter((res) => res.isActive) // Chỉ xem xét cư dân đang hoạt động
+        .forEach(resident => {
           const userLinked = allUsersData.find((u) => u.linkedResidentId === resident.id);
           if (userLinked && userLinked.birthday) {
-            const [birthYear, birthMonth, birthDay] = userLinked.birthday.split('-').map(Number);
+            // Định dạng ngày sinh nhật của người dùng là YYYY-MM-DD
+            // Đảm bảo userLinked.birthday có định dạng YYYY-MM-DD
+            // Ví dụ: '1990-07-10'
+            const [birthYearStr, birthMonthStr, birthDayStr] = userLinked.birthday.split('-');
+            const birthMonth = parseInt(birthMonthStr);
+            const birthDay = parseInt(birthDayStr);
 
-            // Tạo ngày sinh nhật trong năm hiện tại
-            const birthdayThisYear = new Date(currentYear, birthMonth - 1, birthDay);
+            // Kiểm tra xem có phải là sinh nhật hôm nay không
+            if (birthMonth === currentMonth && birthDay === currentDay) {
+              // *** LOGIC MỚI ĐỂ CHỈ THÔNG BÁO MỘT LẦN DUY NHẤT TRONG NĂM ***
+              const notificationKey = `birthdayNotified_${userLinked.id}_${currentYear}`;
 
-            // Kiểm tra nếu sinh nhật đã qua nhưng còn trong tuần đầu của năm tới, hoặc sắp tới trong 2 tuần
-            // Đơn giản hóa: chỉ kiểm tra nếu sắp tới trong 2 tuần hoặc là hôm nay
-            if (
-              birthdayThisYear >= today &&
-              birthdayThisYear <= twoWeeksFromNow &&
-              !existingBirthdayNotifications[resident.id] // Chưa có thông báo sinh nhật cho người này trong năm nay
-            ) {
-              const message = `Sắp đến sinh nhật của ${resident.name} vào ngày ${String(birthDay).padStart(2, '0')}/${String(birthMonth).padStart(2, '0')}/${currentYear}!`;
-              createNotification('all', 'birthday', message, userId, resident.id); // Thông báo chung cho tất cả mọi người
-              // Nếu bạn muốn thông báo cá nhân, thay 'all' bằng userLinked.id
+              // Kiểm tra xem đã thông báo cho sinh nhật này trong năm nay chưa
+              if (!localStorage.getItem(notificationKey)) {
+                // Nếu chưa, tạo thông báo
+                const message = `🎉 Chúc mừng sinh nhật ${userLinked.fullName || resident.name} tròn ${currentYear - parseInt(birthYearStr)} tuổi!`;
+                
+                // Gọi hàm tạo thông báo
+                createNotification(
+                  'all', // Gửi thông báo chung cho tất cả mọi người
+                  'birthday',
+                  message,
+                  userId, // Người tạo thông báo
+                  resident.id, // ID cư dân liên quan
+                  `Chúc mừng sinh nhật ${userLinked.fullName || resident.name}` // Tiêu đề thông báo
+                );
+
+                // Sau khi thông báo, đánh dấu đã thông báo vào localStorage
+                localStorage.setItem(notificationKey, 'true');
+                console.log(`Đã gửi thông báo sinh nhật cho ${userLinked.fullName} và lưu trạng thái vào localStorage.`);
+
+              } else {
+                console.log(`Thông báo sinh nhật cho ${userLinked.fullName} (${currentYear}) đã được hiển thị rồi.`);
+              }
             }
           }
         });
     };
 
-    // Chạy kiểm tra khi component load
+    // Chạy kiểm tra khi component load hoặc khi dữ liệu phụ thuộc thay đổi
     checkBirthdays();
 
-    // Có thể chạy lại kiểm tra định kỳ (ví dụ, hàng ngày vào lúc nào đó)
-    // Đây là nơi bạn sẽ cần Cloud Functions để tự động kiểm tra mỗi ngày mà không cần người dùng mở app
-    // Đối với hiện tại, nó sẽ chạy mỗi khi dependencies thay đổi hoặc khi app load.
-    // Một cách đơn giản hơn là lưu lại ngày cuối cùng kiểm tra trong Firestore để tránh tạo lại thông báo liên tục.
-  }, [db, isAuthReady, userId, allUsersData, residents]); // Thêm allUsersData và residents vào dependencies
+  }, [db, isAuthReady, userId, allUsersData, residents]); // Đảm bảo các dependencies đúng
 
   // Effect để reset lỗi và modals khi chuyển section
   useEffect(() => {
