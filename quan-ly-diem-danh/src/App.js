@@ -26,7 +26,7 @@ import {
   updateDoc,
   orderBy,
 } from 'firebase/firestore';
-import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage'; // Thêm imports cho Firebase Storage
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage'; // Thêm imports cho Firebase Storage
 import axios from 'axios';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
@@ -58,87 +58,87 @@ const CLOUDINARY_API_URL_AUTO_UPLOAD = `https://api.cloudinary.com/v1_1/${CLOUDI
 // ===========================================
 
 // Hàm trợ giúp để xác định mùa dựa trên tháng hiện tại
-const getSeason = (date) => {
-  const month = date.getMonth() + 1; // getMonth() trả về từ 0-11
+// const getSeason = (date) => {
+//   const month = date.getMonth() + 1; // getMonth() trả về từ 0-11
 
-  if (month >= 3 && month <= 5) {
-    // Tháng 3, 4, 5
-    return 'spring';
-  } else if (month >= 6 && month <= 8) {
-    // Tháng 6, 7, 8
-    return 'summer';
-  } else if (month >= 9 && month <= 11) {
-    // Tháng 9, 10, 11
-    return 'autumn';
-  } else {
-    // Tháng 12, 1, 2
-    return 'winter';
-  }
-};
+//   if (month >= 3 && month <= 5) {
+//     // Tháng 3, 4, 5
+//     return 'spring';
+//   } else if (month >= 6 && month <= 8) {
+//     // Tháng 6, 7, 8
+//     return 'summer';
+//   } else if (month >= 9 && month <= 11) {
+//     // Tháng 9, 10, 11
+//     return 'autumn';
+//   } else {
+//     // Tháng 12, 1, 2
+//     return 'winter';
+//   }
+// };
 
 // Hàm tạo các phần tử hiệu ứng mùa
-const generateSeasonalEffectElement = (season, count = 20) => {
-  const elements = [];
-  const minSize = 5; // Kích thước tối thiểu của hạt/tia
-  const maxSize = 15; // Kích thước tối đa
-  const minDuration = 5; // Thời gian rơi/hiển thị tối thiểu (giây)
-  const maxDuration = 15; // Thời gian rơi/hiển thị tối đa (giây)
-  const minDelay = 0; // Độ trễ bắt đầu tối thiểu
-  const maxDelay = 7; // Độ trễ bắt đầu tối đa
+// const generateSeasonalEffectElement = (season, count = 20) => {
+//   const elements = [];
+//   const minSize = 5; // Kích thước tối thiểu của hạt/tia
+//   const maxSize = 15; // Kích thước tối đa
+//   const minDuration = 5; // Thời gian rơi/hiển thị tối thiểu (giây)
+//   const maxDuration = 15; // Thời gian rơi/hiển thị tối đa (giây)
+//   const minDelay = 0; // Độ trễ bắt đầu tối thiểu
+//   const maxDelay = 7; // Độ trễ bắt đầu tối đa
 
-  for (let i = 0; i < count; i++) {
-    const size = Math.random() * (maxSize - minSize) + minSize;
-    const duration = Math.random() * (maxDuration - minDuration) + minDuration;
-    const delay = Math.random() * (maxDelay - minDelay) + minDelay; // Tránh tất cả rơi cùng lúc
-    const startX = Math.random() * 100; // Vị trí X bắt đầu (0-100vw)
-    const xEnd = (Math.random() - 0.5) * 50; // Vị trí X kết thúc (dịch chuyển +/- 25vw)
+//   for (let i = 0; i < count; i++) {
+//     const size = Math.random() * (maxSize - minSize) + minSize;
+//     const duration = Math.random() * (maxDuration - minDuration) + minDuration;
+//     const delay = Math.random() * (maxDelay - minDelay) + minDelay; // Tránh tất cả rơi cùng lúc
+//     const startX = Math.random() * 100; // Vị trí X bắt đầu (0-100vw)
+//     const xEnd = (Math.random() - 0.5) * 50; // Vị trí X kết thúc (dịch chuyển +/- 25vw)
 
-    let className = '';
-    let style = {
-      width: `${size}px`,
-      height: `${size}px`,
-      left: `${startX}vw`,
-      animationDuration: `${duration}s`,
-      animationDelay: `${delay}s`,
-      '--x-end': `${xEnd}vw`, // Biến CSS để điều khiển vị trí kết thúc theo chiều ngang
-    };
+//     let className = '';
+//     let style = {
+//       width: `${size}px`,
+//       height: `${size}px`,
+//       left: `${startX}vw`,
+//       animationDuration: `${duration}s`,
+//       animationDelay: `${delay}s`,
+//       '--x-end': `${xEnd}vw`, // Biến CSS để điều khiển vị trí kết thúc theo chiều ngang
+//     };
 
-    switch (season) {
-      case 'spring':
-        className = 'flower-petal';
-        break;
-      case 'summer':
-        className = 'sun-beam';
-        style.width = `${size * 5}px`; // Tia nắng lớn hơn
-        style.height = `${size * 5}px`;
-        style.animationDuration = '8s'; // Ánh nắng thường có thời gian cố định hơn
-        style.animationDelay = `${delay * 2}s`; // Delay lâu hơn cho tia nắng
-        style.left = `${Math.random() * 80}vw`; // Vị trí tia nắng từ trên xuống
-        style.top = `${Math.random() * 30}vh`; // Vị trí tia nắng từ trên xuống
-        break;
-      case 'autumn':
-        className = 'falling-leaf';
-        style.borderRadius = '2px'; /* Hình dáng lá */
-        style.transform = `rotate(${Math.random() * 360}deg)`; // Lá xoay ngẫu nhiên
-        style.backgroundColor = `hsl(${Math.random() * 60 + 10}, 80%, 50%)`; /* Màu lá ngẫu nhiên (đỏ, cam, vàng) */
-        break;
-      case 'winter':
-        className = 'snowflake';
-        break;
-      default:
-        break;
-    }
+//     switch (season) {
+//       case 'spring':
+//         className = 'flower-petal';
+//         break;
+//       case 'summer':
+//         className = 'sun-beam';
+//         style.width = `${size * 5}px`; // Tia nắng lớn hơn
+//         style.height = `${size * 5}px`;
+//         style.animationDuration = '8s'; // Ánh nắng thường có thời gian cố định hơn
+//         style.animationDelay = `${delay * 2}s`; // Delay lâu hơn cho tia nắng
+//         style.left = `${Math.random() * 80}vw`; // Vị trí tia nắng từ trên xuống
+//         style.top = `${Math.random() * 30}vh`; // Vị trí tia nắng từ trên xuống
+//         break;
+//       case 'autumn':
+//         className = 'falling-leaf';
+//         style.borderRadius = '2px'; /* Hình dáng lá */
+//         style.transform = `rotate(${Math.random() * 360}deg)`; // Lá xoay ngẫu nhiên
+//         style.backgroundColor = `hsl(${Math.random() * 60 + 10}, 80%, 50%)`; /* Màu lá ngẫu nhiên (đỏ, cam, vàng) */
+//         break;
+//       case 'winter':
+//         className = 'snowflake';
+//         break;
+//       default:
+//         break;
+//     }
 
-    elements.push(React.createElement('div', { key: i, className: className, style: style }));
-  }
-  return elements;
-};
+//     elements.push(React.createElement('div', { key: i, className: className, style: style }));
+//   }
+//   return elements;
+// };
 
 function App() {
   const [storage, setStorage] = useState(null);
   // Các state liên quan tới theme mùa
-  const [currentSeason, setCurrentSeason] = useState('');
-  const [currentSeasonTheme, setCurrentSeasonTheme] = useState('');
+  // const [currentSeason, setCurrentSeason] = useState('');
+  // const [currentSeasonTheme, setCurrentSeasonTheme] = useState('');
   const [seasonalEffectElements, setSeasonalEffectElements] = useState([]);
 
   const [db, setDb] = useState(null);
@@ -1675,6 +1675,78 @@ const handleAvatarFileChange = (event) => {
 
   const [selectedMemoryForLightbox, setSelectedMemoryForLightbox] = useState(null); // Lưu toàn bộ đối tượng memory
   const [currentLightboxIndex, setCurrentLightboxIndex] = useState(0); // Index của file đang hiển thị
+
+  // New states for avatar upload in the common room info modal
+  const [selectedResidentForAvatarUpload, setSelectedResidentForAvatarUpload] = useState(null);
+  const [avatarUploadModalFile, setAvatarUploadModalFile] = useState(null);
+  const [avatarUploadModalProgress, setAvatarUploadModalProgress] = useState(0);
+  const [isUploadingAvatarModal, setIsUploadingAvatarModal] = useState(false);
+  const [avatarUploadModalError, setAvatarUploadModalError] = useState('');
+
+  // NEW: Function to handle avatar upload for an ACTIVE resident (for admin in common room info)
+  const handleUploadResidentAvatar = async (residentUserId) => {
+    setAvatarUploadModalError('');
+    if (!db || !auth || !auth.currentUser || !avatarUploadModalFile) {
+      setAvatarUploadModalError('Vui lòng chọn một tệp ảnh để tải lên.');
+      return;
+    }
+    if (!residentUserId) {
+      setAvatarUploadModalError('Không tìm thấy ID người dùng để cập nhật avatar.');
+      return;
+    }
+    if (userRole !== 'admin') { // Chỉ admin mới có quyền này
+      setAvatarUploadModalError('Bạn không có quyền thực hiện thao tác này.');
+      return;
+    }
+
+    setIsUploadingAvatarModal(true);
+    setAvatarUploadModalProgress(0);
+
+    const formData = new FormData();
+    formData.append('file', avatarUploadModalFile);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET_AVATAR);
+    formData.append('folder', 'avatars/users'); // Lưu vào thư mục 'avatars/users' trên Cloudinary
+    formData.append('public_id', residentUserId); // Sử dụng residentUserId làm public_id để dễ quản lý
+
+    try {
+      const response = await axios.post(CLOUDINARY_API_URL_IMAGE_UPLOAD, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          setAvatarUploadModalProgress(percentCompleted);
+        },
+      });
+
+      const downloadURL = response.data.secure_url;
+      console.log('Avatar tải lên Cloudinary thành công, URL:', downloadURL);
+
+      // Cập nhật photoURL trong tài liệu người dùng trong Firestore
+      const userDocRef = doc(db, `artifacts/${currentAppId}/public/data/users`, residentUserId);
+      await updateDoc(userDocRef, { photoURL: downloadURL });
+
+      // Nếu avatar của người dùng hiện tại được cập nhật, hãy cập nhật trạng thái userAvatarUrl
+      if (userId === residentUserId) {
+        setUserAvatarUrl(downloadURL);
+      }
+
+      setAvatarUploadModalFile(null); // Đặt lại tệp đã chọn
+      setAvatarUploadModalProgress(0);
+      setIsUploadingAvatarModal(false);
+      setAvatarUploadModalError('');
+      alert('Đã cập nhật ảnh đại diện thành công!');
+      // Tùy chọn: đóng modal sau khi tải lên thành công
+      setSelectedResidentForAvatarUpload(null);
+    } catch (error) {
+      console.error('Lỗi khi tải ảnh avatar lên Cloudinary:', error);
+      setAvatarUploadModalError(`Lỗi khi tải ảnh: ${error.message}`);
+      setIsUploadingAvatarModal(false);
+      if (error.response) {
+        console.error('Cloudinary Error Response:', error.response.data);
+      }
+    }
+  };
 
   // Hàm đổi mật khẩu
   const handleChangePassword = async () => {
@@ -4207,6 +4279,9 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                   <table className="min-w-full bg-white dark:bg-gray-800">
                     <thead>
                       <tr>
+                        <th className="py-3 px-4 text-center text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">
+                          Avatar
+                        </th>
                         <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">
                           Họ tên
                         </th>
@@ -4246,6 +4321,28 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                             key={resident.id}
                             className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
                           >
+                            {/* NEW: Avatar Column Data */}
+                            <td className="py-3 px-4 text-center">
+                              {linkedUser?.photoURL ? (
+                                <img
+                                  src={linkedUser.photoURL}
+                                  alt="Avatar"
+                                  className="w-10 h-10 rounded-full object-cover mx-auto"
+                                />
+                              ) : (
+                                <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-xl mx-auto">
+                                  <i className="fas fa-user-circle"></i>
+                                </div>
+                              )}
+                              {userRole === 'admin' && linkedUser && ( // Chỉ hiển thị nút cho admin và nếu có user liên kết
+                                <button
+                                  onClick={() => setSelectedResidentForAvatarUpload(linkedUser)}
+                                  className="mt-1 text-blue-500 hover:text-blue-700 text-xs"
+                                >
+                                  {linkedUser.photoURL ? 'Thay đổi' : 'Đặt ảnh'}
+                                </button>
+                              )}
+                            </td>
                             <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.fullName || resident.name}</td>
                             <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.email || 'N/A'}</td>
                             <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.phoneNumber || 'N/A'}</td>
@@ -6401,7 +6498,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-100 to-purple-200 dark:from-gray-900 dark:to-gray-700 flex flex-col font-inter">
+    <div className="h-screen bg-gradient-to-br from-blue-100 to-purple-200 dark:from-gray-900 dark:to-gray-700 flex flex-col font-inter overflow-hidde">
       <div className="seasonal-effect">
         {seasonalEffectElements.map((el, index) => React.cloneElement(el, { key: index }))}
       </div>
@@ -7102,6 +7199,78 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
             >
               Đóng
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Upload/thay đổi avatar cho thành viên */}
+      {selectedResidentForAvatarUpload && userRole === 'admin' && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md">
+            <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
+              Cập nhật ảnh đại diện cho {selectedResidentForAvatarUpload.fullName}
+            </h3>
+            <div className="flex flex-col items-center space-y-4">
+              {selectedResidentForAvatarUpload.photoURL ? (
+                <img
+                  src={selectedResidentForAvatarUpload.photoURL}
+                  alt="Current Avatar"
+                  className="w-32 h-32 rounded-full object-cover shadow-lg border border-gray-200 dark:border-gray-700"
+                />
+              ) : (
+                <div className="w-32 h-32 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-6xl">
+                  <i className="fas fa-user-circle"></i>
+                </div>
+              )}
+              <div>
+                <label htmlFor="avatarUploadModalInput" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                  Chọn ảnh mới:
+                </label>
+                <input
+                  type="file"
+                  id="avatarUploadModalInput"
+                  accept="image/*"
+                  onChange={(e) => {
+                    setAvatarUploadModalFile(e.target.files[0]);
+                    setAvatarUploadModalError('');
+                  }}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                />
+              </div>
+              {isUploadingAvatarModal && (
+                <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2">
+                  <div
+                    className="bg-blue-600 h-2.5 rounded-full"
+                    style={{ width: `${avatarUploadModalProgress}%` }}
+                  ></div>
+                </div>
+              )}
+              {avatarUploadModalError && (
+                <p className="text-red-500 text-sm text-center mt-2">{avatarUploadModalError}</p>
+              )}
+              <button
+                onClick={() => handleUploadResidentAvatar(selectedResidentForAvatarUpload.id)}
+                className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+                disabled={isUploadingAvatarModal || !avatarUploadModalFile}
+              >
+                {isUploadingAvatarModal ? (
+                  <i className="fas fa-spinner fa-spin mr-2"></i>
+                ) : (
+                  <i className="fas fa-upload mr-2"></i>
+                )}
+                Tải lên
+              </button>
+              <button
+                onClick={() => {
+                  setSelectedResidentForAvatarUpload(null);
+                  setAvatarUploadModalFile(null);
+                  setAvatarUploadModalError('');
+                }}
+                className="w-full px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
+              >
+                Hủy
+              </button>
+            </div>
           </div>
         </div>
       )}
