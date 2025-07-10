@@ -6447,7 +6447,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
   };
 
   return (
-    <div className="h-screen bg-gradient-to-br from-blue-100 to-purple-200 dark:from-gray-900 dark:to-gray-700 flex flex-col font-inter overflow-hidde">
+    <div className="min-h-screen bg-gradient-to-br from-blue-100 to-purple-200 dark:from-gray-900 dark:to-gray-700 flex flex-col font-inter overflow-hidde">
       <div className="seasonal-effect">
         {seasonalEffectElements.map((el, index) => React.cloneElement(el, { key: index }))}
       </div>
