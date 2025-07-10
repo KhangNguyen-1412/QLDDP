@@ -26,7 +26,7 @@ import {
   updateDoc,
   orderBy,
 } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage'; // Thêm imports cho Firebase Storage
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage'; // Thêm imports cho Firebase Storage
 import axios from 'axios';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
@@ -58,87 +58,87 @@ const CLOUDINARY_API_URL_AUTO_UPLOAD = `https://api.cloudinary.com/v1_1/${CLOUDI
 // ===========================================
 
 // Hàm trợ giúp để xác định mùa dựa trên tháng hiện tại
-// const getSeason = (date) => {
-//   const month = date.getMonth() + 1; // getMonth() trả về từ 0-11
+const getSeason = (date) => {
+  const month = date.getMonth() + 1; // getMonth() trả về từ 0-11
 
-//   if (month >= 3 && month <= 5) {
-//     // Tháng 3, 4, 5
-//     return 'spring';
-//   } else if (month >= 6 && month <= 8) {
-//     // Tháng 6, 7, 8
-//     return 'summer';
-//   } else if (month >= 9 && month <= 11) {
-//     // Tháng 9, 10, 11
-//     return 'autumn';
-//   } else {
-//     // Tháng 12, 1, 2
-//     return 'winter';
-//   }
-// };
+  if (month >= 3 && month <= 5) {
+    // Tháng 3, 4, 5
+    return 'spring';
+  } else if (month >= 6 && month <= 8) {
+    // Tháng 6, 7, 8
+    return 'summer';
+  } else if (month >= 9 && month <= 11) {
+    // Tháng 9, 10, 11
+    return 'autumn';
+  } else {
+    // Tháng 12, 1, 2
+    return 'winter';
+  }
+};
 
 // Hàm tạo các phần tử hiệu ứng mùa
-// const generateSeasonalEffectElement = (season, count = 20) => {
-//   const elements = [];
-//   const minSize = 5; // Kích thước tối thiểu của hạt/tia
-//   const maxSize = 15; // Kích thước tối đa
-//   const minDuration = 5; // Thời gian rơi/hiển thị tối thiểu (giây)
-//   const maxDuration = 15; // Thời gian rơi/hiển thị tối đa (giây)
-//   const minDelay = 0; // Độ trễ bắt đầu tối thiểu
-//   const maxDelay = 7; // Độ trễ bắt đầu tối đa
+const generateSeasonalEffectElement = (season, count = 20) => {
+  const elements = [];
+  const minSize = 5; // Kích thước tối thiểu của hạt/tia
+  const maxSize = 15; // Kích thước tối đa
+  const minDuration = 5; // Thời gian rơi/hiển thị tối thiểu (giây)
+  const maxDuration = 15; // Thời gian rơi/hiển thị tối đa (giây)
+  const minDelay = 0; // Độ trễ bắt đầu tối thiểu
+  const maxDelay = 7; // Độ trễ bắt đầu tối đa
 
-//   for (let i = 0; i < count; i++) {
-//     const size = Math.random() * (maxSize - minSize) + minSize;
-//     const duration = Math.random() * (maxDuration - minDuration) + minDuration;
-//     const delay = Math.random() * (maxDelay - minDelay) + minDelay; // Tránh tất cả rơi cùng lúc
-//     const startX = Math.random() * 100; // Vị trí X bắt đầu (0-100vw)
-//     const xEnd = (Math.random() - 0.5) * 50; // Vị trí X kết thúc (dịch chuyển +/- 25vw)
+  for (let i = 0; i < count; i++) {
+    const size = Math.random() * (maxSize - minSize) + minSize;
+    const duration = Math.random() * (maxDuration - minDuration) + minDuration;
+    const delay = Math.random() * (maxDelay - minDelay) + minDelay; // Tránh tất cả rơi cùng lúc
+    const startX = Math.random() * 100; // Vị trí X bắt đầu (0-100vw)
+    const xEnd = (Math.random() - 0.5) * 50; // Vị trí X kết thúc (dịch chuyển +/- 25vw)
 
-//     let className = '';
-//     let style = {
-//       width: `${size}px`,
-//       height: `${size}px`,
-//       left: `${startX}vw`,
-//       animationDuration: `${duration}s`,
-//       animationDelay: `${delay}s`,
-//       '--x-end': `${xEnd}vw`, // Biến CSS để điều khiển vị trí kết thúc theo chiều ngang
-//     };
+    let className = '';
+    let style = {
+      width: `${size}px`,
+      height: `${size}px`,
+      left: `${startX}vw`,
+      animationDuration: `${duration}s`,
+      animationDelay: `${delay}s`,
+      '--x-end': `${xEnd}vw`, // Biến CSS để điều khiển vị trí kết thúc theo chiều ngang
+    };
 
-//     switch (season) {
-//       case 'spring':
-//         className = 'flower-petal';
-//         break;
-//       case 'summer':
-//         className = 'sun-beam';
-//         style.width = `${size * 5}px`; // Tia nắng lớn hơn
-//         style.height = `${size * 5}px`;
-//         style.animationDuration = '8s'; // Ánh nắng thường có thời gian cố định hơn
-//         style.animationDelay = `${delay * 2}s`; // Delay lâu hơn cho tia nắng
-//         style.left = `${Math.random() * 80}vw`; // Vị trí tia nắng từ trên xuống
-//         style.top = `${Math.random() * 30}vh`; // Vị trí tia nắng từ trên xuống
-//         break;
-//       case 'autumn':
-//         className = 'falling-leaf';
-//         style.borderRadius = '2px'; /* Hình dáng lá */
-//         style.transform = `rotate(${Math.random() * 360}deg)`; // Lá xoay ngẫu nhiên
-//         style.backgroundColor = `hsl(${Math.random() * 60 + 10}, 80%, 50%)`; /* Màu lá ngẫu nhiên (đỏ, cam, vàng) */
-//         break;
-//       case 'winter':
-//         className = 'snowflake';
-//         break;
-//       default:
-//         break;
-//     }
+    switch (season) {
+      case 'spring':
+        className = 'flower-petal';
+        break;
+      case 'summer':
+        className = 'sun-beam';
+        style.width = `${size * 5}px`; // Tia nắng lớn hơn
+        style.height = `${size * 5}px`;
+        style.animationDuration = '8s'; // Ánh nắng thường có thời gian cố định hơn
+        style.animationDelay = `${delay * 2}s`; // Delay lâu hơn cho tia nắng
+        style.left = `${Math.random() * 80}vw`; // Vị trí tia nắng từ trên xuống
+        style.top = `${Math.random() * 30}vh`; // Vị trí tia nắng từ trên xuống
+        break;
+      case 'autumn':
+        className = 'falling-leaf';
+        style.borderRadius = '2px'; /* Hình dáng lá */
+        style.transform = `rotate(${Math.random() * 360}deg)`; // Lá xoay ngẫu nhiên
+        style.backgroundColor = `hsl(${Math.random() * 60 + 10}, 80%, 50%)`; /* Màu lá ngẫu nhiên (đỏ, cam, vàng) */
+        break;
+      case 'winter':
+        className = 'snowflake';
+        break;
+      default:
+        break;
+    }
 
-//     elements.push(React.createElement('div', { key: i, className: className, style: style }));
-//   }
-//   return elements;
-// };
+    elements.push(React.createElement('div', { key: i, className: className, style: style }));
+  }
+  return elements;
+};
 
 function App() {
   const [storage, setStorage] = useState(null);
   // Các state liên quan tới theme mùa
-  // const [currentSeason, setCurrentSeason] = useState('');
-  // const [currentSeasonTheme, setCurrentSeasonTheme] = useState('');
+  const [currentSeason, setCurrentSeason] = useState('');
+  const [currentSeasonTheme, setCurrentSeasonTheme] = useState('');
   const [seasonalEffectElements, setSeasonalEffectElements] = useState([]);
 
   const [db, setDb] = useState(null);
