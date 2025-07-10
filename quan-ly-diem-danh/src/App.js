@@ -4741,7 +4741,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                   Chưa có thông tin tiền bối nào được lưu.
                 </p>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="min-h-screen grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {formerResidents.map((resident) => (
                     <div
                       key={resident.id}
@@ -6086,7 +6086,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                     Chưa có kỷ niệm nào được thêm.
                   </p>
                 ) : (
-                  <div className="**max-h-[60vh]** **overflow-y-auto** **pr-2**">
+                  <div className="min-h-screen **max-h-[60vh]** **overflow-y-auto** **pr-2**">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {memories.map((memory) => (
                       <div
