@@ -9,6 +9,7 @@ import {
   sendPasswordResetEmail,
   updatePassword,
   sendEmailVerification,
+  updateEmail,
 } from 'firebase/auth';
 import {
   getFirestore,
@@ -61,7 +62,6 @@ function App() {
   const [newAccountStudentId, setNewAccountStudentId] = useState('');
   const [newAccountPassword, setNewAccountPassword] = useState('');
   const [newAccountFullName, setNewAccountFullName] = useState('');
-  const [newAccountPersonalEmail, setNewAccountPersonalEmail] = useState(''); // Email cá nhân ban đầu (tùy chọn)
 
   // State để theo dõi việc có cần hiển thị thông báo xác minh email không
   const [needsEmailVerification, setNeedsEmailVerification] = useState(false);
@@ -870,14 +870,13 @@ useEffect(() => {
 }, [db, isAuthReady, userId, searchTermMemory, filterUploaderMemory, currentPageMemories, itemsPerPageMemories]); // THÊM currentPageMemories và itemsPerPageMemories vào dependencies
 
   // --- Các hàm xác thực ---
-// NEW: Hàm để Admin tạo tài khoản mới cho thành viên
+// Hàm để Admin tạo tài khoản mới cho thành viên
 const handleAdminCreateAccount = async () => {
   setAuthError('');
   if (!auth || !db) {
     setAuthError("Hệ thống xác thực chưa sẵn sàng.");
     return;
   }
-  // Chỉ admin mới được tạo tài khoản
   if (userRole !== 'admin') {
     setAuthError("Bạn không có quyền tạo tài khoản mới.");
     return;
@@ -892,10 +891,11 @@ const handleAdminCreateAccount = async () => {
   }
 
   const studentIdToRegister = newAccountStudentId.trim();
-  const personalEmailToUse = newAccountPersonalEmail.trim() || `${studentIdToRegister}@dormapp.com`; // Email cá nhân hoặc email nội bộ nếu trống
+  // Tạo email nội bộ giả cho Firebase Auth
+  const internalAuthEmail = `${studentIdToRegister}@temp.${firebaseConfig.projectId}.com`;
 
   try {
-    // 1. KIỂM TRA MSSV CÓ DUY NHẤT CHƯA
+    // 1. KIỂM TRA MSSV CÓ DUY NHẤT CHƯA (client-side check)
     const usersRef = collection(db, `artifacts/${currentAppId}/public/data/users`);
     const qStudentId = query(usersRef, where("studentId", "==", studentIdToRegister));
     const snapshotStudentId = await getDocs(qStudentId);
@@ -904,17 +904,16 @@ const handleAdminCreateAccount = async () => {
       return;
     }
 
-    // 2. TẠO TÀI KHOẢN TRONG FIREBASE AUTH BẰNG EMAIL (có thể là email thật hoặc nội bộ)
-    const userCredential = await createUserWithEmailAndPassword(auth, personalEmailToUse, newAccountPassword);
+    // 2. TẠO TÀI KHOẢN TRONG FIREBASE AUTH BẰNG EMAIL NỘI BỘ GIẢ
+    const userCredential = await createUserWithEmailAndPassword(auth, internalAuthEmail, newAccountPassword);
     const user = userCredential.user;
     console.log("Admin đã tạo tài khoản Auth thành công! UID:", user.uid);
 
-    // KHÔNG GỬI EMAIL XÁC MINH NGAY LẬP TỨC. Để thành viên tự xác minh sau.
-    // Firebase Auth sẽ tự động set emailVerified là false ban đầu.
+    // KHÔNG GỬI EMAIL XÁC MINH NGAY. `emailVerified` sẽ là `false` theo mặc định.
 
     // 3. TẠO TÀI LIỆU NGƯỜI DÙNG TRONG FIRESTORE
     await setDoc(doc(db, `artifacts/${currentAppId}/public/data/users`, user.uid), {
-      email: personalEmailToUse,
+      email: internalAuthEmail, // Email ban đầu dùng cho Auth (giả)
       fullName: newAccountFullName.trim(),
       studentId: studentIdToRegister,
       role: 'member', // Luôn tạo là member
@@ -923,22 +922,19 @@ const handleAdminCreateAccount = async () => {
     });
     console.log("Admin đã tạo tài liệu user trong Firestore.");
 
-    // Admin có thể liên kết resident profile sau hoặc hệ thống tự động liên kết theo tên
-    // Tùy chọn: Bạn có thể thêm logic để Admin chọn residentId để liên kết ngay tại đây.
-    // Để đơn giản, phần liên kết resident profile sẽ vẫn dựa vào `onAuthStateChanged` hoặc Admin tự làm.
-
     alert(`Đã tạo tài khoản cho ${newAccountFullName.trim()} (MSSV: ${studentIdToRegister}) thành công! Người dùng cần đăng nhập và xác minh email cá nhân.`);
 
     // Reset form
     setNewAccountStudentId('');
     setNewAccountPassword('');
     setNewAccountFullName('');
-    setNewAccountPersonalEmail('');
-    setAuthError(''); // Xóa lỗi
+    setAuthError('');
   } catch (error) {
     console.error("Lỗi khi Admin tạo tài khoản:", error.code, error.message);
     if (error.code === 'auth/email-already-in-use') {
-      setAuthError("Email này đã được sử dụng bởi một tài khoản khác. Vui lòng dùng email khác.");
+      setAuthError("Email nội bộ này đã được sử dụng (có thể do MSSV trùng lặp đã được tạo trước đó). Vui lòng liên hệ quản trị viên.");
+    } else if (error.code === 'auth/weak-password') {
+      setAuthError("Mật khẩu quá yếu. Vui lòng chọn mật khẩu mạnh hơn.");
     } else {
       setAuthError(`Lỗi khi tạo tài khoản: ${error.message}`);
     }
@@ -965,35 +961,34 @@ const handleSignIn = async () => {
       const snapshot = await getDocs(qStudentId);
 
       if (snapshot.empty) {
-          setAuthError("Mã số sinh viên không tồn tại hoặc mật khẩu không đúng."); // Thông báo chung để tránh lộ thông tin
+          setAuthError("Mã số sinh viên hoặc mật khẩu không đúng.");
           return;
       }
 
       const userDoc = snapshot.docs[0];
       const userData = userDoc.data();
-      const personalEmail = userData.email;
+      const authEmailFromFirestore = userData.email; // Lấy email mà tài khoản Auth đang dùng
 
-      if (!personalEmail) {
+      if (!authEmailFromFirestore) {
           setAuthError("Tài khoản không có email liên kết. Vui lòng liên hệ quản trị viên.");
           return;
       }
-      if (userData.role === 'inactive') { // Kiểm tra trạng thái vô hiệu hóa
+      if (userData.role === 'inactive') {
           setAuthError("Tài khoản này đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.");
           return;
       }
 
-      // 2. ĐĂNG NHẬP VỚI EMAIL VÀ MẬT KHẨU
-      const userCredential = await signInWithEmailAndPassword(auth, personalEmail, password);
+      // 2. ĐĂNG NHẬP VỚI EMAIL (TỪ FIRESTORE) VÀ MẬT KHẨU
+      await signInWithEmailAndPassword(auth, authEmailFromFirestore, password);
       // Sau khi đăng nhập, `onAuthStateChanged` sẽ kích hoạt và kiểm tra emailVerified
 
       console.log("Đăng nhập thành công! Đang kiểm tra trạng thái xác minh email...");
-      setAuthError(''); // Xóa lỗi xác thực nếu có
+      setAuthError('');
       setPassword('');
       setStudentIdForLogin('');
-      setEmail(''); // Xóa email input truyền thống
   } catch (error) {
       console.error("Lỗi đăng nhập:", error.code, error.message);
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') { // Thêm invalid-credential
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
           setAuthError("Mã số sinh viên hoặc mật khẩu không đúng.");
       } else if (error.code === 'auth/invalid-email') {
           setAuthError("Email liên kết không hợp lệ. Vui lòng liên hệ quản trị viên.");
@@ -1007,22 +1002,50 @@ const handleSignIn = async () => {
 
   // Hàm Gửi lại email xác minh
   const handleResendVerificationEmail = async () => {
-    setAuthError(''); // Reset lỗi xác thực
-    setForgotPasswordMessage(''); // Reset thông báo quên mật khẩu
+    setAuthError('');
+    setPasswordChangeMessage(''); // Dùng lại message của passwordChangeMessage
 
     const user = auth.currentUser;
     if (!user) {
         setAuthError("Bạn chưa đăng nhập hoặc phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
         return;
     }
+    // Lấy email từ state `email` (email mà người dùng vừa nhập vào form)
+    const newPersonalEmail = email.trim();
+
+    if (!newPersonalEmail) {
+        setAuthError("Vui lòng nhập email cá nhân để gửi xác minh.");
+        return;
+    }
 
     try {
-        await sendEmailVerification(user);
-        setAuthError("Đã gửi email xác minh thành công! Vui lòng kiểm tra hộp thư đến của bạn. Sau khi xác minh, hãy đăng nhập lại.");
+        // Cập nhật email của tài khoản Auth trước khi gửi xác minh
+        // LƯU Ý: updateEmail yêu cầu người dùng xác thực lại gần đây
+        // Nếu không re-authenticate, nó sẽ báo lỗi `auth/requires-recent-login`
+        // Để đơn giản, tôi sẽ bỏ qua re-authenticate ở đây, nhưng nếu lỗi xảy ra, bạn cần thêm nó.
+        // Hoặc Admin có thể chạy script để đổi email.
+        await updateEmail(user, newPersonalEmail); // Cập nhật email của tài khoản Auth
+        await sendEmailVerification(user); // Gửi email xác minh đến email mới
+
+        // Cập nhật trạng thái emailVerified trong Firestore thành false (nếu chưa phải)
+        await updateDoc(doc(db, `artifacts/${currentAppId}/public/data/users`, user.uid), {
+            email: newPersonalEmail,
+            emailVerified: false // Đặt lại về false sau khi gửi xác minh mới
+        });
+
+        setPasswordChangeMessage("Đã gửi email xác minh thành công đến email cá nhân của bạn! Vui lòng kiểm tra hộp thư đến và nhấp vào liên kết. Sau khi xác minh, hãy đăng nhập lại để cập nhật trạng thái.");
+        // Sau khi gửi, cần cập nhật cờ needsEmailVerification để giao diện disable
+        setNeedsEmailVerification(true); // Để giao diện vẫn mờ cho đến khi xác minh xong
     } catch (error) {
         console.error("Lỗi khi gửi lại email xác minh:", error);
         if (error.code === 'auth/too-many-requests') {
             setAuthError("Bạn đã gửi yêu cầu quá nhiều lần. Vui lòng thử lại sau ít phút.");
+        } else if (error.code === 'auth/invalid-email') {
+            setAuthError("Email không hợp lệ. Vui lòng kiểm tra lại địa chỉ email cá nhân.");
+        } else if (error.code === 'auth/email-already-in-use') {
+            setAuthError("Email này đã được sử dụng bởi một tài khoản khác. Vui lòng dùng email khác.");
+        } else if (error.code === 'auth/requires-recent-login') {
+            setAuthError("Phiên đăng nhập của bạn đã hết hạn. Vui lòng đăng xuất và đăng nhập lại, sau đó thử gửi xác minh.");
         } else {
             setAuthError(`Lỗi gửi xác minh: ${error.message}`);
         }
@@ -1067,7 +1090,6 @@ const handleSignIn = async () => {
     }
   };
 
-  // Hàm chỉnh sửa thông tin cá nhân (member và admin)
 // Hàm chỉnh sửa thông tin cá nhân (member và admin)
 const handleSaveUserProfile = async () => {
   setAuthError('');
@@ -1077,7 +1099,7 @@ const handleSaveUserProfile = async () => {
   }
 
   const userDocRef = doc(db, `artifacts/${currentAppId}/public/data/users`, userId);
-  const currentUserData = (await getDoc(userDocRef)).data(); // Lấy dữ liệu hiện tại
+  // const currentUserData = (await getDoc(userDocRef)).data(); // Không cần đọc lại nếu không so sánh email cũ
 
   try {
     const userDataToUpdate = {
@@ -1087,21 +1109,9 @@ const handleSaveUserProfile = async () => {
       dormEntryDate: memberDormEntryDate.trim(),
       birthday: memberBirthday.trim(),
       studentId: memberStudentId.trim(),
+      // Email và emailVerified không được cập nhật trực tiếp ở đây nữa.
+      // Chúng được cập nhật bởi handleResendVerificationEmail.
     };
-
-    // Nếu email thay đổi, cập nhật email trong Auth và đặt lại emailVerified
-    if (email.trim() !== currentUserData.email) {
-      try {
-        userDataToUpdate.email = email.trim(); // Cập nhật email trong Firestore
-        userDataToUpdate.emailVerified = false; // Đặt lại trạng thái xác minh trong Firestore
-        setNeedsEmailVerification(true); // Cập nhật cờ để hiển thị thông báo
-        alert('Email đã được thay đổi. Vui lòng kiểm tra email mới để xác minh lại tài khoản.');
-      } catch (updateEmailError) {
-        console.error("Lỗi khi cập nhật email trong Auth:", updateEmailError);
-        setAuthError(`Lỗi khi cập nhật email: ${updateEmailError.message}. Vui lòng thử lại.`);
-        return;
-      }
-    }
 
     await updateDoc(userDocRef, userDataToUpdate);
     console.log('Đã cập nhật tài liệu người dùng thành công!');
@@ -3227,26 +3237,24 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
       );
     }
     // NEW: Hiển thị thông báo xác minh email nếu cần
-    if (needsEmailVerification) {
+    if (userRole === 'member' && needsEmailVerification) {
       return (
-        <div className="p-6 bg-red-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto text-center">
-            <h2 className="text-2xl font-bold text-red-800 dark:text-red-200 mb-4">
-                Tài khoản của bạn chưa được xác minh!
-            </h2>
-            <p className="text-gray-700 dark:text-gray-300 mb-4">
-                Vui lòng vào mục "Chỉnh sửa thông tin cá nhân" để thêm và xác minh email cá nhân của bạn.
-            </p>
-            <button
-                onClick={() => setActiveSection('memberProfileEdit')}
-                className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
-            >
-                <i className="fas fa-user-edit mr-2"></i> Đến trang xác minh
-            </button>
-            {authError && <p className="text-red-500 text-sm mt-4">{authError}</p>}
-            {/* Bạn có thể thêm nút "Gửi lại email xác minh" tại đây nếu muốn */}
-            {/* <button onClick={handleResendVerificationEmail} className="mt-2 text-indigo-600 dark:text-indigo-400 hover:underline">
-                Gửi lại email xác minh
-            </button> */}
+      <div className="p-6 bg-red-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto text-center">
+          <h2 className="text-2xl font-bold text-red-800 dark:text-red-200 mb-4">
+              Tài khoản của bạn chưa được xác minh!
+          </h2>
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
+              Vui lòng vào mục "Chỉnh sửa thông tin cá nhân" để thêm và xác minh email cá nhân của bạn.
+              Sau khi xác minh, hãy đăng nhập lại để cập nhật trạng thái.
+          </p>
+          <button
+              onClick={() => setActiveSection('memberProfileEdit')}
+              className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+          >
+              <i className="fas fa-user-edit mr-2"></i> Đến trang xác minh
+          </button>
+          {authError && <p className="text-red-500 text-sm mt-4">{authError}</p>}
+          {/* authError ở đây có thể là lỗi gửi email xác minh */}
         </div>
       );
     }
@@ -5241,75 +5249,62 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               </div>
             </div>
           );
-          case 'adminCreateAccount': // NEW CASE FOR ADMIN
-                return (
-                    <div className="p-6 bg-purple-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-                        <h2 className="text-2xl font-bold text-purple-800 dark:text-purple-200 mb-5">
-                            Tạo tài khoản mới cho Thành viên
-                        </h2>
-                        <div className="space-y-4">
-                            <div>
-                                <label htmlFor="newAccFullName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                                    Họ tên đầy đủ:
-                                </label>
-                                <input
-                                    type="text"
-                                    id="newAccFullName"
-                                    value={newAccountFullName}
-                                    onChange={(e) => setNewAccountFullName(e.target.value)}
-                                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
-                                    placeholder="Họ tên đầy đủ của thành viên"
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor="newAccStudentId" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                                    Mã số sinh viên:
-                                </label>
-                                <input
-                                    type="text"
-                                    id="newAccStudentId"
-                                    value={newAccountStudentId}
-                                    onChange={(e) => setNewAccountStudentId(e.target.value)}
-                                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
-                                    placeholder="MSSV (dùng làm tên đăng nhập)"
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor="newAccPersonalEmail" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                                    Email cá nhân (Tùy chọn ban đầu):
-                                </label>
-                                <input
-                                    type="email"
-                                    id="newAccPersonalEmail"
-                                    value={newAccountPersonalEmail}
-                                    onChange={(e) => setNewAccountPersonalEmail(e.target.value)}
-                                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
-                                    placeholder="Email cá nhân (Nếu có, để xác minh)"
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor="newAccPassword" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                                    Mật khẩu:
-                                </label>
-                                <input
-                                    type="password"
-                                    id="newAccPassword"
-                                    value={newAccountPassword}
-                                    onChange={(e) => setNewAccountPassword(e.target.value)}
-                                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
-                                    placeholder="Mật khẩu (ít nhất 6 ký tự)"
-                                />
-                            </div>
-                            {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
-                            <button
-                                onClick={handleAdminCreateAccount}
-                                className="w-full px-6 py-3 bg-purple-600 text-white font-semibold rounded-xl shadow-md hover:bg-purple-700 transition-all duration-300"
-                            >
-                                <i className="fas fa-user-plus mr-2"></i> Tạo tài khoản
-                            </button>
-                        </div>
-                    </div>
-                );
+          case 'adminCreateAccount': // Form Admin tạo tài khoản
+          return (
+              <div className="p-6 bg-purple-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+                  <h2 className="text-2xl font-bold text-purple-800 dark:text-purple-200 mb-5">
+                      Tạo tài khoản mới cho Thành viên
+                  </h2>
+                  <div className="space-y-4">
+                      <div>
+                          <label htmlFor="newAccFullName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                              Họ tên đầy đủ:
+                          </label>
+                          <input
+                              type="text"
+                              id="newAccFullName"
+                              value={newAccountFullName}
+                              onChange={(e) => setNewAccountFullName(e.target.value)}
+                              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
+                              placeholder="Họ tên đầy đủ của thành viên"
+                          />
+                      </div>
+                      <div>
+                          <label htmlFor="newAccStudentId" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                              Mã số sinh viên:
+                          </label>
+                          <input
+                              type="text"
+                              id="newAccStudentId"
+                              value={newAccountStudentId}
+                              onChange={(e) => setNewAccountStudentId(e.target.value)}
+                              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
+                              placeholder="MSSV (dùng làm tên đăng nhập)"
+                          />
+                      </div>
+                      <div>
+                          <label htmlFor="newAccPassword" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                              Mật khẩu:
+                          </label>
+                          <input
+                              type="password"
+                              id="newAccPassword"
+                              value={newAccountPassword}
+                              onChange={(e) => setNewAccountPassword(e.target.value)}
+                              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
+                              placeholder="Mật khẩu (ít nhất 6 ký tự)"
+                          />
+                      </div>
+                      {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
+                      <button
+                          onClick={handleAdminCreateAccount}
+                          className="w-full px-6 py-3 bg-purple-600 text-white font-semibold rounded-xl shadow-md hover:bg-purple-700 transition-all duration-300"
+                      >
+                          <i className="fas fa-user-plus mr-2"></i> Tạo tài khoản
+                      </button>
+                  </div>
+              </div>
+          );
         case 'consumptionStats': //Thống kê tiêu thụ
           return (
             <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
@@ -5364,7 +5359,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
       }
     }
     // Logic cho Thành viên
-    if (userRole === 'member') {
+    if (userRole === 'member' && !needsEmailVerification) {
       // Lọc các nhiệm vụ trực phòng sắp tới của riêng thành viên
       const upcomingMyCleaningTasks = cleaningSchedule
         .filter(
@@ -6384,7 +6379,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
             </div>
           );
 
-        case 'memberProfileEdit': // Chỉnh sửa thông tin cá nhân (thành viên có thể tự chỉnh sửa)
+          case 'memberProfileEdit': // Chỉnh sửa thông tin cá nhân (thành viên có thể tự chỉnh sửa)
           return (
             <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
               <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Chỉnh sửa thông tin cá nhân</h2>
@@ -6394,95 +6389,286 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 </p>
               ) : (
                 <div className="space-y-4">
-                  {/* ... (Các trường Họ tên, SĐT, MSSV, v.v. hiện có) ... */}
+                  {/* TRƯỜNG HỌ TÊN ĐẦY ĐỦ */}
+                  <div>
+                    <label
+                      htmlFor="editFullName"
+                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                    >
+                      Họ tên đầy đủ:
+                    </label>
+                    <input
+                      type="text"
+                      id="editFullName"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+
+                  {/* TRƯỜNG SỐ ĐIỆN THOẠI */}
+                  <div>
+                    <label
+                      htmlFor="editPhoneNumber"
+                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                    >
+                      Số điện thoại:
+                    </label>
+                    <input
+                      type="text"
+                      id="editPhoneNumber"
+                      value={memberPhoneNumber}
+                      onChange={(e) => setMemberPhoneNumber(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+
+                  {/* TRƯỜNG MÃ SỐ SINH VIÊN */}
+                  <div>
+                    <label
+                      htmlFor="editStudentId"
+                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                    >
+                      Mã số sinh viên:
+                    </label>
+                    <input
+                      type="text"
+                      id="editStudentId"
+                      value={memberStudentId}
+                      onChange={(e) => setMemberStudentId(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+
+                  {/* TRƯỜNG NGÀY SINH */}
+                  <div>
+                    <label
+                      htmlFor="editBirthday"
+                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                    >
+                      Ngày sinh:
+                    </label>
+                    <input
+                      type="date"
+                      id="editBirthday"
+                      value={memberBirthday}
+                      onChange={(e) => setMemberBirthday(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+
+                  {/* TRƯỜNG NGÀY NHẬP KTX */}
+                  <div>
+                    <label
+                      htmlFor="editDormEntryDate"
+                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                    >
+                      Ngày nhập KTX:
+                    </label>
+                    <input
+                      type="date"
+                      id="editDormEntryDate"
+                      value={memberDormEntryDate}
+                      onChange={(e) => setMemberDormEntryDate(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+
+                  {/* TRƯỜNG EMAIL TRƯỜNG */}
+                  <div>
+                    <label
+                      htmlFor="editAcademicLevel"
+                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                    >
+                      Email trường:
+                    </label>
+                    <input
+                      type="text"
+                      id="editAcademicLevel"
+                      value={memberAcademicLevel}
+                      onChange={(e) => setMemberAcademicLevel(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+
+                  {/* TRƯỜNG EMAIL CÁ NHÂN VÀ NÚT XÁC THỰC */}
+                  {/* Auth.currentUser.emailVerified kiểm tra trạng thái của tài khoản Auth */}
+                  <div>
+                    <label htmlFor="editEmail" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                      Email cá nhân:
+                    </label>
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="email"
+                            id="editEmail"
+                            value={email} // `email` state chứa email của tài khoản Auth
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="flex-grow shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                            placeholder="Nhập email cá nhân của bạn"
+                        />
+                        {/* NÚT GỬI XÁC THỰC EMAIL */}
+                        <button
+                            onClick={handleResendVerificationEmail}
+                            className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-xl shadow-md hover:bg-indigo-700 transition-all duration-300"
+                            // Vô hiệu hóa nút nếu email trống hoặc tài khoản đã được xác minh
+                            disabled={!email.trim() || (auth.currentUser && auth.currentUser.emailVerified)}
+                        >
+                            <i className="fas fa-paper-plane mr-2"></i>
+                            {/* Thay đổi text nút dựa trên trạng thái xác minh */}
+                            {auth.currentUser && auth.currentUser.emailVerified ? 'Đã xác minh' : 'Gửi xác thực'}
+                        </button>
+                    </div>
+                    {/* Hiển thị thông báo nếu email chưa xác minh và có email được nhập */}
+                    {auth.currentUser && !auth.currentUser.emailVerified && email.trim() && (
+                        <p className="text-red-500 text-xs mt-1">Email chưa xác minh. Vui lòng kiểm tra hộp thư của bạn và nhấp vào liên kết xác minh.</p>
+                    )}
+                    {/* Hiển thị thông báo thành công/lỗi khi gửi xác minh */}
+                    {passwordChangeMessage && ( // Dùng chung state `passwordChangeMessage` để thông báo
+                        <p className={`text-sm text-center mt-4 ${passwordChangeMessage.includes('thành công') ? 'text-green-600' : 'text-red-500'}`}>
+                            {passwordChangeMessage}
+                        </p>
+                    )}
+                  </div>
+
+                  {/* PHẦN ẢNH ĐẠI DIỆN */}
+                  <div className="mt-8 pt-6 border-t border-gray-300 dark:border-gray-600">
+                    <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-4">Ảnh đại diện</h3>
+                    <div className="flex items-center space-x-4 mb-4">
+                      {userAvatarUrl ? (
+                        <img
+                          src={userAvatarUrl}
+                          alt="Avatar"
+                          className="w-24 h-24 rounded-full object-cover shadow-lg border border-gray-200 dark:border-gray-700"
+                        />
+                      ) : (
+                        <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-5xl">
+                          <i className="fas fa-user-circle"></i>
+                        </div>
+                      )}
+                      <div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            setNewAvatarFile(e.target.files[0]);
+                            setAvatarError('');
+                          }}
+                          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                        />
+                        {isUploadingAvatar && (
+                          <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2">
+                            <div
+                              className="bg-blue-600 h-2.5 rounded-full"
+                              style={{ width: `${avatarUploadProgress}%` }}
+                            ></div>
+                          </div>
+                        )}
+                        {avatarError && <p className="text-red-500 text-sm mt-2">{avatarError}</p>}
+                        <button
+                          onClick={handleUploadMyAvatar}
+                          className="mt-3 px-4 py-2 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+                          disabled={isUploadingAvatar || !newAvatarFile}
+                        >
+                          {isUploadingAvatar ? (
+                            <i className="fas fa-spinner fa-spin mr-2"></i>
+                          ) : (
+                            <i className="fas fa-upload mr-2"></i>
+                          )}
+                          Tải ảnh đại diện
+                        </button>
+                      </div>
+                    </div>
+                  </div>
 
                   {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
 
+                  {/* NÚT LƯU THÔNG TIN */}
                   <button
                     onClick={handleSaveUserProfile}
                     className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
                   >
                     <i className="fas fa-save mr-2"></i> Lưu thông tin
                   </button>
+                  {/* NÚT HỦY */}
                   <button
                     onClick={() => setEditProfileMode(false)}
                     className="w-full mt-2 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
                   >
                     Hủy
                   </button>
+
+                  {/* PHẦN ĐỔI MẬT KHẨU */}
+                  <div className="mt-10 pt-6 border-t border-gray-300 dark:border-gray-600">
+                    <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-4">Đổi mật khẩu</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label
+                          htmlFor="oldPasswordMember"
+                          className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                        >
+                          Mật khẩu cũ:
+                        </label>
+                        <input
+                          type="password"
+                          id="oldPasswordMember"
+                          value={oldPassword}
+                          onChange={(e) => setOldPassword(e.target.value)}
+                          className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="Nhập mật khẩu cũ"
+                        />
+                      </div>
+                      <div>
+                        <label
+                          htmlFor="newPasswordMember"
+                          className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                        >
+                          Mật khẩu mới:
+                        </label>
+                        <input
+                          type="password"
+                          id="newPasswordMember"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)"
+                        />
+                      </div>
+                      <div>
+                        <label
+                          htmlFor="confirmNewPasswordMember"
+                          className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                        >
+                          Xác nhận mật khẩu mới:
+                        </label>
+                        <input
+                          type="password"
+                          id="confirmNewPasswordMember"
+                          value={confirmNewPassword}
+                          onChange={(e) => setConfirmNewPassword(e.target.value)}
+                          className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="Xác nhận mật khẩu mới"
+                        />
+                      </div>
+                      {passwordChangeMessage && (
+                        <p
+                          className={`text-sm text-center mt-4 ${passwordChangeMessage.includes('thành công') ? 'text-green-600' : 'text-red-500'}`}
+                        >
+                          {passwordChangeMessage}
+                        </p>
+                      )}
+                      <button
+                        onClick={handleChangePassword}
+                        className="w-full px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-md hover:bg-red-700 transition-all duration-300"
+                      >
+                        <i className="fas fa-key mr-2"></i> Đổi mật khẩu
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
-
-              {/* Phần đổi mật khẩu */}
-              <div className="mt-10 pt-6 border-t border-gray-300 dark:border-gray-600">
-                <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-4">Đổi mật khẩu</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label
-                      htmlFor="oldPasswordMember"
-                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                    >
-                      Mật khẩu cũ:
-                    </label>
-                    <input
-                      type="password"
-                      id="oldPasswordMember"
-                      value={oldPassword}
-                      onChange={(e) => setOldPassword(e.target.value)}
-                      className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Nhập mật khẩu cũ"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="newPasswordMember"
-                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                    >
-                      Mật khẩu mới:
-                    </label>
-                    <input
-                      type="password"
-                      id="newPasswordMember"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="confirmNewPasswordMember"
-                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                    >
-                      Xác nhận mật khẩu mới:
-                    </label>
-                    <input
-                      type="password"
-                      id="confirmNewPasswordMember"
-                      value={confirmNewPassword}
-                      onChange={(e) => setConfirmNewPassword(e.target.value)}
-                      className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Xác nhận mật khẩu mới"
-                    />
-                  </div>
-                  {passwordChangeMessage && (
-                    <p
-                      className={`text-sm text-center mt-4 ${passwordChangeMessage.includes('thành công') ? 'text-green-600' : 'text-red-500'}`}
-                    >
-                      {passwordChangeMessage}
-                    </p>
-                  )}
-                  <button
-                    onClick={handleChangePassword}
-                    className="w-full px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-md hover:bg-red-700 transition-all duration-300"
-                  >
-                    <i className="fas fa-key mr-2"></i> Đổi mật khẩu
-                  </button>
-                </div>
-              </div>
             </div>
-          );
-      }
+          );      
+        }
     }
 
     // Trường hợp không có vai trò hoặc không xác định (hiển thị khi chưa đăng nhập)
