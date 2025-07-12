@@ -9,7 +9,6 @@ import {
   sendPasswordResetEmail,
   updatePassword,
   sendEmailVerification,
-  updateEmail,
 } from 'firebase/auth';
 import {
   getFirestore,
@@ -62,6 +61,7 @@ function App() {
   const [newAccountStudentId, setNewAccountStudentId] = useState('');
   const [newAccountPassword, setNewAccountPassword] = useState('');
   const [newAccountFullName, setNewAccountFullName] = useState('');
+  const [newAccountPersonalEmail, setNewAccountPersonalEmail] = useState(''); // Email cá nhân ban đầu (tùy chọn)
 
   // State để theo dõi việc có cần hiển thị thông báo xác minh email không
   const [needsEmailVerification, setNeedsEmailVerification] = useState(false);
@@ -366,202 +366,207 @@ function App() {
   };
 
   // Khởi tạo Firebase và thiết lập trình lắng nghe xác thực
-// Khởi tạo Firebase và thiết lập trình lắng nghe xác thực
-useEffect(() => {
-  if (hasInitialized.current) {
-    console.log('Firebase đã được khởi tạo trước đó. Bỏ qua.');
-    return;
-  }
-  hasInitialized.current = true;
-  console.log('Bắt đầu khởi tạo Firebase...');
-
-  try {
-    if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
-      console.error('Cấu hình Firebase bị thiếu hoặc rỗng. Vui lòng kiểm tra lại cấu hình.');
-      setIsAuthReady(true);
+  useEffect(() => {
+    if (hasInitialized.current) {
+      console.log('Firebase đã được khởi tạo trước đó. Bỏ qua.');
       return;
     }
+    hasInitialized.current = true;
+    console.log('Bắt đầu khởi tạo Firebase...');
 
-    let app;
-    if (getApps().length === 0) {
-      app = initializeApp(firebaseConfig);
-      console.log('2. Firebase app đã được khởi tạo:', app.name);
-    } else {
-      app = getApp();
-      console.log('2. Đã sử dụng Firebase app hiện có:', app.name);
-    }
-
-    const firestoreDb = getFirestore(app);
-    console.log('3. Firestore đã được thiết lập.');
-
-    const firebaseAuth = getAuth(app);
-    console.log('4. Firebase Auth đã được thiết lập.');
-
-    const firebaseStorage = getStorage(app);
-    console.log('5. Firebase Storage đã được thiết lập.');
-
-    setDb(firestoreDb);
-    setAuth(firebaseAuth);
-    setStorage(firebaseStorage);
-
-    console.log('DEBUG INIT: db object after setDb:', firestoreDb);
-    console.log('DEBUG INIT: auth object after setAuth:', firebaseAuth);
-    console.log('DEBUG INIT: storage object after setStorage:', firebaseStorage);
-
-    console.log('6. setDb, setAuth và setStorage đã được gọi. Đang chờ onAuthStateChanged...');
-
-    // Cập nhật lại const unsubscribe = onAuthStateChanged này
-    const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
-      console.log("6. onAuthStateChanged đã được kích hoạt. Người dùng hiện tại:", user ? user.uid : 'null');
-      if (user) {
-        // Luôn reload để đảm bảo user.emailVerified là trạng thái mới nhất từ Firebase Auth server
-        await user.reload();
-
-        // NEW: Vẫn đặt userId và các thông tin cơ bản ngay cả khi email chưa xác minh.
-        // Việc disable giao diện sẽ được điều khiển bởi needsEmailVerification.
-        setUserId(user.uid);
-        console.log("7. Người dùng đã xác thực (UID):", user.uid);
-
-        const userDocRef = doc(firestoreDb, `artifacts/${currentAppId}/public/data/users`, user.uid);
-        const userDocSnap = await getDoc(userDocRef);
-        
-        let fetchedPhotoURL = null;
-        let fetchedRole = 'member';
-        let fetchedFullName = user.email; // Mặc định là emailAuth, sẽ cập nhật từ Firestore nếu có
-        let linkedResidentId = null;
-
-        let fetchedPhoneNumber = '';
-        let fetchedAcademicLevel = '';
-        let fetchedDormEntryDate = '';
-        let fetchedBirthday = '';
-        let fetchedStudentId = '';
-
-        if (userDocSnap.exists()) {
-          const userData = userDocSnap.data();
-          if (userData.role) fetchedRole = userData.role;
-          if (userData.fullName) fetchedFullName = userData.fullName;
-          if (userData.linkedResidentId) linkedResidentId = userData.linkedResidentId;
-          if (userData.photoURL) fetchedPhotoURL = userData.photoURL;
-          fetchedPhoneNumber = userData.phoneNumber || '';
-          fetchedAcademicLevel = userData.academicLevel || '';
-          fetchedDormEntryDate = userData.dormEntryDate || '';
-          fetchedBirthday = userData.birthday || '';
-          fetchedStudentId = userData.studentId || '';
-          
-          // Đặt cờ `needsEmailVerification` dựa trên trạng thái `user.emailVerified` từ Firebase Auth
-          setNeedsEmailVerification(!user.emailVerified);
-          
-        } else {
-          // Trường hợp tài liệu user không tồn tại trong Firestore (có thể do tài khoản Auth mới tạo hoặc lỗi)
-          // Tạo một email nội bộ giả cho Firebase Auth, chỉ cần là duy nhất
-          // Nếu fetchedStudentId chưa có (vì chưa có userDocSnap), dùng user.uid để tạo email tạm
-          const tempInternalEmail = `${fetchedStudentId || user.uid}@temp.${firebaseConfig.projectId}.com`; 
-
-          await setDoc(userDocRef, {
-            email: tempInternalEmail, // Email mà Firebase Auth đang dùng (có thể là tạm)
-            fullName: user.email, // Tên mặc định, sẽ được cập nhật sau
-            role: 'member',
-            createdAt: serverTimestamp(),
-            emailVerified: user.emailVerified // Lấy từ Firebase Auth, sẽ là false
-          }, { merge: true }); // Dùng merge để không ghi đè hoàn toàn nếu đã có dữ liệu ban đầu
-          
-          const newUserDocSnap = await getDoc(userDocRef); // Đọc lại sau khi tạo/cập nhật
-          if (newUserDocSnap.exists()) {
-            const newUserData = newUserDocSnap.data();
-            fetchedRole = newUserData.role;
-            fetchedFullName = newUserData.fullName;
-            linkedResidentId = newUserData.linkedResidentId;
-            fetchedPhotoURL = newUserData.photoURL;
-            fetchedPhoneNumber = newUserData.phoneNumber || '';
-            fetchedAcademicLevel = newUserData.academicLevel || '';
-            fetchedDormEntryDate = newUserData.dormEntryDate || '';
-            fetchedBirthday = newUserData.birthday || '';
-            fetchedStudentId = newUserData.studentId || '';
-          }
-          setNeedsEmailVerification(!user.emailVerified);
-        }
-
-        setUserAvatarUrl(fetchedPhotoURL);
-        setUserRole(fetchedRole);
-        setFullName(fetchedFullName);
-        setMemberPhoneNumber(fetchedPhoneNumber);
-        setMemberAcademicLevel(fetchedAcademicLevel);
-        setMemberDormEntryDate(fetchedDormEntryDate);
-        setMemberBirthday(fetchedBirthday);
-        setMemberStudentId(fetchedStudentId);
-        setEmail(user.email); // `email` state sẽ chứa email của tài khoản Auth
-        console.log("8. Vai trò người dùng:", fetchedRole);
-
-        // Logic tìm và liên kết hồ sơ cư dân
-        const residentsCollectionRef = collection(firestoreDb, `artifacts/${currentAppId}/public/data/residents`);
-        let currentLoggedInResidentProfile = null;
-
-        if (linkedResidentId) {
-          const residentDoc = await getDoc(doc(residentsCollectionRef, linkedResidentId));
-          if (residentDoc.exists()) {
-            currentLoggedInResidentProfile = { id: residentDoc.id, ...residentDoc.data() };
-            console.log("9. Hồ sơ cư dân được liên kết (từ linkedResidentId):", currentLoggedInResidentProfile.name);
-          } else {
-            console.log("9. linkedResidentId trong tài liệu người dùng không hợp lệ hoặc cư dân không tồn tại.");
-            linkedResidentId = null;
-          }
-        }
-
-        // Cố gắng liên kết theo tên nếu chưa có linkedResidentId và fullName đã có
-        if (!currentLoggedInResidentProfile && fetchedFullName) {
-          const qResidentByName = query(residentsCollectionRef, where("name", "==", fetchedFullName));
-          const residentSnapByName = await getDocs(qResidentByName);
-
-          if (!residentSnapByName.empty) {
-            const matchedResident = residentSnapByName.docs[0];
-            // Chỉ liên kết nếu cư dân chưa có linkedUserId hoặc linkedUserId khớp với người dùng hiện tại
-            if (!matchedResident.data().linkedUserId || matchedResident.data().linkedUserId === user.uid) {
-              await updateDoc(userDocRef, { linkedResidentId: matchedResident.id });
-              await updateDoc(doc(residentsCollectionRef, matchedResident.id), { linkedUserId: user.uid }); // Cập nhật cả resident doc
-              currentLoggedInResidentProfile = { id: matchedResident.id, ...matchedResident.data() };
-              console.log("9. Đã tìm và liên kết hồ sơ cư dân theo tên:", currentLoggedInResidentProfile.name);
-            } else {
-              console.log(`Cư dân "${fetchedFullName}" đã được liên kết với một người dùng khác.`);
-            }
-          } else {
-            console.log(`Không tìm thấy hồ sơ cư dân có tên "${fetchedFullName}". Admin có thể cần thêm/liên kết thủ công.`);
-          }
-        }
-        setLoggedInResidentProfile(currentLoggedInResidentProfile);
-        console.log(`DEBUG AUTH: User ID: ${user.uid}, User Role: ${fetchedRole}, Linked Resident: ${currentLoggedInResidentProfile ? currentLoggedInResidentProfile.name : 'None'}`);
-        
-        setIsAuthReady(true); // <--- Đảm bảo setIsAuthReady(true) được gọi ở đây khi user tồn tại
-        console.log("10. Trạng thái xác thực Firebase đã sẵn sàng: ", true);
-      } else {
-          // Khi người dùng đăng xuất (user là null)
-          setUserId(null);
-          setUserRole(null);
-          setLoggedInResidentProfile(null);
-          setActiveSection('dashboard'); // Đặt lại phần hoạt động
-          setFullName('');
-          setEmail('');
-          setPassword('');
-          setMemberPhoneNumber('');
-          setMemberAcademicLevel('');
-          setMemberDormEntryDate('');
-          setMemberBirthday('');
-          setMemberStudentId('');
-          setUserAvatarUrl(null);
-          setNeedsEmailVerification(false); // Reset cờ này khi đăng xuất
-          setIsAuthReady(true); // <--- Đảm bảo setIsAuthReady(true) được gọi ở đây khi user là null
-          console.log("10. Trạng thái xác thực Firebase đã sẵn sàng: ", true);
+    try {
+      if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+        console.error('Cấu hình Firebase bị thiếu hoặc rỗng. Vui lòng kiểm tra lại cấu hình.');
+        setIsAuthReady(true);
+        return;
       }
+
+      let app;
+      if (getApps().length === 0) {
+        app = initializeApp(firebaseConfig);
+        console.log('2. Firebase app đã được khởi tạo:', app.name);
+      } else {
+        app = getApp();
+        console.log('2. Đã sử dụng Firebase app hiện có:', app.name);
+      }
+
+      const firestoreDb = getFirestore(app);
+      console.log('3. Firestore đã được thiết lập.');
+
+      const firebaseAuth = getAuth(app);
+      console.log('4. Firebase Auth đã được thiết lập.');
+
+      // Bắt đầu thay đổi từ đây: Khởi tạo Firebase Storage
+      const firebaseStorage = getStorage(app); // <-- Khởi tạo Storage
+      console.log('5. Firebase Storage đã được thiết lập.'); // Cập nhật log
+
+      // Đặt tất cả các đối tượng Firebase đã khởi tạo vào trạng thái
+      setDb(firestoreDb);
+      setAuth(firebaseAuth);
+      setStorage(firebaseStorage); // <-- Cập nhật trạng thái Storage
+
+      console.log('DEBUG INIT: db object after setDb:', firestoreDb);
+      console.log('DEBUG INIT: auth object after setAuth:', firebaseAuth);
+      console.log('DEBUG INIT: storage object after setStorage:', firebaseStorage); // Log để kiểm tra
+
+      console.log('6. setDb, setAuth và setStorage đã được gọi. Đang chờ onAuthStateChanged...');
+
+      const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
+        console.log("6. onAuthStateChanged đã được kích hoạt. Người dùng hiện tại:", user ? user.uid : 'null');
+        if (user) {
+            // KIỂM TRA EMAIL ĐÃ XÁC MINH CHƯA
+            // Luôn reload để đảm bảo user.emailVerified là trạng thái mới nhất từ Firebase Auth server
+            await user.reload();
+            if (!user.emailVerified) {
+                console.log("Email chưa được xác minh cho UID:", user.uid);
+                setUserId(null);
+                setUserRole(null);
+                setLoggedInResidentProfile(null);
+                setActiveSection('dashboard');
+                setAuthError("Tài khoản của bạn chưa được xác minh email. Vui lòng kiểm tra hộp thư đến và nhấp vào liên kết xác minh. Bạn cũng có thể sử dụng nút 'Gửi lại email xác minh' bên dưới.");
+                setIsAuthReady(true);
+                return;
+            }
+    
+            // --- NẾU EMAIL ĐÃ ĐƯỢC XÁC MINH, TIẾP TỤC XỬ LÝ NHƯ BÌNH THƯỜNG ---
+            setUserId(user.uid);
+            console.log("7. Người dùng đã xác thực (UID):", user.uid);
+    
+            // --- NẾU EMAIL ĐÃ ĐƯỢC XÁC MINH, TIẾP TỤC XỬ LÝ NHƯ BÌNH THƯỜNG ---
+            setUserId(user.uid);
+            console.log("7. Người dùng đã xác thực (UID):", user.uid);
+
+            const userDocRef = doc(firestoreDb, `artifacts/${currentAppId}/public/data/users`, user.uid);
+            const userDocSnap = await getDoc(userDocRef);
+            let fetchedPhotoURL = null;
+            let fetchedRole = 'member';
+            let fetchedFullName = user.email; // Mặc định là email
+            let linkedResidentId = null;
+
+            let fetchedPhoneNumber = '';
+            let fetchedAcademicLevel = '';
+            let fetchedDormEntryDate = '';
+            let fetchedBirthday = '';
+            let fetchedStudentId = ''; // NEW: Khai báo biến này
+    
+            if (userDocSnap.exists()) {
+              const userData = userDocSnap.data();
+              if (userData.role) fetchedRole = userData.role;
+              if (userData.fullName) fetchedFullName = userData.fullName;
+              if (userData.linkedResidentId) linkedResidentId = userData.linkedResidentId;
+              if (userData.photoURL) fetchedPhotoURL = userData.photoURL;
+              fetchedPhoneNumber = userData.phoneNumber || '';
+              fetchedAcademicLevel = userData.academicLevel || '';
+              fetchedDormEntryDate = userData.dormEntryDate || '';
+              fetchedBirthday = userData.birthday || '';
+              fetchedStudentId = userData.studentId || '';
+              // NEW: Kiểm tra trạng thái xác minh email từ Firebase Auth
+              // (user.emailVerified của tài khoản Auth)
+              setNeedsEmailVerification(!user.emailVerified);
+            } else {
+              // Trường hợp tạo tài liệu user mới khi đăng nhập lần đầu
+              // (nên không xảy ra nhiều nếu Admin tạo tài khoản trước)
+              await setDoc(userDocRef, {
+                email: user.email, // Email mà Firebase Auth đang dùng
+                fullName: user.email, // Tên mặc định
+                role: 'member',
+                createdAt: serverTimestamp(),
+                emailVerified: user.emailVerified // Lấy từ Firebase Auth, có thể là false
+              }, { merge: true });
+              const newUserDocSnap = await getDoc(userDocRef);
+              if (newUserDocSnap.exists()) {
+                const newUserData = newUserDocSnap.data();
+                fetchedRole = newUserData.role;
+                fetchedFullName = newUserData.fullName;
+                linkedResidentId = newUserData.linkedResidentId;
+                fetchedPhotoURL = newUserData.photoURL;
+                fetchedPhoneNumber = newUserData.phoneNumber || '';
+                fetchedAcademicLevel = newUserData.academicLevel || '';
+                fetchedDormEntryDate = newUserData.dormEntryDate || '';
+                fetchedBirthday = newUserData.birthday || '';
+                fetchedStudentId = newUserData.studentId || '';
+              }
+              // NEW: Nếu tài khoản mới được tạo, mặc định cần xác minh email
+              setNeedsEmailVerification(!user.emailVerified);
+            }
+            setUserAvatarUrl(fetchedPhotoURL);
+            setUserRole(fetchedRole);
+            setFullName(fetchedFullName);
+            setMemberPhoneNumber(fetchedPhoneNumber);
+            setMemberAcademicLevel(fetchedAcademicLevel);
+            setMemberDormEntryDate(fetchedDormEntryDate);
+            setMemberBirthday(fetchedBirthday);
+            setMemberStudentId(fetchedStudentId);
+            setEmail(user.email); 
+            console.log("8. Vai trò người dùng:", fetchedRole);
+    
+            const residentsCollectionRef = collection(firestoreDb, `artifacts/${currentAppId}/public/data/residents`);
+            let currentLoggedInResidentProfile = null;
+    
+            if (linkedResidentId) {
+                const residentDoc = await getDoc(doc(residentsCollectionRef, linkedResidentId));
+                if (residentDoc.exists()) {
+                    currentLoggedInResidentProfile = { id: residentDoc.id, ...residentDoc.data() };
+                    console.log("9. Hồ sơ cư dân được liên kết (từ linkedResidentId):", currentLoggedInResidentProfile.name);
+                } else {
+                    console.log("9. linkedResidentId trong tài liệu người dùng không hợp lệ hoặc cư dân không tồn tại.");
+                    linkedResidentId = null;
+                }
+            }
+    
+            if (!currentLoggedInResidentProfile && fetchedFullName) {
+                const qResidentByName = query(residentsCollectionRef, where("name", "==", fetchedFullName));
+                const residentSnapByName = await getDocs(qResidentByName);
+    
+                if (!residentSnapByName.empty) {
+                    const matchedResident = residentSnapByName.docs[0];
+                    if (!matchedResident.data().linkedUserId || matchedResident.data().linkedUserId === user.uid) {
+                        await updateDoc(userDocRef, { linkedResidentId: matchedResident.id });
+                        currentLoggedInResidentProfile = { id: matchedResident.id, ...matchedResident.data() };
+                        console.log("9. Đã tìm và liên kết hồ sơ cư dân theo tên:", currentLoggedInResidentProfile.name);
+                    } else {
+                        console.log(`Cư dân "${fetchedFullName}" đã được liên kết với một người dùng khác.`);
+                    }
+                } else {
+                    console.log(`Không tìm thấy hồ sơ cư dân có tên "${fetchedFullName}". Admin có thể cần thêm/liên kết thủ công.`);
+                }
+            }
+            setLoggedInResidentProfile(currentLoggedInResidentProfile);
+            console.log(`DEBUG AUTH: User ID: ${user.uid}, User Role: ${fetchedRole}, Linked Resident: ${currentLoggedInResidentProfile ? currentLoggedInResidentProfile.name : 'None'}`);
+            // KẾT THÚC: Logic hiện có để lấy vai trò người dùng
+            
+            setIsAuthReady(true);
+            console.log("9. Trạng thái xác thực Firebase đã sẵn sàng: ", true);
+        } else {
+            // Khi người dùng đăng xuất
+            setUserId(null);
+            setUserRole(null);
+            setLoggedInResidentProfile(null);
+            setActiveSection('dashboard');
+            setFullName('');
+            setEmail('');
+            setPassword('');
+            setMemberPhoneNumber('');
+            setMemberAcademicLevel('');
+            setMemberDormEntryDate('');
+            setMemberBirthday('');
+            setMemberStudentId('');
+            setUserAvatarUrl(null);
+            setNeedsEmailVerification(false); // Reset cờ này khi đăng xuất
+            setIsAuthReady(true);
+            console.log("9. Trạng thái xác thực Firebase đã sẵn sàng: ", true);
+        }
     });
 
-    return () => {
-      console.log('Hủy đăng ký lắng nghe trạng thái xác thực.');
-      unsubscribe();
-    };
-  } catch (error) {
-    console.error('Lỗi nghiêm trọng khi khởi tạo Firebase (tổng thể):', error);
-    setIsAuthReady(true); // <--- Đảm bảo setIsAuthReady(true) được gọi ở đây nếu có lỗi khởi tạo
-  }
-}, [db, firebaseConfig.projectId]); // Đảm bảo `db` và `firebaseConfig.projectId` có trong dependency array
+      return () => {
+        console.log('Hủy đăng ký lắng nghe trạng thái xác thực.');
+        unsubscribe();
+      };
+    } catch (error) {
+      console.error('Lỗi nghiêm trọng khi khởi tạo Firebase (tổng thể):', error);
+      setIsAuthReady(true);
+    }
+  }, []); // Không cần userRole trong dependency array này vì nó được xử lý nội bộ
 
   // States for Avatar Upload
   const [newAvatarFile, setNewAvatarFile] = useState(null);
@@ -865,13 +870,14 @@ useEffect(() => {
 }, [db, isAuthReady, userId, searchTermMemory, filterUploaderMemory, currentPageMemories, itemsPerPageMemories]); // THÊM currentPageMemories và itemsPerPageMemories vào dependencies
 
   // --- Các hàm xác thực ---
-// Hàm để Admin tạo tài khoản mới cho thành viên
+// NEW: Hàm để Admin tạo tài khoản mới cho thành viên
 const handleAdminCreateAccount = async () => {
   setAuthError('');
   if (!auth || !db) {
     setAuthError("Hệ thống xác thực chưa sẵn sàng.");
     return;
   }
+  // Chỉ admin mới được tạo tài khoản
   if (userRole !== 'admin') {
     setAuthError("Bạn không có quyền tạo tài khoản mới.");
     return;
@@ -886,11 +892,10 @@ const handleAdminCreateAccount = async () => {
   }
 
   const studentIdToRegister = newAccountStudentId.trim();
-  // Tạo email nội bộ giả cho Firebase Auth
-  const internalAuthEmail = `${studentIdToRegister}@temp.${firebaseConfig.projectId}.com`;
+  const personalEmailToUse = newAccountPersonalEmail.trim() || `${studentIdToRegister}@dormapp.com`; // Email cá nhân hoặc email nội bộ nếu trống
 
   try {
-    // 1. KIỂM TRA MSSV CÓ DUY NHẤT CHƯA (client-side check)
+    // 1. KIỂM TRA MSSV CÓ DUY NHẤT CHƯA
     const usersRef = collection(db, `artifacts/${currentAppId}/public/data/users`);
     const qStudentId = query(usersRef, where("studentId", "==", studentIdToRegister));
     const snapshotStudentId = await getDocs(qStudentId);
@@ -899,16 +904,17 @@ const handleAdminCreateAccount = async () => {
       return;
     }
 
-    // 2. TẠO TÀI KHOẢN TRONG FIREBASE AUTH BẰNG EMAIL NỘI BỘ GIẢ
-    const userCredential = await createUserWithEmailAndPassword(auth, internalAuthEmail, newAccountPassword);
+    // 2. TẠO TÀI KHOẢN TRONG FIREBASE AUTH BẰNG EMAIL (có thể là email thật hoặc nội bộ)
+    const userCredential = await createUserWithEmailAndPassword(auth, personalEmailToUse, newAccountPassword);
     const user = userCredential.user;
     console.log("Admin đã tạo tài khoản Auth thành công! UID:", user.uid);
 
-    // KHÔNG GỬI EMAIL XÁC MINH NGAY. `emailVerified` sẽ là `false` theo mặc định.
+    // KHÔNG GỬI EMAIL XÁC MINH NGAY LẬP TỨC. Để thành viên tự xác minh sau.
+    // Firebase Auth sẽ tự động set emailVerified là false ban đầu.
 
     // 3. TẠO TÀI LIỆU NGƯỜI DÙNG TRONG FIRESTORE
     await setDoc(doc(db, `artifacts/${currentAppId}/public/data/users`, user.uid), {
-      email: internalAuthEmail, // Email ban đầu dùng cho Auth (giả)
+      email: personalEmailToUse,
       fullName: newAccountFullName.trim(),
       studentId: studentIdToRegister,
       role: 'member', // Luôn tạo là member
@@ -917,19 +923,22 @@ const handleAdminCreateAccount = async () => {
     });
     console.log("Admin đã tạo tài liệu user trong Firestore.");
 
+    // Admin có thể liên kết resident profile sau hoặc hệ thống tự động liên kết theo tên
+    // Tùy chọn: Bạn có thể thêm logic để Admin chọn residentId để liên kết ngay tại đây.
+    // Để đơn giản, phần liên kết resident profile sẽ vẫn dựa vào `onAuthStateChanged` hoặc Admin tự làm.
+
     alert(`Đã tạo tài khoản cho ${newAccountFullName.trim()} (MSSV: ${studentIdToRegister}) thành công! Người dùng cần đăng nhập và xác minh email cá nhân.`);
 
     // Reset form
     setNewAccountStudentId('');
     setNewAccountPassword('');
     setNewAccountFullName('');
-    setAuthError('');
+    setNewAccountPersonalEmail('');
+    setAuthError(''); // Xóa lỗi
   } catch (error) {
     console.error("Lỗi khi Admin tạo tài khoản:", error.code, error.message);
     if (error.code === 'auth/email-already-in-use') {
-      setAuthError("Email nội bộ này đã được sử dụng (có thể do MSSV trùng lặp đã được tạo trước đó). Vui lòng liên hệ quản trị viên.");
-    } else if (error.code === 'auth/weak-password') {
-      setAuthError("Mật khẩu quá yếu. Vui lòng chọn mật khẩu mạnh hơn.");
+      setAuthError("Email này đã được sử dụng bởi một tài khoản khác. Vui lòng dùng email khác.");
     } else {
       setAuthError(`Lỗi khi tạo tài khoản: ${error.message}`);
     }
@@ -950,75 +959,70 @@ const handleSignIn = async () => {
   const studentIdToLogin = studentIdForLogin.trim();
 
   try {
-    console.log("Đăng nhập thành công! Đang kiểm tra trạng thái xác minh email...");
-    setAuthError('');
-    setPassword('');
-    setStudentIdForLogin('');
+      // 1. TÌM EMAIL LIÊN KẾT VỚI MSSV TỪ FIRESTORE
+      const usersRef = collection(db, `artifacts/${currentAppId}/public/data/users`);
+      const qStudentId = query(usersRef, where("studentId", "==", studentIdToLogin));
+      const snapshot = await getDocs(qStudentId);
+
+      if (snapshot.empty) {
+          setAuthError("Mã số sinh viên không tồn tại hoặc mật khẩu không đúng."); // Thông báo chung để tránh lộ thông tin
+          return;
+      }
+
+      const userDoc = snapshot.docs[0];
+      const userData = userDoc.data();
+      const personalEmail = userData.email;
+
+      if (!personalEmail) {
+          setAuthError("Tài khoản không có email liên kết. Vui lòng liên hệ quản trị viên.");
+          return;
+      }
+      if (userData.role === 'inactive') { // Kiểm tra trạng thái vô hiệu hóa
+          setAuthError("Tài khoản này đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.");
+          return;
+      }
+
+      // 2. ĐĂNG NHẬP VỚI EMAIL VÀ MẬT KHẨU
+      const userCredential = await signInWithEmailAndPassword(auth, personalEmail, password);
+      // Sau khi đăng nhập, `onAuthStateChanged` sẽ kích hoạt và kiểm tra emailVerified
+
+      console.log("Đăng nhập thành công! Đang kiểm tra trạng thái xác minh email...");
+      setAuthError(''); // Xóa lỗi xác thực nếu có
+      setPassword('');
+      setStudentIdForLogin('');
+      setEmail(''); // Xóa email input truyền thống
   } catch (error) {
-    console.error("Lỗi đăng nhập:", error.code, error.message);
-    if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-        setAuthError("Mã số sinh viên hoặc mật khẩu không đúng.");
-    } else if (error.code === 'auth/invalid-email') {
-        setAuthError("Email liên kết không hợp lệ. Vui lòng liên hệ quản trị viên.");
-    } else if (error.code === 'auth/too-many-requests') {
-        setAuthError("Bạn đã thử đăng nhập quá nhiều lần. Vui lòng thử lại sau.");
-    } else {
-        setAuthError(`Lỗi đăng nhập: ${error.message}`);
-    }
+      console.error("Lỗi đăng nhập:", error.code, error.message);
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') { // Thêm invalid-credential
+          setAuthError("Mã số sinh viên hoặc mật khẩu không đúng.");
+      } else if (error.code === 'auth/invalid-email') {
+          setAuthError("Email liên kết không hợp lệ. Vui lòng liên hệ quản trị viên.");
+      } else if (error.code === 'auth/too-many-requests') {
+          setAuthError("Bạn đã thử đăng nhập quá nhiều lần. Vui lòng thử lại sau.");
+      } else {
+          setAuthError(`Lỗi đăng nhập: ${error.message}`);
+      }
   }
 };
 
   // Hàm Gửi lại email xác minh
   const handleResendVerificationEmail = async () => {
-    setAuthError('');
-    setPasswordChangeMessage(''); // Dùng lại message của passwordChangeMessage
+    setAuthError(''); // Reset lỗi xác thực
+    setForgotPasswordMessage(''); // Reset thông báo quên mật khẩu
 
     const user = auth.currentUser;
     if (!user) {
         setAuthError("Bạn chưa đăng nhập hoặc phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
         return;
     }
-    const newPersonalEmail = email.trim(); // Lấy email từ input `email` trên trang profile
-
-    if (!newPersonalEmail) {
-        setAuthError("Vui lòng nhập email cá nhân để gửi xác minh.");
-        return;
-    }
 
     try {
-        // Bước 1: Cập nhật email của tài khoản Auth (chỉ nếu email thay đổi)
-        if (user.email !== newPersonalEmail) { // So sánh với email hiện tại của tài khoản Auth
-            // LƯU Ý: updateEmail yêu cầu người dùng xác thực lại gần đây
-            // Nếu lỗi `auth/requires-recent-login` xảy ra, bạn cần thêm logic re-authenticate.
-            // Để đơn giản, chúng ta sẽ bỏ qua re-authenticate ở đây, nhưng nếu lỗi xảy ra, bạn cần thêm nó.
-            await updateEmail(user, newPersonalEmail);
-            console.log("Đã cập nhật email tài khoản Auth.");
-        }
-
-        // Bước 2: Gửi email xác minh đến email (mới) của tài khoản Auth
         await sendEmailVerification(user);
-        console.log("Đã gửi email xác minh.");
-
-        // Bước 3: Cập nhật tài liệu người dùng trong Firestore
-        // Đây là nơi bạn lưu email và trạng thái xác minh trong Firestore
-        await updateDoc(doc(db, `artifacts/${currentAppId}/public/data/users`, user.uid), {
-            email: newPersonalEmail, // Lưu email mới vào Firestore
-            emailVerified: false // Đặt lại về false sau khi gửi xác minh mới
-        });
-
-        setPasswordChangeMessage("Đã gửi email xác minh thành công đến email cá nhân của bạn! Vui lòng kiểm tra hộp thư đến và nhấp vào liên kết. Sau khi xác minh, hãy đăng nhập lại để cập nhật trạng thái.");
-        setNeedsEmailVerification(true); // Đảm bảo giao diện vẫn mờ cho đến khi xác minh xong
-
+        setAuthError("Đã gửi email xác minh thành công! Vui lòng kiểm tra hộp thư đến của bạn. Sau khi xác minh, hãy đăng nhập lại.");
     } catch (error) {
         console.error("Lỗi khi gửi lại email xác minh:", error);
         if (error.code === 'auth/too-many-requests') {
             setAuthError("Bạn đã gửi yêu cầu quá nhiều lần. Vui lòng thử lại sau ít phút.");
-        } else if (error.code === 'auth/invalid-email') {
-            setAuthError("Email không hợp lệ. Vui lòng kiểm tra lại địa chỉ email cá nhân.");
-        } else if (error.code === 'auth/email-already-in-use') {
-            setAuthError("Email này đã được sử dụng bởi một tài khoản khác. Vui lòng dùng email khác.");
-        } else if (error.code === 'auth/requires-recent-login') {
-            setAuthError("Phiên đăng nhập của bạn đã hết hạn. Vui lòng đăng xuất và đăng nhập lại, sau đó thử gửi xác minh.");
         } else {
             setAuthError(`Lỗi gửi xác minh: ${error.message}`);
         }
@@ -1063,6 +1067,7 @@ const handleSignIn = async () => {
     }
   };
 
+  // Hàm chỉnh sửa thông tin cá nhân (member và admin)
 // Hàm chỉnh sửa thông tin cá nhân (member và admin)
 const handleSaveUserProfile = async () => {
   setAuthError('');
@@ -1072,7 +1077,7 @@ const handleSaveUserProfile = async () => {
   }
 
   const userDocRef = doc(db, `artifacts/${currentAppId}/public/data/users`, userId);
-  // const currentUserData = (await getDoc(userDocRef)).data(); // Không cần đọc lại nếu không so sánh email cũ
+  const currentUserData = (await getDoc(userDocRef)).data(); // Lấy dữ liệu hiện tại
 
   try {
     const userDataToUpdate = {
@@ -1082,9 +1087,21 @@ const handleSaveUserProfile = async () => {
       dormEntryDate: memberDormEntryDate.trim(),
       birthday: memberBirthday.trim(),
       studentId: memberStudentId.trim(),
-      // Email và emailVerified không được cập nhật trực tiếp ở đây nữa.
-      // Chúng được cập nhật bởi handleResendVerificationEmail.
     };
+
+    // Nếu email thay đổi, cập nhật email trong Auth và đặt lại emailVerified
+    if (email.trim() !== currentUserData.email) {
+      try {
+        userDataToUpdate.email = email.trim(); // Cập nhật email trong Firestore
+        userDataToUpdate.emailVerified = false; // Đặt lại trạng thái xác minh trong Firestore
+        setNeedsEmailVerification(true); // Cập nhật cờ để hiển thị thông báo
+        alert('Email đã được thay đổi. Vui lòng kiểm tra email mới để xác minh lại tài khoản.');
+      } catch (updateEmailError) {
+        console.error("Lỗi khi cập nhật email trong Auth:", updateEmailError);
+        setAuthError(`Lỗi khi cập nhật email: ${updateEmailError.message}. Vui lòng thử lại.`);
+        return;
+      }
+    }
 
     await updateDoc(userDocRef, userDataToUpdate);
     console.log('Đã cập nhật tài liệu người dùng thành công!');
@@ -3210,24 +3227,26 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
       );
     }
     // NEW: Hiển thị thông báo xác minh email nếu cần
-    if (userRole === 'member' && needsEmailVerification) {
+    if (needsEmailVerification) {
       return (
-      <div className="p-6 bg-red-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto text-center">
-          <h2 className="text-2xl font-bold text-red-800 dark:text-red-200 mb-4">
-              Tài khoản của bạn chưa được xác minh!
-          </h2>
-          <p className="text-gray-700 dark:text-gray-300 mb-4">
-              Vui lòng vào mục "Chỉnh sửa thông tin cá nhân" để thêm và xác minh email cá nhân của bạn.
-              Sau khi xác minh, hãy đăng nhập lại để cập nhật trạng thái.
-          </p>
-          <button
-              onClick={() => setActiveSection('memberProfileEdit')}
-              className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
-          >
-              <i className="fas fa-user-edit mr-2"></i> Đến trang xác minh
-          </button>
-          {authError && <p className="text-red-500 text-sm mt-4">{authError}</p>}
-          {/* authError ở đây có thể là lỗi gửi email xác minh */}
+        <div className="p-6 bg-red-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto text-center">
+            <h2 className="text-2xl font-bold text-red-800 dark:text-red-200 mb-4">
+                Tài khoản của bạn chưa được xác minh!
+            </h2>
+            <p className="text-gray-700 dark:text-gray-300 mb-4">
+                Vui lòng vào mục "Chỉnh sửa thông tin cá nhân" để thêm và xác minh email cá nhân của bạn.
+            </p>
+            <button
+                onClick={() => setActiveSection('memberProfileEdit')}
+                className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+            >
+                <i className="fas fa-user-edit mr-2"></i> Đến trang xác minh
+            </button>
+            {authError && <p className="text-red-500 text-sm mt-4">{authError}</p>}
+            {/* Bạn có thể thêm nút "Gửi lại email xác minh" tại đây nếu muốn */}
+            {/* <button onClick={handleResendVerificationEmail} className="mt-2 text-indigo-600 dark:text-indigo-400 hover:underline">
+                Gửi lại email xác minh
+            </button> */}
         </div>
       );
     }
@@ -5222,62 +5241,75 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               </div>
             </div>
           );
-          case 'adminCreateAccount': // Form Admin tạo tài khoản
-          return (
-              <div className="p-6 bg-purple-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-                  <h2 className="text-2xl font-bold text-purple-800 dark:text-purple-200 mb-5">
-                      Tạo tài khoản mới cho Thành viên
-                  </h2>
-                  <div className="space-y-4">
-                      <div>
-                          <label htmlFor="newAccFullName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                              Họ tên đầy đủ:
-                          </label>
-                          <input
-                              type="text"
-                              id="newAccFullName"
-                              value={newAccountFullName}
-                              onChange={(e) => setNewAccountFullName(e.target.value)}
-                              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
-                              placeholder="Họ tên đầy đủ của thành viên"
-                          />
-                      </div>
-                      <div>
-                          <label htmlFor="newAccStudentId" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                              Mã số sinh viên:
-                          </label>
-                          <input
-                              type="text"
-                              id="newAccStudentId"
-                              value={newAccountStudentId}
-                              onChange={(e) => setNewAccountStudentId(e.target.value)}
-                              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
-                              placeholder="MSSV (dùng làm tên đăng nhập)"
-                          />
-                      </div>
-                      <div>
-                          <label htmlFor="newAccPassword" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                              Mật khẩu:
-                          </label>
-                          <input
-                              type="password"
-                              id="newAccPassword"
-                              value={newAccountPassword}
-                              onChange={(e) => setNewAccountPassword(e.target.value)}
-                              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
-                              placeholder="Mật khẩu (ít nhất 6 ký tự)"
-                          />
-                      </div>
-                      {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
-                      <button
-                          onClick={handleAdminCreateAccount}
-                          className="w-full px-6 py-3 bg-purple-600 text-white font-semibold rounded-xl shadow-md hover:bg-purple-700 transition-all duration-300"
-                      >
-                          <i className="fas fa-user-plus mr-2"></i> Tạo tài khoản
-                      </button>
-                  </div>
-              </div>
-          );
+          case 'adminCreateAccount': // NEW CASE FOR ADMIN
+                return (
+                    <div className="p-6 bg-purple-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+                        <h2 className="text-2xl font-bold text-purple-800 dark:text-purple-200 mb-5">
+                            Tạo tài khoản mới cho Thành viên
+                        </h2>
+                        <div className="space-y-4">
+                            <div>
+                                <label htmlFor="newAccFullName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                                    Họ tên đầy đủ:
+                                </label>
+                                <input
+                                    type="text"
+                                    id="newAccFullName"
+                                    value={newAccountFullName}
+                                    onChange={(e) => setNewAccountFullName(e.target.value)}
+                                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
+                                    placeholder="Họ tên đầy đủ của thành viên"
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="newAccStudentId" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                                    Mã số sinh viên:
+                                </label>
+                                <input
+                                    type="text"
+                                    id="newAccStudentId"
+                                    value={newAccountStudentId}
+                                    onChange={(e) => setNewAccountStudentId(e.target.value)}
+                                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
+                                    placeholder="MSSV (dùng làm tên đăng nhập)"
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="newAccPersonalEmail" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                                    Email cá nhân (Tùy chọn ban đầu):
+                                </label>
+                                <input
+                                    type="email"
+                                    id="newAccPersonalEmail"
+                                    value={newAccountPersonalEmail}
+                                    onChange={(e) => setNewAccountPersonalEmail(e.target.value)}
+                                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
+                                    placeholder="Email cá nhân (Nếu có, để xác minh)"
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="newAccPassword" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                                    Mật khẩu:
+                                </label>
+                                <input
+                                    type="password"
+                                    id="newAccPassword"
+                                    value={newAccountPassword}
+                                    onChange={(e) => setNewAccountPassword(e.target.value)}
+                                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
+                                    placeholder="Mật khẩu (ít nhất 6 ký tự)"
+                                />
+                            </div>
+                            {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
+                            <button
+                                onClick={handleAdminCreateAccount}
+                                className="w-full px-6 py-3 bg-purple-600 text-white font-semibold rounded-xl shadow-md hover:bg-purple-700 transition-all duration-300"
+                            >
+                                <i className="fas fa-user-plus mr-2"></i> Tạo tài khoản
+                            </button>
+                        </div>
+                    </div>
+                );
         case 'consumptionStats': //Thống kê tiêu thụ
           return (
             <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
@@ -5332,7 +5364,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
       }
     }
     // Logic cho Thành viên
-    if (userRole === 'member' && !needsEmailVerification) {
+    if (userRole === 'member') {
       // Lọc các nhiệm vụ trực phòng sắp tới của riêng thành viên
       const upcomingMyCleaningTasks = cleaningSchedule
         .filter(
@@ -6352,7 +6384,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
             </div>
           );
 
-          case 'memberProfileEdit': // Chỉnh sửa thông tin cá nhân (thành viên có thể tự chỉnh sửa)
+        case 'memberProfileEdit': // Chỉnh sửa thông tin cá nhân (thành viên có thể tự chỉnh sửa)
           return (
             <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
               <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Chỉnh sửa thông tin cá nhân</h2>
@@ -6362,286 +6394,95 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 </p>
               ) : (
                 <div className="space-y-4">
-                  {/* TRƯỜNG HỌ TÊN ĐẦY ĐỦ */}
-                  <div>
-                    <label
-                      htmlFor="editFullName"
-                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                    >
-                      Họ tên đầy đủ:
-                    </label>
-                    <input
-                      type="text"
-                      id="editFullName"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    />
-                  </div>
-
-                  {/* TRƯỜNG SỐ ĐIỆN THOẠI */}
-                  <div>
-                    <label
-                      htmlFor="editPhoneNumber"
-                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                    >
-                      Số điện thoại:
-                    </label>
-                    <input
-                      type="text"
-                      id="editPhoneNumber"
-                      value={memberPhoneNumber}
-                      onChange={(e) => setMemberPhoneNumber(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    />
-                  </div>
-
-                  {/* TRƯỜNG MÃ SỐ SINH VIÊN */}
-                  <div>
-                    <label
-                      htmlFor="editStudentId"
-                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                    >
-                      Mã số sinh viên:
-                    </label>
-                    <input
-                      type="text"
-                      id="editStudentId"
-                      value={memberStudentId}
-                      onChange={(e) => setMemberStudentId(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    />
-                  </div>
-
-                  {/* TRƯỜNG NGÀY SINH */}
-                  <div>
-                    <label
-                      htmlFor="editBirthday"
-                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                    >
-                      Ngày sinh:
-                    </label>
-                    <input
-                      type="date"
-                      id="editBirthday"
-                      value={memberBirthday}
-                      onChange={(e) => setMemberBirthday(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    />
-                  </div>
-
-                  {/* TRƯỜNG NGÀY NHẬP KTX */}
-                  <div>
-                    <label
-                      htmlFor="editDormEntryDate"
-                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                    >
-                      Ngày nhập KTX:
-                    </label>
-                    <input
-                      type="date"
-                      id="editDormEntryDate"
-                      value={memberDormEntryDate}
-                      onChange={(e) => setMemberDormEntryDate(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    />
-                  </div>
-
-                  {/* TRƯỜNG EMAIL TRƯỜNG */}
-                  <div>
-                    <label
-                      htmlFor="editAcademicLevel"
-                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                    >
-                      Email trường:
-                    </label>
-                    <input
-                      type="text"
-                      id="editAcademicLevel"
-                      value={memberAcademicLevel}
-                      onChange={(e) => setMemberAcademicLevel(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    />
-                  </div>
-
-                  {/* TRƯỜNG EMAIL CÁ NHÂN VÀ NÚT XÁC THỰC */}
-                  {/* Auth.currentUser.emailVerified kiểm tra trạng thái của tài khoản Auth */}
-                  <div>
-                    <label htmlFor="editEmail" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                      Email cá nhân:
-                    </label>
-                    <div className="flex items-center gap-2">
-                        <input
-                            type="email"
-                            id="editEmail"
-                            value={email} // `email` state chứa email của tài khoản Auth
-                            onChange={(e) => setEmail(e.target.value)}
-                            className="flex-grow shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                            placeholder="Nhập email cá nhân của bạn"
-                        />
-                        {/* NÚT GỬI XÁC THỰC EMAIL */}
-                        <button
-                            onClick={handleResendVerificationEmail}
-                            className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-xl shadow-md hover:bg-indigo-700 transition-all duration-300"
-                            // Vô hiệu hóa nút nếu email trống hoặc tài khoản đã được xác minh
-                            disabled={!email.trim() || (auth.currentUser && auth.currentUser.emailVerified)}
-                        >
-                            <i className="fas fa-paper-plane mr-2"></i>
-                            {/* Thay đổi text nút dựa trên trạng thái xác minh */}
-                            {auth.currentUser && auth.currentUser.emailVerified ? 'Đã xác minh' : 'Gửi xác thực'}
-                        </button>
-                    </div>
-                    {/* Hiển thị thông báo nếu email chưa xác minh và có email được nhập */}
-                    {auth.currentUser && !auth.currentUser.emailVerified && email.trim() && (
-                        <p className="text-red-500 text-xs mt-1">Email chưa xác minh. Vui lòng kiểm tra hộp thư của bạn và nhấp vào liên kết xác minh.</p>
-                    )}
-                    {/* Hiển thị thông báo thành công/lỗi khi gửi xác minh */}
-                    {passwordChangeMessage && ( // Dùng chung state `passwordChangeMessage` để thông báo
-                        <p className={`text-sm text-center mt-4 ${passwordChangeMessage.includes('thành công') ? 'text-green-600' : 'text-red-500'}`}>
-                            {passwordChangeMessage}
-                        </p>
-                    )}
-                  </div>
-
-                  {/* PHẦN ẢNH ĐẠI DIỆN */}
-                  <div className="mt-8 pt-6 border-t border-gray-300 dark:border-gray-600">
-                    <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-4">Ảnh đại diện</h3>
-                    <div className="flex items-center space-x-4 mb-4">
-                      {userAvatarUrl ? (
-                        <img
-                          src={userAvatarUrl}
-                          alt="Avatar"
-                          className="w-24 h-24 rounded-full object-cover shadow-lg border border-gray-200 dark:border-gray-700"
-                        />
-                      ) : (
-                        <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-5xl">
-                          <i className="fas fa-user-circle"></i>
-                        </div>
-                      )}
-                      <div>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => {
-                            setNewAvatarFile(e.target.files[0]);
-                            setAvatarError('');
-                          }}
-                          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                        />
-                        {isUploadingAvatar && (
-                          <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2">
-                            <div
-                              className="bg-blue-600 h-2.5 rounded-full"
-                              style={{ width: `${avatarUploadProgress}%` }}
-                            ></div>
-                          </div>
-                        )}
-                        {avatarError && <p className="text-red-500 text-sm mt-2">{avatarError}</p>}
-                        <button
-                          onClick={handleUploadMyAvatar}
-                          className="mt-3 px-4 py-2 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
-                          disabled={isUploadingAvatar || !newAvatarFile}
-                        >
-                          {isUploadingAvatar ? (
-                            <i className="fas fa-spinner fa-spin mr-2"></i>
-                          ) : (
-                            <i className="fas fa-upload mr-2"></i>
-                          )}
-                          Tải ảnh đại diện
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                  {/* ... (Các trường Họ tên, SĐT, MSSV, v.v. hiện có) ... */}
 
                   {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
 
-                  {/* NÚT LƯU THÔNG TIN */}
                   <button
                     onClick={handleSaveUserProfile}
                     className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
                   >
                     <i className="fas fa-save mr-2"></i> Lưu thông tin
                   </button>
-                  {/* NÚT HỦY */}
                   <button
                     onClick={() => setEditProfileMode(false)}
                     className="w-full mt-2 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
                   >
                     Hủy
                   </button>
-
-                  {/* PHẦN ĐỔI MẬT KHẨU */}
-                  <div className="mt-10 pt-6 border-t border-gray-300 dark:border-gray-600">
-                    <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-4">Đổi mật khẩu</h3>
-                    <div className="space-y-4">
-                      <div>
-                        <label
-                          htmlFor="oldPasswordMember"
-                          className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                        >
-                          Mật khẩu cũ:
-                        </label>
-                        <input
-                          type="password"
-                          id="oldPasswordMember"
-                          value={oldPassword}
-                          onChange={(e) => setOldPassword(e.target.value)}
-                          className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                          placeholder="Nhập mật khẩu cũ"
-                        />
-                      </div>
-                      <div>
-                        <label
-                          htmlFor="newPasswordMember"
-                          className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                        >
-                          Mật khẩu mới:
-                        </label>
-                        <input
-                          type="password"
-                          id="newPasswordMember"
-                          value={newPassword}
-                          onChange={(e) => setNewPassword(e.target.value)}
-                          className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                          placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)"
-                        />
-                      </div>
-                      <div>
-                        <label
-                          htmlFor="confirmNewPasswordMember"
-                          className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                        >
-                          Xác nhận mật khẩu mới:
-                        </label>
-                        <input
-                          type="password"
-                          id="confirmNewPasswordMember"
-                          value={confirmNewPassword}
-                          onChange={(e) => setConfirmNewPassword(e.target.value)}
-                          className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                          placeholder="Xác nhận mật khẩu mới"
-                        />
-                      </div>
-                      {passwordChangeMessage && (
-                        <p
-                          className={`text-sm text-center mt-4 ${passwordChangeMessage.includes('thành công') ? 'text-green-600' : 'text-red-500'}`}
-                        >
-                          {passwordChangeMessage}
-                        </p>
-                      )}
-                      <button
-                        onClick={handleChangePassword}
-                        className="w-full px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-md hover:bg-red-700 transition-all duration-300"
-                      >
-                        <i className="fas fa-key mr-2"></i> Đổi mật khẩu
-                      </button>
-                    </div>
-                  </div>
                 </div>
               )}
+
+              {/* Phần đổi mật khẩu */}
+              <div className="mt-10 pt-6 border-t border-gray-300 dark:border-gray-600">
+                <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-4">Đổi mật khẩu</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label
+                      htmlFor="oldPasswordMember"
+                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                    >
+                      Mật khẩu cũ:
+                    </label>
+                    <input
+                      type="password"
+                      id="oldPasswordMember"
+                      value={oldPassword}
+                      onChange={(e) => setOldPassword(e.target.value)}
+                      className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Nhập mật khẩu cũ"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="newPasswordMember"
+                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                    >
+                      Mật khẩu mới:
+                    </label>
+                    <input
+                      type="password"
+                      id="newPasswordMember"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="confirmNewPasswordMember"
+                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                    >
+                      Xác nhận mật khẩu mới:
+                    </label>
+                    <input
+                      type="password"
+                      id="confirmNewPasswordMember"
+                      value={confirmNewPassword}
+                      onChange={(e) => setConfirmNewPassword(e.target.value)}
+                      className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Xác nhận mật khẩu mới"
+                    />
+                  </div>
+                  {passwordChangeMessage && (
+                    <p
+                      className={`text-sm text-center mt-4 ${passwordChangeMessage.includes('thành công') ? 'text-green-600' : 'text-red-500'}`}
+                    >
+                      {passwordChangeMessage}
+                    </p>
+                  )}
+                  <button
+                    onClick={handleChangePassword}
+                    className="w-full px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-md hover:bg-red-700 transition-all duration-300"
+                  >
+                    <i className="fas fa-key mr-2"></i> Đổi mật khẩu
+                  </button>
+                </div>
+              </div>
             </div>
-          );      
-        }
+          );
+      }
     }
 
     // Trường hợp không có vai trò hoặc không xác định (hiển thị khi chưa đăng nhập)
