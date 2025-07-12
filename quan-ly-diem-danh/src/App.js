@@ -366,195 +366,202 @@ function App() {
   };
 
   // Khởi tạo Firebase và thiết lập trình lắng nghe xác thực
-  useEffect(() => {
-    if (hasInitialized.current) {
-      console.log('Firebase đã được khởi tạo trước đó. Bỏ qua.');
+// Khởi tạo Firebase và thiết lập trình lắng nghe xác thực
+useEffect(() => {
+  if (hasInitialized.current) {
+    console.log('Firebase đã được khởi tạo trước đó. Bỏ qua.');
+    return;
+  }
+  hasInitialized.current = true;
+  console.log('Bắt đầu khởi tạo Firebase...');
+
+  try {
+    if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+      console.error('Cấu hình Firebase bị thiếu hoặc rỗng. Vui lòng kiểm tra lại cấu hình.');
+      setIsAuthReady(true);
       return;
     }
-    hasInitialized.current = true;
-    console.log('Bắt đầu khởi tạo Firebase...');
 
-    try {
-      if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
-        console.error('Cấu hình Firebase bị thiếu hoặc rỗng. Vui lòng kiểm tra lại cấu hình.');
-        setIsAuthReady(true);
-        return;
-      }
-
-      let app;
-      if (getApps().length === 0) {
-        app = initializeApp(firebaseConfig);
-        console.log('2. Firebase app đã được khởi tạo:', app.name);
-      } else {
-        app = getApp();
-        console.log('2. Đã sử dụng Firebase app hiện có:', app.name);
-      }
-
-      const firestoreDb = getFirestore(app);
-      console.log('3. Firestore đã được thiết lập.');
-
-      const firebaseAuth = getAuth(app);
-      console.log('4. Firebase Auth đã được thiết lập.');
-
-      // Bắt đầu thay đổi từ đây: Khởi tạo Firebase Storage
-      const firebaseStorage = getStorage(app); // <-- Khởi tạo Storage
-      console.log('5. Firebase Storage đã được thiết lập.'); // Cập nhật log
-
-      // Đặt tất cả các đối tượng Firebase đã khởi tạo vào trạng thái
-      setDb(firestoreDb);
-      setAuth(firebaseAuth);
-      setStorage(firebaseStorage); // <-- Cập nhật trạng thái Storage
-
-      console.log('DEBUG INIT: db object after setDb:', firestoreDb);
-      console.log('DEBUG INIT: auth object after setAuth:', firebaseAuth);
-      console.log('DEBUG INIT: storage object after setStorage:', firebaseStorage); // Log để kiểm tra
-
-      console.log('6. setDb, setAuth và setStorage đã được gọi. Đang chờ onAuthStateChanged...');
-
-      const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
-        console.log("6. onAuthStateChanged đã được kích hoạt. Người dùng hiện tại:", user ? user.uid : 'null');
-        if (user) {
-            // Luôn reload để đảm bảo user.emailVerified là trạng thái mới nhất từ Firebase Auth server
-            await user.reload();
-  
-            // NEW: Loại bỏ việc thoát sớm (return) khi email chưa xác minh
-            // Thay vào đó, chúng ta vẫn đặt userId và các thông tin khác
-            // và dùng `needsEmailVerification` để điều khiển giao diện
-            setUserId(user.uid); // Vẫn đặt userId ngay cả khi chưa xác minh
-            console.log("7. Người dùng đã xác thực (UID):", user.uid); // Log này có thể xuất hiện sớm hơn
-  
-            const userDocRef = doc(firestoreDb, `artifacts/${currentAppId}/public/data/users`, user.uid);
-            const userDocSnap = await getDoc(userDocRef);
-            let fetchedPhotoURL = null;
-            let fetchedRole = 'member';
-            let fetchedFullName = user.email; // Mặc định là email
-            let linkedResidentId = null;
-  
-            let fetchedPhoneNumber = '';
-            let fetchedAcademicLevel = '';
-            let fetchedDormEntryDate = '';
-            let fetchedBirthday = '';
-            let fetchedStudentId = '';
-  
-            if (userDocSnap.exists()) {
-              const userData = userDocSnap.data();
-              if (userData.role) fetchedRole = userData.role;
-              if (userData.fullName) fetchedFullName = userData.fullName;
-              if (userData.linkedResidentId) linkedResidentId = userData.linkedResidentId;
-              if (userData.photoURL) fetchedPhotoURL = userData.photoURL;
-              fetchedPhoneNumber = userData.phoneNumber || '';
-              fetchedAcademicLevel = userData.academicLevel || '';
-              fetchedDormEntryDate = userData.dormEntryDate || '';
-              fetchedBirthday = userData.birthday || '';
-              fetchedStudentId = userData.studentId || '';
-  
-              // NEW: Đặt cờ `needsEmailVerification` dựa trên trạng thái `user.emailVerified`
-              setNeedsEmailVerification(!user.emailVerified); // Đây là cờ để disable giao diện
-              
-            } else {
-              // Trường hợp tạo tài liệu user mới khi đăng nhập lần đầu
-              // (nên không xảy ra nhiều nếu Admin tạo tài khoản trước)
-              // Để tránh lỗi emailAuth, dùng studentId làm phần đầu email
-              const tempInternalEmail = `${fetchedStudentId || user.uid}@temp.${firebaseConfig.projectId}.com`; // Tạo email tạm thời
-              await setDoc(userDocRef, {
-                email: tempInternalEmail, // Email mà Firebase Auth đang dùng (có thể là tạm)
-                fullName: user.email, // Tên mặc định, sẽ được cập nhật sau
-                role: 'member',
-                createdAt: serverTimestamp(),
-                emailVerified: user.emailVerified // Lấy từ Firebase Auth, sẽ là false
-              }, { merge: true });
-              const newUserDocSnap = await getDoc(userDocRef);
-              if (newUserDocSnap.exists()) {
-                const newUserData = newUserDocSnap.data();
-                fetchedRole = newUserData.role;
-                fetchedFullName = newUserData.fullName;
-                linkedResidentId = newUserData.linkedResidentId;
-                fetchedPhotoURL = newUserData.photoURL;
-                fetchedPhoneNumber = newUserData.phoneNumber || '';
-                fetchedAcademicLevel = newUserData.academicLevel || '';
-                fetchedDormEntryDate = newUserData.dormEntryDate || '';
-                fetchedBirthday = newUserData.birthday || '';
-                fetchedStudentId = newUserData.studentId || '';
-              }
-              setNeedsEmailVerification(!user.emailVerified);
-            }
-            setUserAvatarUrl(fetchedPhotoURL);
-            setUserRole(fetchedRole);
-            setFullName(fetchedFullName);
-            setMemberPhoneNumber(fetchedPhoneNumber);
-            setMemberAcademicLevel(fetchedAcademicLevel);
-            setMemberDormEntryDate(fetchedDormEntryDate);
-            setMemberBirthday(fetchedBirthday);
-            setMemberStudentId(fetchedStudentId);
-            setEmail(user.email); // `email` state sẽ chứa email của tài khoản Auth (có thể là email thật hoặc tạm thời)
-            console.log("8. Vai trò người dùng:", fetchedRole);
-  
-            const residentsCollectionRef = collection(firestoreDb, `artifacts/${currentAppId}/public/data/residents`);
-            let currentLoggedInResidentProfile = null;
-  
-            if (linkedResidentId) {
-                const residentDoc = await getDoc(doc(residentsCollectionRef, linkedResidentId));
-                if (residentDoc.exists()) {
-                    currentLoggedInResidentProfile = { id: residentDoc.id, ...residentDoc.data() };
-                    console.log("9. Hồ sơ cư dân được liên kết (từ linkedResidentId):", currentLoggedInResidentProfile.name);
-                } else {
-                    console.log("9. linkedResidentId trong tài liệu người dùng không hợp lệ hoặc cư dân không tồn tại.");
-                    linkedResidentId = null;
-                }
-            }
-  
-            if (!currentLoggedInResidentProfile && fetchedFullName) {
-                const qResidentByName = query(residentsCollectionRef, where("name", "==", fetchedFullName));
-                const residentSnapByName = await getDocs(qResidentByName);
-  
-                if (!residentSnapByName.empty) {
-                    const matchedResident = residentSnapByName.docs[0];
-                    if (!matchedResident.data().linkedUserId || matchedResident.data().linkedUserId === user.uid) {
-                        await updateDoc(userDocRef, { linkedResidentId: matchedResident.id });
-                        currentLoggedInResidentProfile = { id: matchedResident.id, ...matchedResident.data() };
-                        console.log("9. Đã tìm và liên kết hồ sơ cư dân theo tên:", currentLoggedInResidentProfile.name);
-                    } else {
-                        console.log(`Cư dân "${fetchedFullName}" đã được liên kết với một người dùng khác.`);
-                    }
-                } else {
-                    console.log(`Không tìm thấy hồ sơ cư dân có tên "${fetchedFullName}". Admin có thể cần thêm/liên kết thủ công.`);
-                }
-            }
-            setLoggedInResidentProfile(currentLoggedInResidentProfile);
-            console.log(`DEBUG AUTH: User ID: ${user.uid}, User Role: ${fetchedRole}, Linked Resident: ${currentLoggedInResidentProfile ? currentLoggedInResidentProfile.name : 'None'}`);
-            
-            setIsAuthReady(true);
-            console.log("9. Trạng thái xác thực Firebase đã sẵn sàng: ", true);
-        } else {
-            // Khi người dùng đăng xuất
-            setUserId(null);
-            setUserRole(null);
-            setLoggedInResidentProfile(null);
-            setActiveSection('dashboard');
-            setFullName('');
-            setEmail('');
-            setPassword('');
-            setMemberPhoneNumber('');
-            setMemberAcademicLevel('');
-            setMemberDormEntryDate('');
-            setMemberBirthday('');
-            setMemberStudentId('');
-            setUserAvatarUrl(null);
-            setNeedsEmailVerification(false); // Reset cờ này khi đăng xuất
-            setIsAuthReady(true);
-            console.log("9. Trạng thái xác thực Firebase đã sẵn sàng: ", true);
-        }
-      });
-
-      return () => {
-        console.log('Hủy đăng ký lắng nghe trạng thái xác thực.');
-        unsubscribe();
-      };
-    } catch (error) {
-      console.error('Lỗi nghiêm trọng khi khởi tạo Firebase (tổng thể):', error);
-      setIsAuthReady(true);
+    let app;
+    if (getApps().length === 0) {
+      app = initializeApp(firebaseConfig);
+      console.log('2. Firebase app đã được khởi tạo:', app.name);
+    } else {
+      app = getApp();
+      console.log('2. Đã sử dụng Firebase app hiện có:', app.name);
     }
-  }, [db, firebaseConfig.projectId]); // Không cần userRole trong dependency array này vì nó được xử lý nội bộ
+
+    const firestoreDb = getFirestore(app);
+    console.log('3. Firestore đã được thiết lập.');
+
+    const firebaseAuth = getAuth(app);
+    console.log('4. Firebase Auth đã được thiết lập.');
+
+    const firebaseStorage = getStorage(app);
+    console.log('5. Firebase Storage đã được thiết lập.');
+
+    setDb(firestoreDb);
+    setAuth(firebaseAuth);
+    setStorage(firebaseStorage);
+
+    console.log('DEBUG INIT: db object after setDb:', firestoreDb);
+    console.log('DEBUG INIT: auth object after setAuth:', firebaseAuth);
+    console.log('DEBUG INIT: storage object after setStorage:', firebaseStorage);
+
+    console.log('6. setDb, setAuth và setStorage đã được gọi. Đang chờ onAuthStateChanged...');
+
+    // Cập nhật lại const unsubscribe = onAuthStateChanged này
+    const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
+      console.log("6. onAuthStateChanged đã được kích hoạt. Người dùng hiện tại:", user ? user.uid : 'null');
+      if (user) {
+        // Luôn reload để đảm bảo user.emailVerified là trạng thái mới nhất từ Firebase Auth server
+        await user.reload();
+
+        // NEW: Vẫn đặt userId và các thông tin cơ bản ngay cả khi email chưa xác minh.
+        // Việc disable giao diện sẽ được điều khiển bởi needsEmailVerification.
+        setUserId(user.uid);
+        console.log("7. Người dùng đã xác thực (UID):", user.uid);
+
+        const userDocRef = doc(firestoreDb, `artifacts/${currentAppId}/public/data/users`, user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        
+        let fetchedPhotoURL = null;
+        let fetchedRole = 'member';
+        let fetchedFullName = user.email; // Mặc định là emailAuth, sẽ cập nhật từ Firestore nếu có
+        let linkedResidentId = null;
+
+        let fetchedPhoneNumber = '';
+        let fetchedAcademicLevel = '';
+        let fetchedDormEntryDate = '';
+        let fetchedBirthday = '';
+        let fetchedStudentId = '';
+
+        if (userDocSnap.exists()) {
+          const userData = userDocSnap.data();
+          if (userData.role) fetchedRole = userData.role;
+          if (userData.fullName) fetchedFullName = userData.fullName;
+          if (userData.linkedResidentId) linkedResidentId = userData.linkedResidentId;
+          if (userData.photoURL) fetchedPhotoURL = userData.photoURL;
+          fetchedPhoneNumber = userData.phoneNumber || '';
+          fetchedAcademicLevel = userData.academicLevel || '';
+          fetchedDormEntryDate = userData.dormEntryDate || '';
+          fetchedBirthday = userData.birthday || '';
+          fetchedStudentId = userData.studentId || '';
+          
+          // Đặt cờ `needsEmailVerification` dựa trên trạng thái `user.emailVerified` từ Firebase Auth
+          setNeedsEmailVerification(!user.emailVerified);
+          
+        } else {
+          // Trường hợp tài liệu user không tồn tại trong Firestore (có thể do tài khoản Auth mới tạo hoặc lỗi)
+          // Tạo một email nội bộ giả cho Firebase Auth, chỉ cần là duy nhất
+          // Nếu fetchedStudentId chưa có (vì chưa có userDocSnap), dùng user.uid để tạo email tạm
+          const tempInternalEmail = `${fetchedStudentId || user.uid}@temp.${firebaseConfig.projectId}.com`; 
+
+          await setDoc(userDocRef, {
+            email: tempInternalEmail, // Email mà Firebase Auth đang dùng (có thể là tạm)
+            fullName: user.email, // Tên mặc định, sẽ được cập nhật sau
+            role: 'member',
+            createdAt: serverTimestamp(),
+            emailVerified: user.emailVerified // Lấy từ Firebase Auth, sẽ là false
+          }, { merge: true }); // Dùng merge để không ghi đè hoàn toàn nếu đã có dữ liệu ban đầu
+          
+          const newUserDocSnap = await getDoc(userDocRef); // Đọc lại sau khi tạo/cập nhật
+          if (newUserDocSnap.exists()) {
+            const newUserData = newUserDocSnap.data();
+            fetchedRole = newUserData.role;
+            fetchedFullName = newUserData.fullName;
+            linkedResidentId = newUserData.linkedResidentId;
+            fetchedPhotoURL = newUserData.photoURL;
+            fetchedPhoneNumber = newUserData.phoneNumber || '';
+            fetchedAcademicLevel = newUserData.academicLevel || '';
+            fetchedDormEntryDate = newUserData.dormEntryDate || '';
+            fetchedBirthday = newUserData.birthday || '';
+            fetchedStudentId = newUserData.studentId || '';
+          }
+          setNeedsEmailVerification(!user.emailVerified);
+        }
+
+        setUserAvatarUrl(fetchedPhotoURL);
+        setUserRole(fetchedRole);
+        setFullName(fetchedFullName);
+        setMemberPhoneNumber(fetchedPhoneNumber);
+        setMemberAcademicLevel(fetchedAcademicLevel);
+        setMemberDormEntryDate(fetchedDormEntryDate);
+        setMemberBirthday(fetchedBirthday);
+        setMemberStudentId(fetchedStudentId);
+        setEmail(user.email); // `email` state sẽ chứa email của tài khoản Auth
+        console.log("8. Vai trò người dùng:", fetchedRole);
+
+        // Logic tìm và liên kết hồ sơ cư dân
+        const residentsCollectionRef = collection(firestoreDb, `artifacts/${currentAppId}/public/data/residents`);
+        let currentLoggedInResidentProfile = null;
+
+        if (linkedResidentId) {
+          const residentDoc = await getDoc(doc(residentsCollectionRef, linkedResidentId));
+          if (residentDoc.exists()) {
+            currentLoggedInResidentProfile = { id: residentDoc.id, ...residentDoc.data() };
+            console.log("9. Hồ sơ cư dân được liên kết (từ linkedResidentId):", currentLoggedInResidentProfile.name);
+          } else {
+            console.log("9. linkedResidentId trong tài liệu người dùng không hợp lệ hoặc cư dân không tồn tại.");
+            linkedResidentId = null;
+          }
+        }
+
+        // Cố gắng liên kết theo tên nếu chưa có linkedResidentId và fullName đã có
+        if (!currentLoggedInResidentProfile && fetchedFullName) {
+          const qResidentByName = query(residentsCollectionRef, where("name", "==", fetchedFullName));
+          const residentSnapByName = await getDocs(qResidentByName);
+
+          if (!residentSnapByName.empty) {
+            const matchedResident = residentSnapByName.docs[0];
+            // Chỉ liên kết nếu cư dân chưa có linkedUserId hoặc linkedUserId khớp với người dùng hiện tại
+            if (!matchedResident.data().linkedUserId || matchedResident.data().linkedUserId === user.uid) {
+              await updateDoc(userDocRef, { linkedResidentId: matchedResident.id });
+              await updateDoc(doc(residentsCollectionRef, matchedResident.id), { linkedUserId: user.uid }); // Cập nhật cả resident doc
+              currentLoggedInResidentProfile = { id: matchedResident.id, ...matchedResident.data() };
+              console.log("9. Đã tìm và liên kết hồ sơ cư dân theo tên:", currentLoggedInResidentProfile.name);
+            } else {
+              console.log(`Cư dân "${fetchedFullName}" đã được liên kết với một người dùng khác.`);
+            }
+          } else {
+            console.log(`Không tìm thấy hồ sơ cư dân có tên "${fetchedFullName}". Admin có thể cần thêm/liên kết thủ công.`);
+          }
+        }
+        setLoggedInResidentProfile(currentLoggedInResidentProfile);
+        console.log(`DEBUG AUTH: User ID: ${user.uid}, User Role: ${fetchedRole}, Linked Resident: ${currentLoggedInResidentProfile ? currentLoggedInResidentProfile.name : 'None'}`);
+        
+        setIsAuthReady(true); // <--- Đảm bảo setIsAuthReady(true) được gọi ở đây khi user tồn tại
+        console.log("10. Trạng thái xác thực Firebase đã sẵn sàng: ", true);
+      } else {
+          // Khi người dùng đăng xuất (user là null)
+          setUserId(null);
+          setUserRole(null);
+          setLoggedInResidentProfile(null);
+          setActiveSection('dashboard'); // Đặt lại phần hoạt động
+          setFullName('');
+          setEmail('');
+          setPassword('');
+          setMemberPhoneNumber('');
+          setMemberAcademicLevel('');
+          setMemberDormEntryDate('');
+          setMemberBirthday('');
+          setMemberStudentId('');
+          setUserAvatarUrl(null);
+          setNeedsEmailVerification(false); // Reset cờ này khi đăng xuất
+          setIsAuthReady(true); // <--- Đảm bảo setIsAuthReady(true) được gọi ở đây khi user là null
+          console.log("10. Trạng thái xác thực Firebase đã sẵn sàng: ", true);
+      }
+    });
+
+    return () => {
+      console.log('Hủy đăng ký lắng nghe trạng thái xác thực.');
+      unsubscribe();
+    };
+  } catch (error) {
+    console.error('Lỗi nghiêm trọng khi khởi tạo Firebase (tổng thể):', error);
+    setIsAuthReady(true); // <--- Đảm bảo setIsAuthReady(true) được gọi ở đây nếu có lỗi khởi tạo
+  }
+}, [db, firebaseConfig.projectId]); // Đảm bảo `db` và `firebaseConfig.projectId` có trong dependency array
 
   // States for Avatar Upload
   const [newAvatarFile, setNewAvatarFile] = useState(null);
