@@ -6555,7 +6555,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
       </header>
 
       {/* Main Content Area */}
-      <div className="flex flex-1">
+      <div className="flex flex-1 overflow-hidden"">
         {/* Sidebar */}
         <aside
           className={`flex-shrink-0 fixed inset-y-0 left-0 w-64 bg-white dark:bg-gray-800 shadow-lg p-6 transform ${
