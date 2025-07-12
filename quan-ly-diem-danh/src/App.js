@@ -414,41 +414,28 @@ function App() {
       const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
         console.log("6. onAuthStateChanged đã được kích hoạt. Người dùng hiện tại:", user ? user.uid : 'null');
         if (user) {
-            // KIỂM TRA EMAIL ĐÃ XÁC MINH CHƯA
             // Luôn reload để đảm bảo user.emailVerified là trạng thái mới nhất từ Firebase Auth server
             await user.reload();
-            if (!user.emailVerified) {
-                console.log("Email chưa được xác minh cho UID:", user.uid);
-                setUserId(null);
-                setUserRole(null);
-                setLoggedInResidentProfile(null);
-                setActiveSection('dashboard');
-                setAuthError("Tài khoản của bạn chưa được xác minh email. Vui lòng kiểm tra hộp thư đến và nhấp vào liên kết xác minh. Bạn cũng có thể sử dụng nút 'Gửi lại email xác minh' bên dưới.");
-                setIsAuthReady(true);
-                return;
-            }
-    
-            // --- NẾU EMAIL ĐÃ ĐƯỢC XÁC MINH, TIẾP TỤC XỬ LÝ NHƯ BÌNH THƯỜNG ---
-            setUserId(user.uid);
-            console.log("7. Người dùng đã xác thực (UID):", user.uid);
-    
-            // --- NẾU EMAIL ĐÃ ĐƯỢC XÁC MINH, TIẾP TỤC XỬ LÝ NHƯ BÌNH THƯỜNG ---
-            setUserId(user.uid);
-            console.log("7. Người dùng đã xác thực (UID):", user.uid);
-
+  
+            // NEW: Loại bỏ việc thoát sớm (return) khi email chưa xác minh
+            // Thay vào đó, chúng ta vẫn đặt userId và các thông tin khác
+            // và dùng `needsEmailVerification` để điều khiển giao diện
+            setUserId(user.uid); // Vẫn đặt userId ngay cả khi chưa xác minh
+            console.log("7. Người dùng đã xác thực (UID):", user.uid); // Log này có thể xuất hiện sớm hơn
+  
             const userDocRef = doc(firestoreDb, `artifacts/${currentAppId}/public/data/users`, user.uid);
             const userDocSnap = await getDoc(userDocRef);
             let fetchedPhotoURL = null;
             let fetchedRole = 'member';
             let fetchedFullName = user.email; // Mặc định là email
             let linkedResidentId = null;
-
+  
             let fetchedPhoneNumber = '';
             let fetchedAcademicLevel = '';
             let fetchedDormEntryDate = '';
             let fetchedBirthday = '';
-            let fetchedStudentId = ''; // NEW: Khai báo biến này
-    
+            let fetchedStudentId = '';
+  
             if (userDocSnap.exists()) {
               const userData = userDocSnap.data();
               if (userData.role) fetchedRole = userData.role;
@@ -460,18 +447,21 @@ function App() {
               fetchedDormEntryDate = userData.dormEntryDate || '';
               fetchedBirthday = userData.birthday || '';
               fetchedStudentId = userData.studentId || '';
-              // NEW: Kiểm tra trạng thái xác minh email từ Firebase Auth
-              // (user.emailVerified của tài khoản Auth)
-              setNeedsEmailVerification(!user.emailVerified);
+  
+              // NEW: Đặt cờ `needsEmailVerification` dựa trên trạng thái `user.emailVerified`
+              setNeedsEmailVerification(!user.emailVerified); // Đây là cờ để disable giao diện
+              
             } else {
               // Trường hợp tạo tài liệu user mới khi đăng nhập lần đầu
               // (nên không xảy ra nhiều nếu Admin tạo tài khoản trước)
+              // Để tránh lỗi emailAuth, dùng studentId làm phần đầu email
+              const tempInternalEmail = `${fetchedStudentId || user.uid}@temp.${firebaseConfig.projectId}.com`; // Tạo email tạm thời
               await setDoc(userDocRef, {
-                email: user.email, // Email mà Firebase Auth đang dùng
-                fullName: user.email, // Tên mặc định
+                email: tempInternalEmail, // Email mà Firebase Auth đang dùng (có thể là tạm)
+                fullName: user.email, // Tên mặc định, sẽ được cập nhật sau
                 role: 'member',
                 createdAt: serverTimestamp(),
-                emailVerified: user.emailVerified // Lấy từ Firebase Auth, có thể là false
+                emailVerified: user.emailVerified // Lấy từ Firebase Auth, sẽ là false
               }, { merge: true });
               const newUserDocSnap = await getDoc(userDocRef);
               if (newUserDocSnap.exists()) {
@@ -486,7 +476,6 @@ function App() {
                 fetchedBirthday = newUserData.birthday || '';
                 fetchedStudentId = newUserData.studentId || '';
               }
-              // NEW: Nếu tài khoản mới được tạo, mặc định cần xác minh email
               setNeedsEmailVerification(!user.emailVerified);
             }
             setUserAvatarUrl(fetchedPhotoURL);
@@ -497,12 +486,12 @@ function App() {
             setMemberDormEntryDate(fetchedDormEntryDate);
             setMemberBirthday(fetchedBirthday);
             setMemberStudentId(fetchedStudentId);
-            setEmail(user.email); 
+            setEmail(user.email); // `email` state sẽ chứa email của tài khoản Auth (có thể là email thật hoặc tạm thời)
             console.log("8. Vai trò người dùng:", fetchedRole);
-    
+  
             const residentsCollectionRef = collection(firestoreDb, `artifacts/${currentAppId}/public/data/residents`);
             let currentLoggedInResidentProfile = null;
-    
+  
             if (linkedResidentId) {
                 const residentDoc = await getDoc(doc(residentsCollectionRef, linkedResidentId));
                 if (residentDoc.exists()) {
@@ -513,11 +502,11 @@ function App() {
                     linkedResidentId = null;
                 }
             }
-    
+  
             if (!currentLoggedInResidentProfile && fetchedFullName) {
                 const qResidentByName = query(residentsCollectionRef, where("name", "==", fetchedFullName));
                 const residentSnapByName = await getDocs(qResidentByName);
-    
+  
                 if (!residentSnapByName.empty) {
                     const matchedResident = residentSnapByName.docs[0];
                     if (!matchedResident.data().linkedUserId || matchedResident.data().linkedUserId === user.uid) {
@@ -533,7 +522,6 @@ function App() {
             }
             setLoggedInResidentProfile(currentLoggedInResidentProfile);
             console.log(`DEBUG AUTH: User ID: ${user.uid}, User Role: ${fetchedRole}, Linked Resident: ${currentLoggedInResidentProfile ? currentLoggedInResidentProfile.name : 'None'}`);
-            // KẾT THÚC: Logic hiện có để lấy vai trò người dùng
             
             setIsAuthReady(true);
             console.log("9. Trạng thái xác thực Firebase đã sẵn sàng: ", true);
@@ -556,7 +544,7 @@ function App() {
             setIsAuthReady(true);
             console.log("9. Trạng thái xác thực Firebase đã sẵn sàng: ", true);
         }
-    });
+      });
 
       return () => {
         console.log('Hủy đăng ký lắng nghe trạng thái xác thực.');
@@ -566,7 +554,7 @@ function App() {
       console.error('Lỗi nghiêm trọng khi khởi tạo Firebase (tổng thể):', error);
       setIsAuthReady(true);
     }
-  }, []); // Không cần userRole trong dependency array này vì nó được xử lý nội bộ
+  }, [db, firebaseConfig.projectId]); // Không cần userRole trong dependency array này vì nó được xử lý nội bộ
 
   // States for Avatar Upload
   const [newAvatarFile, setNewAvatarFile] = useState(null);
@@ -955,48 +943,21 @@ const handleSignIn = async () => {
   const studentIdToLogin = studentIdForLogin.trim();
 
   try {
-      // 1. TÌM EMAIL LIÊN KẾT VỚI MSSV TỪ FIRESTORE
-      const usersRef = collection(db, `artifacts/${currentAppId}/public/data/users`);
-      const qStudentId = query(usersRef, where("studentId", "==", studentIdToLogin));
-      const snapshot = await getDocs(qStudentId);
-
-      if (snapshot.empty) {
-          setAuthError("Mã số sinh viên hoặc mật khẩu không đúng.");
-          return;
-      }
-
-      const userDoc = snapshot.docs[0];
-      const userData = userDoc.data();
-      const authEmailFromFirestore = userData.email; // Lấy email mà tài khoản Auth đang dùng
-
-      if (!authEmailFromFirestore) {
-          setAuthError("Tài khoản không có email liên kết. Vui lòng liên hệ quản trị viên.");
-          return;
-      }
-      if (userData.role === 'inactive') {
-          setAuthError("Tài khoản này đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.");
-          return;
-      }
-
-      // 2. ĐĂNG NHẬP VỚI EMAIL (TỪ FIRESTORE) VÀ MẬT KHẨU
-      await signInWithEmailAndPassword(auth, authEmailFromFirestore, password);
-      // Sau khi đăng nhập, `onAuthStateChanged` sẽ kích hoạt và kiểm tra emailVerified
-
-      console.log("Đăng nhập thành công! Đang kiểm tra trạng thái xác minh email...");
-      setAuthError('');
-      setPassword('');
-      setStudentIdForLogin('');
+    console.log("Đăng nhập thành công! Đang kiểm tra trạng thái xác minh email...");
+    setAuthError('');
+    setPassword('');
+    setStudentIdForLogin('');
   } catch (error) {
-      console.error("Lỗi đăng nhập:", error.code, error.message);
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-          setAuthError("Mã số sinh viên hoặc mật khẩu không đúng.");
-      } else if (error.code === 'auth/invalid-email') {
-          setAuthError("Email liên kết không hợp lệ. Vui lòng liên hệ quản trị viên.");
-      } else if (error.code === 'auth/too-many-requests') {
-          setAuthError("Bạn đã thử đăng nhập quá nhiều lần. Vui lòng thử lại sau.");
-      } else {
-          setAuthError(`Lỗi đăng nhập: ${error.message}`);
-      }
+    console.error("Lỗi đăng nhập:", error.code, error.message);
+    if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        setAuthError("Mã số sinh viên hoặc mật khẩu không đúng.");
+    } else if (error.code === 'auth/invalid-email') {
+        setAuthError("Email liên kết không hợp lệ. Vui lòng liên hệ quản trị viên.");
+    } else if (error.code === 'auth/too-many-requests') {
+        setAuthError("Bạn đã thử đăng nhập quá nhiều lần. Vui lòng thử lại sau.");
+    } else {
+        setAuthError(`Lỗi đăng nhập: ${error.message}`);
+    }
   }
 };
 
@@ -1010,8 +971,7 @@ const handleSignIn = async () => {
         setAuthError("Bạn chưa đăng nhập hoặc phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
         return;
     }
-    // Lấy email từ state `email` (email mà người dùng vừa nhập vào form)
-    const newPersonalEmail = email.trim();
+    const newPersonalEmail = email.trim(); // Lấy email từ input `email` trên trang profile
 
     if (!newPersonalEmail) {
         setAuthError("Vui lòng nhập email cá nhân để gửi xác minh.");
@@ -1019,23 +979,29 @@ const handleSignIn = async () => {
     }
 
     try {
-        // Cập nhật email của tài khoản Auth trước khi gửi xác minh
-        // LƯU Ý: updateEmail yêu cầu người dùng xác thực lại gần đây
-        // Nếu không re-authenticate, nó sẽ báo lỗi `auth/requires-recent-login`
-        // Để đơn giản, tôi sẽ bỏ qua re-authenticate ở đây, nhưng nếu lỗi xảy ra, bạn cần thêm nó.
-        // Hoặc Admin có thể chạy script để đổi email.
-        await updateEmail(user, newPersonalEmail); // Cập nhật email của tài khoản Auth
-        await sendEmailVerification(user); // Gửi email xác minh đến email mới
+        // Bước 1: Cập nhật email của tài khoản Auth (chỉ nếu email thay đổi)
+        if (user.email !== newPersonalEmail) { // So sánh với email hiện tại của tài khoản Auth
+            // LƯU Ý: updateEmail yêu cầu người dùng xác thực lại gần đây
+            // Nếu lỗi `auth/requires-recent-login` xảy ra, bạn cần thêm logic re-authenticate.
+            // Để đơn giản, chúng ta sẽ bỏ qua re-authenticate ở đây, nhưng nếu lỗi xảy ra, bạn cần thêm nó.
+            await updateEmail(user, newPersonalEmail);
+            console.log("Đã cập nhật email tài khoản Auth.");
+        }
 
-        // Cập nhật trạng thái emailVerified trong Firestore thành false (nếu chưa phải)
+        // Bước 2: Gửi email xác minh đến email (mới) của tài khoản Auth
+        await sendEmailVerification(user);
+        console.log("Đã gửi email xác minh.");
+
+        // Bước 3: Cập nhật tài liệu người dùng trong Firestore
+        // Đây là nơi bạn lưu email và trạng thái xác minh trong Firestore
         await updateDoc(doc(db, `artifacts/${currentAppId}/public/data/users`, user.uid), {
-            email: newPersonalEmail,
+            email: newPersonalEmail, // Lưu email mới vào Firestore
             emailVerified: false // Đặt lại về false sau khi gửi xác minh mới
         });
 
         setPasswordChangeMessage("Đã gửi email xác minh thành công đến email cá nhân của bạn! Vui lòng kiểm tra hộp thư đến và nhấp vào liên kết. Sau khi xác minh, hãy đăng nhập lại để cập nhật trạng thái.");
-        // Sau khi gửi, cần cập nhật cờ needsEmailVerification để giao diện disable
-        setNeedsEmailVerification(true); // Để giao diện vẫn mờ cho đến khi xác minh xong
+        setNeedsEmailVerification(true); // Đảm bảo giao diện vẫn mờ cho đến khi xác minh xong
+
     } catch (error) {
         console.error("Lỗi khi gửi lại email xác minh:", error);
         if (error.code === 'auth/too-many-requests') {
