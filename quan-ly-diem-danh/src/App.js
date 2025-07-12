@@ -6938,9 +6938,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
         </aside>
 
         {/* Content Area */}
-        <main
-          className={`flex-1 h-full p-4 transition-all duration-300 ease-in-out overflow-y-auto ${isSidebarOpen && window.innerWidth < 1024 ? 'sidebar-open-overlay' : ''}`}
-        >
+        <main className={`flex-1 h-full p-4 transition-all duration-300 ease-in-out overflow-y-auto ${isSidebarOpen && window.innerWidth < 1024 ? 'sidebar-open-overlay' : ''}`}>
           {userId ? (
             renderSection()
           ) : (
