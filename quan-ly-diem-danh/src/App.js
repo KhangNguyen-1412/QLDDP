@@ -561,7 +561,7 @@ function App() {
       console.error('Lỗi nghiêm trọng khi khởi tạo Firebase (tổng thể):', error);
       setIsAuthReady(true);
     }
-  }, [db, createNotification]); // Không cần userRole trong dependency array này vì nó được xử lý nội bộ
+  }, []); // Không cần userRole trong dependency array này vì nó được xử lý nội bộ
 
   // States for Avatar Upload
   const [newAvatarFile, setNewAvatarFile] = useState(null);
