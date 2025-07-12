@@ -383,11 +383,10 @@ function App() {
 
       let app;
       if (getApps().length === 0) {
-        // Kiểm tra nếu chưa có ứng dụng Firebase nào được khởi tạo
         app = initializeApp(firebaseConfig);
         console.log('2. Firebase app đã được khởi tạo:', app.name);
       } else {
-        app = getApp(); // Lấy ứng dụng Firebase đã tồn tại
+        app = getApp();
         console.log('2. Đã sử dụng Firebase app hiện có:', app.name);
       }
 
@@ -397,14 +396,20 @@ function App() {
       const firebaseAuth = getAuth(app);
       console.log('4. Firebase Auth đã được thiết lập.');
 
+      // Bắt đầu thay đổi từ đây: Khởi tạo Firebase Storage
+      const firebaseStorage = getStorage(app); // <-- Khởi tạo Storage
+      console.log('5. Firebase Storage đã được thiết lập.'); // Cập nhật log
+
+      // Đặt tất cả các đối tượng Firebase đã khởi tạo vào trạng thái
       setDb(firestoreDb);
       setAuth(firebaseAuth);
+      setStorage(firebaseStorage); // <-- Cập nhật trạng thái Storage
 
-      // Add these logs to verify initialization
       console.log('DEBUG INIT: db object after setDb:', firestoreDb);
       console.log('DEBUG INIT: auth object after setAuth:', firebaseAuth);
+      console.log('DEBUG INIT: storage object after setStorage:', firebaseStorage); // Log để kiểm tra
 
-      console.log('5. setDb và setAuth đã được gọi. Đang chờ onAuthStateChanged...');
+      console.log('6. setDb, setAuth và setStorage đã được gọi. Đang chờ onAuthStateChanged...');
 
       const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
         console.log("6. onAuthStateChanged đã được kích hoạt. Người dùng hiện tại:", user ? user.uid : 'null');
@@ -777,7 +782,7 @@ function App() {
 
 // Lắng nghe cập nhật Kỷ niệm phòng
 useEffect(() => {
-  if (!db || !isAuthReady || userId === null) {
+  if (!db || !auth || !storage || !isAuthReady || userId === null) {
     console.log('Lắng nghe kỷ niệm: Đang chờ DB, Auth hoặc User ID sẵn sàng.');
     return;
   }
@@ -1752,7 +1757,7 @@ const handleAvatarFileChange = (event) => {
 
   // Lắng nghe cập nhật danh sách tất cả cư dân (admin sẽ thấy tất cả, thành viên sẽ không dùng trực tiếp)
   useEffect(() => {
-    if (!db || !isAuthReady || userId === null) {
+    if (!db || !auth || !storage || !isAuthReady || userId === null) {
       console.log('Lắng nghe cư dân: Đang chờ DB, Auth hoặc User ID sẵn sàng.');
       return;
     }
@@ -1784,7 +1789,7 @@ const handleAvatarFileChange = (event) => {
 
   // Lắng nghe cập nhật điểm danh hàng ngày theo thời gian thực cho tháng đã chọn
   useEffect(() => {
-    if (!db || !isAuthReady || !selectedMonth || userId === null) {
+    if (!db || !auth || !storage || !isAuthReady || !selectedMonth || userId === null) {
       console.log('Lắng nghe điểm danh: Đang chờ DB, Auth, tháng hoặc User ID sẵn sàng.');
       return;
     }
@@ -1837,7 +1842,7 @@ const handleAvatarFileChange = (event) => {
 
   // Lấy các chỉ số đồng hồ được ghi nhận cuối cùng khi thành phần được gắn kết
   useEffect(() => {
-    if (!db || !isAuthReady || userId === null) {
+    if (!db || !auth || !storage || !isAuthReady || userId === null) {
       console.log('Lắng nghe chỉ số đồng hồ: Đang chờ DB, Auth hoặc User ID sẵn sàng.');
       return;
     }
@@ -1880,7 +1885,7 @@ const handleAvatarFileChange = (event) => {
 
   // Lắng nghe cập nhật Lịch sử hóa đơn
   useEffect(() => {
-    if (!db || !isAuthReady || userId === null) {
+    if (!db || !auth || !storage || !isAuthReady || userId === null) {
       console.log('Lắng nghe lịch sử hóa đơn: Đang chờ DB, Auth hoặc User ID sẵn sàng.');
       return;
     }
@@ -1925,7 +1930,7 @@ const handleAvatarFileChange = (event) => {
 
   // Lắng nghe cập nhật Lịch sử chia sẻ chi phí
   useEffect(() => {
-    if (!db || !isAuthReady || userId === null) {
+    if (!db || !auth || !storage || !isAuthReady || userId === null) {
       console.log('Lắng nghe lịch sử chia tiền: Đang chờ DB, Auth hoặc User ID sẵn sàng.');
       return;
     }
@@ -1971,7 +1976,7 @@ const handleAvatarFileChange = (event) => {
 
   // Lắng nghe cập nhật Lịch trực phòng
   useEffect(() => {
-    if (!db || !isAuthReady || userId === null) {
+    if (!db || !auth || !storage || !isAuthReady || userId === null) {
       console.log('Lắng nghe lịch trực phòng: Đang chờ DB, Auth hoặc User ID sẵn sàng.');
       return;
     }
@@ -2015,7 +2020,7 @@ const handleAvatarFileChange = (event) => {
 
   // Lắng nghe cập nhật Phân công kệ giày
   useEffect(() => {
-    if (!db || !isAuthReady || userId === null) {
+    if (!db || !auth || !storage || !isAuthReady || userId === null) {
       console.log('Lắng nghe gán kệ giày: Đang chờ DB, Auth hoặc User ID sẵn sàng.');
       return;
     }
@@ -2131,7 +2136,7 @@ const handleAvatarFileChange = (event) => {
 
   // Lắng nghe cập nhật Thông tin tiền bối
   useEffect(() => {
-    if (!db || !isAuthReady || userId === null) {
+    if (!db || !auth || !storage || !isAuthReady || userId === null) {
       console.log('Lắng nghe tiền bối: Đang chờ DB, Auth hoặc User ID sẵn sàng.');
       return;
     }
@@ -2168,7 +2173,7 @@ const handleAvatarFileChange = (event) => {
 
   // Lắng nghe thông báo
   useEffect(() => {
-    if (!db || !isAuthReady || userId === null) {
+    if (!db || !auth || !storage || !isAuthReady || userId === null) {
       console.log('Lắng nghe thông báo: Đang chờ DB, Auth hoặc User ID sẵn sàng.');
       return;
     }
@@ -2221,7 +2226,7 @@ const handleAvatarFileChange = (event) => {
   // useEffect để kiểm tra và tạo thông báo sinh nhật
   useEffect(() => {
     // Đảm bảo tất cả dữ liệu cần thiết đã được tải và người dùng đã đăng nhập
-    if (!db || !isAuthReady || userId === null || !allUsersData.length || !residents.length) {
+    if (!db || !auth || !storage || !isAuthReady || userId === null || !allUsersData.length || !residents.length) {
       console.log("Birthday notification check: Waiting for DB, Auth, User ID, allUsersData, or residents to be ready.");
       return;
     }
@@ -2301,7 +2306,7 @@ const handleAvatarFileChange = (event) => {
   const handleAddResident = async () => {
     setAuthError('');
     setBillingError('');
-    if (!db || !userId || (userRole !== 'admin' && userId === 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) {
+    if (!db || !auth || !storage || !userId || (userRole !== 'admin' && userId === 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) {
       // Chỉ admin mới có thể thêm cư dân
       console.error('Hệ thống chưa sẵn sàng hoặc bạn không có quyền.');
       setAuthError('Bạn không có quyền thực hiện thao tác này.');
