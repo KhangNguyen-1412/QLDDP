@@ -1122,22 +1122,16 @@ const handleResendVerificationEmail = async () => {
     }
   };
 
-  // New: Handle saving user profile (for both member and admin)
+  // Hàm chỉnh sửa thông tin cá nhân (member và admin)
   const handleSaveUserProfile = async () => {
     setAuthError('');
-    // Kiểm tra cơ bản
-    if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) {
-      setAuthError('Hệ thống chưa sẵn sàng hoặc bạn không có quyền.');
+    // Kiểm tra cơ bản: DB và userId phải sẵn sàng
+    if (!db || !userId) {
+      setAuthError('Hệ thống chưa sẵn sàng hoặc bạn chưa đăng nhập.');
       return;
     }
 
     const userDocRef = doc(db, `artifacts/${currentAppId}/public/data/users`, userId);
-    let residentDocRef = null;
-
-    // Nếu có hồ sơ cư dân liên kết (áp dụng cho cả member và admin có liên kết)
-    if (loggedInResidentProfile) {
-      residentDocRef = doc(db, `artifacts/${currentAppId}/public/data/residents`, loggedInResidentProfile.id);
-    }
 
     try {
       // 1. Cập nhật thông tin cá nhân của người dùng trong tài liệu user
@@ -1148,28 +1142,18 @@ const handleResendVerificationEmail = async () => {
         dormEntryDate: memberDormEntryDate.trim(),
         birthday: memberBirthday.trim(),
         studentId: memberStudentId.trim(),
+        // photoURL sẽ được cập nhật bởi handleUploadMyAvatar riêng biệt
       };
       await updateDoc(userDocRef, userDataToUpdate);
       console.log('Đã cập nhật tài liệu người dùng thành công!');
 
-      // 2. Cập nhật tên trong tài liệu resident nếu là Admin VÀ có linkedResidentProfile
-      // Chỉ admin mới có quyền ghi vào residents, và chỉ khi có hồ sơ cư dân liên kết
-      if (userRole === 'admin' && residentDocRef && loggedInResidentProfile.name !== fullName.trim()) {
-        await updateDoc(residentDocRef, { name: fullName.trim() });
-        console.log('Đã cập nhật tên cư dân liên kết thành công!');
-      }
+      // Loại bỏ logic cập nhật resident ở đây.
+      // Việc này chỉ Admin mới được phép làm thông qua chức năng quản lý người ở.
 
       setAuthError('Thông tin cá nhân đã được cập nhật thành công!');
-      setEditProfileMode(false); // Thoát chế độ chỉnh sửa (nếu đang ở chế độ thành viên)
+      // Không cần setEditProfileMode(false) ở đây, vì mode này chỉ dành cho member.
+      // Nút "Lưu" trong profile edit của member/admin sẽ không đóng form tự động.
 
-      // Cập nhật trạng thái loggedInResidentProfile cục bộ nếu tên cư dân đã thay đổi
-      // Điều này quan trọng để UI phản ánh ngay lập tức thay đổi tên
-      if (loggedInResidentProfile && loggedInResidentProfile.name !== fullName.trim()) {
-        setLoggedInResidentProfile((prevProfile) => ({
-          ...prevProfile,
-          name: fullName.trim(),
-        }));
-      }
     } catch (error) {
       console.error('Lỗi khi cập nhật thông tin cá nhân:', error);
       setAuthError(`Lỗi khi cập nhật thông tin cá nhân: ${error.message}`);
