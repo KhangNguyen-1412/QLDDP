@@ -238,6 +238,7 @@ function App() {
       }
 
       const memoriesCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/memories`);
+      const uploaderStudentId = loggedInResidentProfile?.studentId || allUsersData.find((u) => u.id === userId)?.studentId;
       await addDoc(memoriesCollectionRef, {
         eventName: newMemoryEventName.trim(),
         photoDate: newMemoryPhotoDate,
