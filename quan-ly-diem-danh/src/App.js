@@ -5620,7 +5620,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                                     checked={isPresent}
                                     onChange={() => handleToggleDailyPresence(resident.id, day)}
                                     disabled={!isMyRow} // Vô hiệu hóa nếu là member và không phải hàng của mình
-                                    className="form-checkbox h-5 w-5 text-green-600 dark:text-green-400 rounded focus:ring-green-500 cursor-pointer"
+                                    className="form-checkbox h-5 w-5 text-green-600 dark:text-green-400 rounded focus:ring-green-500 cursor-pointer dark:disabled:bg-gray-700 dark:disabled:border-gray-600"
                                   />
                                 </td>
                               );
