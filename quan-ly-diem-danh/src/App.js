@@ -1117,7 +1117,7 @@ const handleSaveUserProfile = async () => {
   // Hàm để xóa một kỷ niệm (admin có thể xóa bất kỳ, người đăng tải có thể xóa của chính họ)
   const handleDeleteMemory = async (memoryId, files, uploadedByUserId) => {
     setMemoryError('');
-    if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) {
+    if (!db || !userId) {
       setMemoryError('Hệ thống chưa sẵn sàng hoặc bạn chưa đăng nhập.');
       return;
     }
