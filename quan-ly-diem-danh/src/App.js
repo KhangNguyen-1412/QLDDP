@@ -776,7 +776,7 @@ function App() {
   };
   //Hàm phân trang
   const [currentPageMemories, setCurrentPageMemories] = useState(1);
-  const [itemsPerPageMemories] = useState(9); // 9 bài đăng mỗi trang
+  const [itemsPerPageMemories] = useState(9); // 10 bài đăng mỗi trang
   const [totalPagesMemories, setTotalPagesMemories] = useState(1);
   const [totalMemoriesCount, setTotalMemoriesCount] = useState(0); // Tổng số bài kỷ niệm
 
@@ -1002,6 +1002,80 @@ const handleSignIn = async () => {
       } else {
           setAuthError(`Lỗi đăng nhập: ${error.message}`);
       }
+  }
+};
+
+// Thêm hàm này vào file App.js của bạn
+const handleRegister = async () => {
+  setAuthError('');
+  if (!auth || !db) {
+    setAuthError("Hệ thống xác thực chưa sẵn sàng.");
+    return;
+  }
+  // Kiểm tra các trường nhập liệu
+  if (fullName.trim() === '' || newStudentIdForAuth.trim() === '' || password.trim() === '') {
+    setAuthError("Vui lòng nhập đầy đủ Họ tên, Mã số sinh viên và Mật khẩu.");
+    return;
+  }
+  if (password.length < 6) {
+    setAuthError("Mật khẩu phải có ít nhất 6 ký tự.");
+    return;
+  }
+
+  const studentIdToRegister = newStudentIdForAuth.trim();
+  // Tạo một email nội bộ dựa trên MSSV để đăng ký với Firebase Auth
+  const internalEmail = `${studentIdToRegister}@dormapp.com`;
+
+  try {
+    // 1. KIỂM TRA XEM MSSV ĐÃ TỒN TẠI CHƯA
+    const usersRef = collection(db, `artifacts/${currentAppId}/public/data/users`);
+    const qStudentId = query(usersRef, where("studentId", "==", studentIdToRegister));
+    const snapshot = await getDocs(qStudentId);
+
+    if (!snapshot.empty) {
+      setAuthError("Mã số sinh viên này đã được sử dụng. Vui lòng chọn MSSV khác.");
+      return;
+    }
+
+    // 2. TẠO TÀI KHOẢN TRONG FIREBASE AUTH
+    const userCredential = await createUserWithEmailAndPassword(auth, internalEmail, password);
+    const user = userCredential.user;
+    console.log("Đã tạo tài khoản Auth thành công! UID:", user.uid);
+
+    // 3. TẠO TÀI LIỆU NGƯỜI DÙNG TRONG FIRESTORE
+    await setDoc(doc(db, `artifacts/${currentAppId}/public/data/users`, user.uid), {
+      email: internalEmail, // Lưu email nội bộ
+      fullName: fullName.trim(),
+      studentId: studentIdToRegister,
+      role: 'member', // Mặc định vai trò là thành viên
+      createdAt: serverTimestamp(),
+      emailVerified: false, // Mặc định là chưa xác minh
+      // Các trường khác có thể để trống và cho người dùng tự cập nhật sau
+      phoneNumber: '',
+      academicLevel: '',
+      dormEntryDate: '',
+      birthday: '',
+      photoURL: null,
+    });
+    console.log("Đã tạo tài liệu người dùng trong Firestore.");
+
+    // 4. THÔNG BÁO VÀ CHUYỂN HƯỚNG
+    alert(`Đăng ký thành công cho ${fullName.trim()}! Bạn có thể đăng nhập ngay bây giờ.`);
+    // Reset form và chuyển qua tab đăng nhập
+    setAuthMode('login');
+    setFullName('');
+    setNewStudentIdForAuth('');
+    setPassword('');
+    setAuthError('');
+
+  } catch (error) {
+    console.error("Lỗi khi đăng ký:", error.code, error.message);
+    if (error.code === 'auth/email-already-in-use') {
+      // Lỗi này xảy ra nếu email nội bộ bị trùng, tương đương với MSSV bị trùng
+      setAuthError("Mã số sinh viên này đã được sử dụng.");
+    } else {
+      setAuthError(`Lỗi khi đăng ký: ${error.message}`);
+    }
   }
 };
 
@@ -6942,10 +7016,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
           ) : (
             // BẮT ĐẦU KHỐI ĐĂNG NHẬP / ĐĂNG KÝ MỚI
             <div className="mb-8 p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg mx-auto max-w-lg">
-              <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5 text-center">
-                Đăng nhập
-              </h2>
-
               {/* Tab Navigation */}
               <div className="flex justify-center mb-6 border-b border-gray-300 dark:border-gray-600">
                 <button
@@ -6953,82 +7023,112 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                   onClick={() => {
                     setAuthMode('login');
                     setAuthError('');
-                    setFullName('');
-                    setEmail(''); // Reset email cá nhân
-                    setPassword('');
-                    setNewStudentIdForAuth('');
-                    setStudentIdForLogin('');
                   }}>
                   Đăng nhập
+                </button>
+                <button
+                  className={`px-4 py-2 text-lg font-semibold ${authMode === 'register' ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400' : 'text-gray-600 dark:text-gray-400 hover:text-blue-500'}`}
+                  onClick={() => {
+                    setAuthMode('register');
+                    setAuthError('');
+                  }}>
+                  Đăng ký
                 </button>
               </div>
 
               {!isAuthReady ? (
                 <p className="text-blue-600 dark:text-blue-300 text-center text-lg">Đang kết nối Firebase...</p>
               ) : (
-                <div className="flex flex-col space-y-4">
-                  {/* Input Mã số sinh viên (chỉ dành cho LOGIN mode) */}
-                  <div>
-                    <label htmlFor="studentIdLogin" className="sr-only">
-                      Mã số sinh viên
-                    </label>
-                    <input
-                      type="text"
-                      id="studentIdLogin"
-                      placeholder="Mã số sinh viên"
-                      value={studentIdForLogin}
-                      onChange={(e) => setStudentIdForLogin(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    />
-                  </div>
-
-                  {/* Input Mật khẩu */}
-                  <div>
-                    <label htmlFor="passwordAuth" className="sr-only">
-                      Mật khẩu
-                    </label>
-                    <input
-                      type="password"
-                      id="passwordAuth"
-                      placeholder="Mật khẩu"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    />
-                </div>
-
-                {authError && <p className="text-red-500 text-sm text-center">{authError}</p>}
-                {/* Nút Đăng nhập */}
-                <button
-                  onClick={handleSignIn}
-                  className="w-full px-6 py-2 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75"
-                  disabled={!isAuthReady}
-                >
-                  <i className="fas fa-sign-in-alt mr-2"></i> Đăng nhập
-                </button>
-
-                {/* Nút Quên mật khẩu */}
-                <button
-                  onClick={() => {
-                    setShowForgotPasswordModal(true);
-                    setAuthError('');
-                    setForgotPasswordMessage('');
-                  }}
-                  className="w-full mt-4 text-blue-600 dark:text-blue-400 hover:underline text-sm font-semibold"
-                >
-                  Quên mật khẩu?
-                </button>
-
-                  {/* Nút Gửi lại email xác minh (chỉ hiển thị khi có lỗi xác minh email) */}
-                  {authError.includes("chưa được xác minh") && ( // Chỉ hiển thị khi có thông báo lỗi email chưa xác minh
-                    <button
-                      onClick={handleResendVerificationEmail}
-                      className="w-full mt-2 text-indigo-600 dark:text-indigo-400 hover:underline text-sm font-semibold"
-                    >
-                      Gửi lại email xác minh
-                    </button>
+                <>
+                  {/* FORM ĐĂNG NHẬP */}
+                  {authMode === 'login' && (
+                    <div className="flex flex-col space-y-4">
+                      <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 text-center">Đăng nhập tài khoản</h2>
+                      <div>
+                        <label htmlFor="studentIdLogin" className="sr-only">Mã số sinh viên</label>
+                        <input
+                          type="text"
+                          id="studentIdLogin"
+                          placeholder="Mã số sinh viên"
+                          value={studentIdForLogin}
+                          onChange={(e) => setStudentIdForLogin(e.target.value)}
+                          className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="passwordLogin" className="sr-only">Mật khẩu</label>
+                        <input
+                          type="password"
+                          id="passwordLogin"
+                          placeholder="Mật khẩu"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                        />
+                      </div>
+                      {authError && <p className="text-red-500 text-sm text-center">{authError}</p>}
+                      <button
+                        onClick={handleSignIn}
+                        className="w-full px-6 py-2 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+                      >
+                        Đăng nhập
+                      </button>
+                      <button
+                        onClick={() => setShowForgotPasswordModal(true)}
+                        className="w-full mt-2 text-blue-600 dark:text-blue-400 hover:underline text-sm font-semibold"
+                      >
+                        Quên mật khẩu?
+                      </button>
+                    </div>
                   )}
-                </div>
+
+                  {/* FORM ĐĂNG KÝ */}
+                  {authMode === 'register' && (
+                    <div className="flex flex-col space-y-4">
+                      <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 text-center">Tạo tài khoản mới</h2>
+                      <div>
+                        <label htmlFor="fullNameRegister" className="sr-only">Họ tên đầy đủ</label>
+                        <input
+                          type="text"
+                          id="fullNameRegister"
+                          placeholder="Họ tên đầy đủ"
+                          value={fullName}
+                          onChange={(e) => setFullName(e.target.value)}
+                          className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="studentIdRegister" className="sr-only">Mã số sinh viên</label>
+                        <input
+                          type="text"
+                          id="studentIdRegister"
+                          placeholder="Mã số sinh viên (dùng để đăng nhập)"
+                          value={newStudentIdForAuth}
+                          onChange={(e) => setNewStudentIdForAuth(e.target.value)}
+                          className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="passwordRegister" className="sr-only">Mật khẩu</label>
+                        <input
+                          type="password"
+                          id="passwordRegister"
+                          placeholder="Mật khẩu (ít nhất 6 ký tự)"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                        />
+                      </div>
+                      {authError && <p className="text-red-500 text-sm text-center">{authError}</p>}
+                      <button
+                        onClick={handleRegister}
+                        className="w-full px-6 py-2 bg-purple-600 text-white font-semibold rounded-xl shadow-md hover:bg-purple-700 transition-all duration-300"
+                      >
+                        Đăng ký
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
             // KẾT THÚC KHỐI ĐĂNG NHẬP / ĐĂNG KÝ MỚI
