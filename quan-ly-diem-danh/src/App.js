@@ -4485,6 +4485,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                     Chưa có kỷ niệm nào được thêm.
                   </p>
                 ) : (
+                  <div className="max-h-[600px] overflow-y-auto p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {memories.map((memory) => (
                       <div
@@ -4559,6 +4560,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                         </div>
                       </div>
                     ))}
+                  </div>
                   </div>
                 )}
 
@@ -6238,6 +6240,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                     Chưa có kỷ niệm nào được thêm.
                   </p>
                 ) : (
+                  <div className="max-h-[600px] overflow-y-auto p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {memories.map((memory) => (
                       <div
@@ -6312,6 +6315,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                         </div>
                       </div>
                     ))}
+                  </div>
                   </div>
                 )}
 
