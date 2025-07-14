@@ -5969,6 +5969,21 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                           </p>
                       )}
                   </div>
+                  <div>
+                    <label
+                      htmlFor="editAcademicLevel"
+                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                    >
+                      Email trường:
+                    </label>
+                    <input
+                      type="text"
+                      id="editAcademicLevel"
+                      value={memberAcademicLevel}
+                      onChange={(e) => setMemberAcademicLevel(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
 
                   <div className="mt-8 pt-6 border-t border-gray-300 dark:border-gray-600">
                     <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-4">Ảnh đại diện</h3>
@@ -6478,10 +6493,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 </p>
               ) : (
                 <div className="space-y-4">
-                  {/* ... (Các trường Họ tên, SĐT, MSSV, v.v. hiện có) ... */}
-
                   {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
-
                   <button
                     onClick={handleSaveUserProfile}
                     className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
