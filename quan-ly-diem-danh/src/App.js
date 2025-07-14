@@ -7021,7 +7021,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                   >
                     <i className="fas fa-user-edit mr-3"></i> Chỉnh sửa thông tin cá nhân
                   </button>
-                  </div>
                 </>
               )}
           </nav>
