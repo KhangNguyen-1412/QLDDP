@@ -776,7 +776,7 @@ function App() {
   };
   //Hàm phân trang
   const [currentPageMemories, setCurrentPageMemories] = useState(1);
-  const [itemsPerPageMemories] = useState(10); // 10 bài đăng mỗi trang
+  const [itemsPerPageMemories] = useState(9); // 9 bài đăng mỗi trang
   const [totalPagesMemories, setTotalPagesMemories] = useState(1);
   const [totalMemoriesCount, setTotalMemoriesCount] = useState(0); // Tổng số bài kỷ niệm
 
