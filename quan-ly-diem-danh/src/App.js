@@ -7033,10 +7033,10 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 </>
               )}
           </nav>
+          </div>
           {/* Copyright Information */}
           <div className="mt-auto pt-4 text-center text-gray-500 dark:text-gray-400 text-xs">
             © Bản quyền thuộc về Nguyễn Huỳnh Phúc Khang 2025
-          </div>
           </div>
         </aside>
 
