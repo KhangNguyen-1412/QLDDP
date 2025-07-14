@@ -244,9 +244,12 @@ function App() {
         files: uploadedFilesInfo, // LƯU MẢNG CÁC ĐỐI TƯỢNG FILE
         uploadedBy: userId,
         uploadedAt: serverTimestamp(),
-        uploadedByName: loggedInResidentProfile
-          ? loggedInResidentProfile.name
+        uploadedByStudentId: uploaderStudentId, // <-- LƯU MSSV thay vì UserID
+        uploadedByName: loggedInResidentProfile 
+          ? loggedInResidentProfile.name 
           : allUsersData.find((u) => u.id === userId)?.fullName || 'Người dùng ẩn danh',
+        // Bạn vẫn có thể giữ lại uploadedBy: userId để tham chiếu nếu cần
+        uploadedBy: userId,
       });
 
       setNewMemoryEventName('');
@@ -4529,7 +4532,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                             Đăng bởi:{' '}
                             <span className="font-medium">
                               {memory.uploadedByName ||
-                                allUsersData.find((u) => u.id === memory.uploadedBy)?.fullName ||
+                                allUsersData.find((u) => u.studentId === memory.uploadedByStudentId)?.fullName || // <-- TÌM BẰNG MSSV
                                 'Người dùng ẩn danh'}
                             </span>
                           </p>
@@ -6278,7 +6281,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                             Đăng bởi:{' '}
                             <span className="font-medium">
                               {memory.uploadedByName ||
-                                allUsersData.find((u) => u.id === memory.uploadedBy)?.fullName ||
+                                allUsersData.find((u) => u.studentId === memory.uploadedByStudentId)?.fullName || // <-- TÌM BẰNG MSSV
                                 'Người dùng ẩn danh'}
                             </span>
                           </p>
