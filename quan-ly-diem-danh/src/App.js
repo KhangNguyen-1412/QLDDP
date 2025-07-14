@@ -6675,11 +6675,12 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
         <aside
-          className={`flex-shrink-0 fixed inset-y-0 left-0 w-64 bg-white dark:bg-gray-800 shadow-lg p-6 transform ${
+          className={`flex-shrink-0 fixed inset-y-0 left-0 w-64 bg-white dark:bg-gray-800 shadow-lg transform ${
             isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-          } lg:relative lg:translate-x-0 transition-transform duration-300 ease-in-out z-20 h-full overflow-y-auto`}
+          } lg:relative lg:translate-x-0 transition-transform duration-300 ease-in-out z-20 h-full flex flex-col`}
         >
           {/* Close button for mobile sidebar */}
+          <div className="flex-1 p-6 overflow-y-auto">
           <div className="flex justify-end lg:hidden mb-4">
             <button
               onClick={() => setIsSidebarOpen(false)}
@@ -7035,6 +7036,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
           {/* Copyright Information */}
           <div className="mt-auto pt-4 text-center text-gray-500 dark:text-gray-400 text-xs">
             © Bản quyền thuộc về Nguyễn Huỳnh Phúc Khang 2025
+          </div>
           </div>
         </aside>
 
