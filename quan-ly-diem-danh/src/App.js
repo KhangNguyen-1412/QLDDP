@@ -6600,6 +6600,12 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
       </div>
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 shadow-md p-4 flex justify-between items-center sticky top-0 z-30">
+        <button
+          className="lg:hidden p-2 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        >
+          <i className="fas fa-bars text-xl"></i>
+        </button>
         <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Quản lý phòng</h1>
         <div className="flex items-center space-x-3 mb-4">
           {userAvatarUrl ? (
@@ -6644,13 +6650,15 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
           >
             {theme === 'light' ? <i className="fas fa-moon text-lg"></i> : <i className="fas fa-sun text-lg"></i>}
           </button>
-          {/* Mobile Sidebar Toggle Button */}
-          <button
-            className="lg:hidden p-2 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          >
-            <i className="fas fa-bars text-xl"></i>
-          </button>
+          {userId && (
+            <button
+              onClick={handleSignOut}
+              className="p-2 rounded-full bg-red-100 dark:bg-red-800 text-red-600 dark:text-red-200 shadow-md hover:shadow-lg hover:bg-red-200 dark:hover:bg-red-700 transition-all duration-300"
+              title="Đăng xuất"
+            >
+              <i className="fas fa-sign-out-alt text-lg"></i>
+            </button>
+          )}
         </div>
       </header>
 
@@ -6887,14 +6895,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                   >
                       <i className="fas fa-user-plus mr-3"></i> Tạo tài khoản mới
                   </button>
-                  <div className="border-t border-gray-200 dark:border-gray-600 pt-2 mt-2">
-                    <button
-                      onClick={handleSignOut}
-                      className="w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-gray-700"
-                    >
-                      <i className="fas fa-sign-out-alt mr-3"></i> Đăng xuất
-                    </button>
-                  </div>
                 </>
               )}
 
