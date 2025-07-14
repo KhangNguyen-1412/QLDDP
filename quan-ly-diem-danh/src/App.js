@@ -112,6 +112,8 @@ function App() {
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
   const [forgotPasswordMessage, setForgotPasswordMessage] = useState('');
+  // Thêm state này vào cùng với các state xác thực khác
+  const [personalEmailForRegister, setPersonalEmailForRegister] = useState('');
 
   // New states for member's editable profile
   const [memberPhoneNumber, setMemberPhoneNumber] = useState('');
@@ -1012,9 +1014,9 @@ const handleRegister = async () => {
     setAuthError("Hệ thống xác thực chưa sẵn sàng.");
     return;
   }
-  // Kiểm tra các trường nhập liệu
-  if (fullName.trim() === '' || newStudentIdForAuth.trim() === '' || password.trim() === '') {
-    setAuthError("Vui lòng nhập đầy đủ Họ tên, Mã số sinh viên và Mật khẩu.");
+  // Thêm kiểm tra cho email cá nhân
+  if (fullName.trim() === '' || newStudentIdForAuth.trim() === '' || personalEmailForRegister.trim() === '' || password.trim() === '') {
+    setAuthError("Vui lòng nhập đầy đủ Họ tên, Mã số sinh viên, Email và Mật khẩu.");
     return;
   }
   if (password.length < 6) {
@@ -1023,34 +1025,42 @@ const handleRegister = async () => {
   }
 
   const studentIdToRegister = newStudentIdForAuth.trim();
-  // Tạo một email nội bộ dựa trên MSSV để đăng ký với Firebase Auth
-  const internalEmail = `${studentIdToRegister}@dormapp.com`;
+  const personalEmail = personalEmailForRegister.trim(); // Sử dụng email người dùng nhập
 
   try {
-    // 1. KIỂM TRA XEM MSSV ĐÃ TỒN TẠI CHƯA
+    // 1. KIỂM TRA MSSV VÀ EMAIL CÓ DUY NHẤT KHÔNG
     const usersRef = collection(db, `artifacts/${currentAppId}/public/data/users`);
     const qStudentId = query(usersRef, where("studentId", "==", studentIdToRegister));
-    const snapshot = await getDocs(qStudentId);
-
-    if (!snapshot.empty) {
-      setAuthError("Mã số sinh viên này đã được sử dụng. Vui lòng chọn MSSV khác.");
+    const studentIdSnapshot = await getDocs(qStudentId);
+    if (!studentIdSnapshot.empty) {
+      setAuthError("Mã số sinh viên này đã được sử dụng.");
       return;
     }
 
-    // 2. TẠO TÀI KHOẢN TRONG FIREBASE AUTH
-    const userCredential = await createUserWithEmailAndPassword(auth, internalEmail, password);
+    const qEmail = query(usersRef, where("email", "==", personalEmail));
+    const emailSnapshot = await getDocs(qEmail);
+    if (!emailSnapshot.empty) {
+      setAuthError("Email này đã được sử dụng bởi một tài khoản khác.");
+      return;
+    }
+
+    // 2. TẠO TÀI KHOẢN TRONG FIREBASE AUTH BẰNG EMAIL CÁ NHÂN
+    const userCredential = await createUserWithEmailAndPassword(auth, personalEmail, password);
     const user = userCredential.user;
     console.log("Đã tạo tài khoản Auth thành công! UID:", user.uid);
 
-    // 3. TẠO TÀI LIỆU NGƯỜI DÙNG TRONG FIRESTORE
+    // 3. GỬI EMAIL XÁC MINH NGAY LẬP TỨC
+    await sendEmailVerification(user);
+    console.log("Đã gửi email xác minh đến:", personalEmail);
+
+    // 4. TẠO TÀI LIỆU NGƯỜI DÙNG TRONG FIRESTORE
     await setDoc(doc(db, `artifacts/${currentAppId}/public/data/users`, user.uid), {
-      email: internalEmail, // Lưu email nội bộ
+      email: personalEmail, // Lưu email cá nhân
       fullName: fullName.trim(),
       studentId: studentIdToRegister,
-      role: 'member', // Mặc định vai trò là thành viên
+      role: 'member',
       createdAt: serverTimestamp(),
-      emailVerified: false, // Mặc định là chưa xác minh
-      // Các trường khác có thể để trống và cho người dùng tự cập nhật sau
+      emailVerified: false, // Ban đầu luôn là false
       phoneNumber: '',
       academicLevel: '',
       dormEntryDate: '',
@@ -1059,20 +1069,22 @@ const handleRegister = async () => {
     });
     console.log("Đã tạo tài liệu người dùng trong Firestore.");
 
-    // 4. THÔNG BÁO VÀ CHUYỂN HƯỚNG
-    alert(`Đăng ký thành công cho ${fullName.trim()}! Bạn có thể đăng nhập ngay bây giờ.`);
+    // 5. THÔNG BÁO VÀ CHUYỂN HƯỚNG
+    alert(`Đăng ký thành công! Vui lòng kiểm tra hộp thư tại ${personalEmail} để xác minh tài khoản trước khi đăng nhập.`);
     // Reset form và chuyển qua tab đăng nhập
     setAuthMode('login');
     setFullName('');
     setNewStudentIdForAuth('');
+    setPersonalEmailForRegister(''); // Reset state email mới
     setPassword('');
     setAuthError('');
 
   } catch (error) {
     console.error("Lỗi khi đăng ký:", error.code, error.message);
     if (error.code === 'auth/email-already-in-use') {
-      // Lỗi này xảy ra nếu email nội bộ bị trùng, tương đương với MSSV bị trùng
-      setAuthError("Mã số sinh viên này đã được sử dụng.");
+      setAuthError("Email này đã được sử dụng.");
+    } else if (error.code === 'auth/invalid-email') {
+      setAuthError("Địa chỉ email không hợp lệ.");
     } else {
       setAuthError(`Lỗi khi đăng ký: ${error.message}`);
     }
@@ -1141,7 +1153,6 @@ const handleRegister = async () => {
     }
   };
 
-  // Hàm chỉnh sửa thông tin cá nhân (member và admin)
 // Hàm chỉnh sửa thông tin cá nhân (member và admin)
 const handleSaveUserProfile = async () => {
   setAuthError('');
@@ -7108,6 +7119,19 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                           className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
                         />
                       </div>
+                      {/* ===== TRƯỜNG EMAIL MỚI ĐƯỢC THÊM VÀO ĐÂY ===== */}
+                      <div>
+                        <label htmlFor="emailRegister" className="sr-only">Email cá nhân</label>
+                        <input
+                          type="email"
+                          id="emailRegister"
+                          placeholder="Email cá nhân (để xác minh tài khoản)"
+                          value={personalEmailForRegister}
+                          onChange={(e) => setPersonalEmailForRegister(e.target.value)}
+                          className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                        />
+                      </div>
+                      {/* ===== KẾT THÚC TRƯỜNG EMAIL MỚI ===== */}
                       <div>
                         <label htmlFor="passwordRegister" className="sr-only">Mật khẩu</label>
                         <input
@@ -7115,7 +7139,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                           id="passwordRegister"
                           placeholder="Mật khẩu (ít nhất 6 ký tự)"
                           value={password}
-                          onChange={(e) => setPassword(e.target.value)}
+                          onChange={(e) => setPassword(e.targe.value)}
                           className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
                         />
                       </div>
@@ -7127,8 +7151,8 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                         Đăng ký
                       </button>
                     </div>
-                  )}
-                </>
+                  )}                
+                  </>
               )}
             </div>
             // KẾT THÚC KHỐI ĐĂNG NHẬP / ĐĂNG KÝ MỚI
