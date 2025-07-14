@@ -1113,7 +1113,6 @@ const handleSaveUserProfile = async () => {
   }
 };
 
-  // Trong hàm handleDeleteMemory
   // Hàm để xóa một kỷ niệm (admin có thể xóa bất kỳ, người đăng tải có thể xóa của chính họ)
   const handleDeleteMemory = async (memoryId, files, uploadedByUserId) => {
     setMemoryError('');
@@ -6555,12 +6554,12 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
       </header>
 
       {/* Main Content Area */}
-      <div className="flex flex-1">
+      <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
         <aside
           className={`flex-shrink-0 fixed inset-y-0 left-0 w-64 bg-white dark:bg-gray-800 shadow-lg p-6 transform ${
             isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-          } lg:relative lg:translate-x-0 transition-transform duration-300 ease-in-out z-20 overflow-y-auto`} // <-- Đã thêm overflow-y-auto ở đây
+          } lg:relative lg:translate-x-0 transition-transform duration-300 ease-in-out z-20 h-full overflow-y-auto`}
         >
           {/* Close button for mobile sidebar */}
           <div className="flex justify-end lg:hidden mb-4">
@@ -6938,10 +6937,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
         </aside>
 
         {/* Content Area */}
-        <main
-          className={`flex-1 h-full p-4 transition-all duration-300 ease-in-out overflow-y-auto ${isSidebarOpen && window.innerWidth < 1024 ? 'sidebar-open-overlay' : ''}`}
-        >
-          {userId ? (
+        <main className={`flex-1 h-full p-4 transition-all duration-300 ease-in-out overflow-y-auto ${isSidebarOpen && window.innerWidth < 1024 ? 'sidebar-open-overlay' : ''}`}>          {userId ? (
             renderSection()
           ) : (
             // BẮT ĐẦU KHỐI ĐĂNG NHẬP / ĐĂNG KÝ MỚI
