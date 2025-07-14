@@ -6650,6 +6650,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
           >
             {theme === 'light' ? <i className="fas fa-moon text-lg"></i> : <i className="fas fa-sun text-lg"></i>}
           </button>
+          {/* Nút đăng xuất */}
           {userId && (
             <button
               onClick={handleSignOut}
@@ -7020,13 +7021,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                   >
                     <i className="fas fa-user-edit mr-3"></i> Chỉnh sửa thông tin cá nhân
                   </button>
-                  <div className="border-t border-gray-200 dark:border-gray-600 pt-2 mt-2">
-                    <button
-                      onClick={handleSignOut}
-                      className="w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-gray-700"
-                    >
-                      <i className="fas fa-sign-out-alt mr-3"></i> Đăng xuất
-                    </button>
                   </div>
                 </>
               )}
