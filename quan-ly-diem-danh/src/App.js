@@ -2502,54 +2502,84 @@ const handleAvatarFileChange = (event) => {
   };
   
   // Thêm hàm này vào file App.js của bạn
-  const handleUpdateFormerResident = async (e) => {
-    e.preventDefault();
-    setAuthError(''); // Reset lỗi
-    if (!db || !userId || userRole !== 'admin') {
-      setAuthError('Bạn không có quyền cập nhật thông tin tiền bối.');
-      return;
-    }
-    if (!editingFormerResident || !editingFormerResident.id) {
-      setAuthError('Không có tiền bối nào được chọn để cập nhật.');
-      return;
-    }
-    if (!editingFormerResident.name || !editingFormerResident.email || !editingFormerResident.deactivatedAt) {
-      setAuthError('Vui lòng điền đầy đủ Họ tên, Email, Ngày ra khỏi phòng.');
-      return;
+const handleUpdateFormerResident = async (e) => {
+  e.preventDefault();
+  setAuthError('');
+  if (!db || !userId || userRole !== 'admin') {
+    setAuthError('Bạn không có quyền cập nhật thông tin tiền bối.');
+    return;
+  }
+  if (!editingFormerResident || !editingFormerResident.id) {
+    setAuthError('Không có tiền bối nào được chọn để cập nhật.');
+    return;
+  }
+  if (!editingFormerResident.name || !editingFormerResident.email || !editingFormerResident.deactivatedAt) {
+    setAuthError('Vui lòng điền đầy đủ Họ tên, Email, Ngày ra khỏi phòng.');
+    return;
+  }
+
+  try {
+    // Giữ lại URL avatar cũ làm mặc định
+    let avatarDownloadURL = editingFormerResident.photoURL; 
+
+    // CHỈ TẢI LÊN NẾU CÓ FILE MỚI ĐƯỢC CHỌN
+    if (editingFormerResidentAvatarFile) {
+      setIsUploadingEditingFormerResidentAvatar(true);
+      setUploadEditingFormerResidentAvatarProgress(0);
+
+      const formData = new FormData();
+      formData.append('file', editingFormerResidentAvatarFile);
+      formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET_AVATAR);
+      formData.append('folder', 'avatars/former-residents');
+
+      try {
+        // Tải file lên và gán kết quả vào biến 'response'
+        const response = await axios.post(CLOUDINARY_API_URL_IMAGE_UPLOAD, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          onUploadProgress: (progressEvent) => {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setUploadEditingFormerResidentAvatarProgress(percentCompleted);
+          },
+        });
+        
+        // Lấy URL mới sau khi tải lên thành công
+        avatarDownloadURL = response.data.secure_url;
+        console.log('Avatar tiền bối tải lên Cloudinary thành công, URL:', avatarDownloadURL);
+
+      } catch (uploadError) {
+        console.error('Lỗi khi tải ảnh avatar tiền bối lên Cloudinary:', uploadError);
+        setAuthError(`Lỗi khi tải ảnh: ${uploadError.message}`);
+        setIsUploadingEditingFormerResidentAvatar(false);
+        return; // Dừng hàm nếu tải ảnh lỗi
+      } finally {
+        setIsUploadingEditingFormerResidentAvatar(false);
+      }
     }
 
-    try {
-      let avatarDownloadURL = null;
-      const formerResidentDocRef = doc(
-        db,
-        `artifacts/${currentAppId}/public/data/formerResidents`,
-        editingFormerResident.id,
-      );
-      avatarDownloadURL = response.data.secure_url;
-      console.log('Avatar tiền bối tải lên Cloudinary thành công, URL:', avatarDownloadURL);
+    const formerResidentDocRef = doc(
+      db,
+      `artifacts/${currentAppId}/public/data/formerResidents`,
+      editingFormerResident.id
+    );
 
-      await updateDoc(formerResidentDocRef, {
-        name: editingFormerResident.name.trim(),
-        email: editingFormerResident.email.trim(),
-        phoneNumber: editingFormerResident.phoneNumber.trim() || null,
-        studentId: editingFormerResident.studentId.trim() || null,
-        birthday: editingFormerResident.birthday.trim() || null,
-        dormEntryDate: editingFormerResident.dormEntryDate.trim() || null,
-        academicLevel: editingFormerResident.academicLevel.trim() || null,
-        deactivatedAt: editingFormerResident.deactivatedAt, // Lưu ý: giữ nguyên định dạng (string YYYY-MM-DD)
-        photoURL: avatarDownloadURL,
-        lastUpdatedBy: userId,
-        lastUpdatedAt: serverTimestamp(),
-      });
+    // Dữ liệu cần cập nhật, loại bỏ ID
+    const { id, ...dataToUpdate } = editingFormerResident;
 
-      alert('Đã cập nhật thông tin tiền bối thành công!');
-      setEditingFormerResident(null); // Đóng modal/form chỉnh sửa
-    } catch (error) {
-      console.error('Lỗi khi cập nhật tiền bối:', error);
-      setAuthError(`Lỗi khi cập nhật tiền bối: ${error.message}`);
-    }
-  };
+    await updateDoc(formerResidentDocRef, {
+      ...dataToUpdate,
+      photoURL: avatarDownloadURL, // Lưu URL mới (hoặc cũ nếu không có file mới)
+      lastUpdatedBy: userId,
+      lastUpdatedAt: serverTimestamp(),
+    });
 
+    alert('Đã cập nhật thông tin tiền bối thành công!');
+    setEditingFormerResident(null); // Đóng modal
+    setEditingFormerResidentAvatarFile(null); // Reset file đã chọn
+  } catch (error) {
+    console.error('Lỗi khi cập nhật tiền bối:', error);
+    setAuthError(`Lỗi khi cập nhật tiền bối: ${error.message}`);
+  }
+};
   // Vô hiệu hóa hoặc kích hoạt lại một cư dân
   const handleToggleResidentActiveStatus = async (residentId, residentName, currentStatus) => {
     setAuthError('');
