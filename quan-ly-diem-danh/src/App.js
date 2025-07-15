@@ -627,6 +627,12 @@ function App() {
   const [formerResidentAvatarUploadProgress, setFormerResidentAvatarUploadProgress] = useState(0);
   const [isUploadingFormerResidentAvatar, setIsUploadingFormerResidentAvatar] = useState(false);
   const [formerResidentAvatarError, setFormerResidentAvatarError] = useState('');
+  const [uploadFormerResidentAvatarProgress, setUploadFormerResidentAvatarProgress] = useState(0);
+
+  //Cho popup sửa tiền bối
+  const [editingFormerResidentAvatarFile, setEditingFormerResidentAvatarFile] = useState(null);
+  const [isUploadingEditingFormerResidentAvatar, setIsUploadingEditingFormerResidentAvatar] = useState(false);
+  const [uploadEditingFormerResidentAvatarProgress, setUploadEditingFormerResidentAvatarProgress] = useState(0);
 
   // Để lưu trữ avatar URLs
   const [userAvatarUrl, setUserAvatarUrl] = useState(null);
@@ -2528,6 +2534,7 @@ const handleAvatarFileChange = (event) => {
         dormEntryDate: editingFormerResident.dormEntryDate.trim() || null,
         academicLevel: editingFormerResident.academicLevel.trim() || null,
         deactivatedAt: editingFormerResident.deactivatedAt, // Lưu ý: giữ nguyên định dạng (string YYYY-MM-DD)
+        photoURL: avatarDownloadURL,
         lastUpdatedBy: userId,
         lastUpdatedAt: serverTimestamp(),
       });
@@ -4798,6 +4805,26 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                               rows="3"
                               placeholder="Ví dụ: Khóa, chuyên ngành, công ty hiện tại..."
                             ></textarea>
+                          </div>
+                          <div>
+                            <label htmlFor="formerResidentAvatar" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                              Chọn avatar:
+                            </label>
+                            <input
+                              type="file"
+                              id="formerResidentAvatar"
+                              accept="image/*"
+                              onChange={(e) => setNewFormerResidentAvatarFile(e.target.files && e.target.files.length > 0 ? e.target.files : null)}
+                              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
+                            />
+                            {isUploadingFormerResidentAvatar && (
+                              <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2">
+                                <div className="bg-purple-600 h-2.5 rounded-full" style={{ width: `${uploadFormerResidentAvatarProgress}%` }}></div>
+                              </div>
+                            )}
+                            {uploadFormerResidentAvatarProgress > 0 && uploadFormerResidentAvatarProgress < 100 && (
+                              <p className="text-gray-500 dark:text-gray-400 text-sm mt-1 text-right">{uploadFormerResidentAvatarProgress}% tải lên</p>
+                            )}
                           </div>
                           <div className="flex space-x-4 mt-6">
                             <button
@@ -8024,6 +8051,43 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                     className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
                     rows="3"
                   ></textarea>
+                </div>
+
+                <div className="flex items-center mb-4">
+                  <div className="flex-shrink-0 mr-4">
+                    {editingFormerResident?.photoURL ? (
+                      <img
+                        src={editingFormerResident.photoURL}
+                        alt="Avatar hiện tại"
+                        className="w-16 h-16 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 text-2xl">
+                        <i className="fas fa-user-circle"></i>
+                      </div>
+                    )}
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 text-center">Avatar hiện tại</p>
+                  </div>
+                  <div>
+                    <label htmlFor="editFormerAvatar" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                      Chọn avatar mới (tùy chọn):
+                    </label>
+                    <input
+                      type="file"
+                      id="editFormerAvatar"
+                      accept="image/*"
+                      onChange={(e) => setEditingFormerResidentAvatarFile(e.target.files && e.target.files.length > 0 ? e.target.files : null)}
+                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    />
+                    {isUploadingEditingFormerResidentAvatar && (
+                      <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2">
+                        <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${uploadEditingFormerResidentAvatarProgress}%` }}></div>
+                      </div>
+                    )}
+                    {uploadEditingFormerResidentAvatarProgress > 0 && uploadEditingFormerResidentAvatarProgress < 100 && (
+                      <p className="text-gray-500 dark:text-gray-400 text-sm mt-1 text-right">{uploadEditingFormerResidentAvatarProgress}% tải lên</p>
+                    )}
+                  </div>
                 </div>
 
                 {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
