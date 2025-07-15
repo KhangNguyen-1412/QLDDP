@@ -52,21 +52,21 @@ const CLOUDINARY_API_URL_IMAGE_UPLOAD = `https://api.cloudinary.com/v1_1/${CLOUD
 const CLOUDINARY_API_URL_AUTO_UPLOAD = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`; // API cho upload tự động (ảnh/video)
 // KẾT THÚC KHAI BÁO CLOUDINARY
 
-// Thêm các state và hàm này vào đầu component App
-const [profilePopoverAnchor, setProfilePopoverAnchor] = useState(null);
-
-const handleProfileClick = (event) => {
-  setProfilePopoverAnchor(event.currentTarget);
-};
-
-const handleProfileClose = () => {
-  setProfilePopoverAnchor(null);
-};
-
 function App() {
   const [storage, setStorage] = useState(null);
   // Các state liên quan tới theme mùa
   const [seasonalEffectElements, setSeasonalEffectElements] = useState([]);
+
+  // Thêm các state và hàm này vào đầu component App
+  const [profilePopoverAnchor, setProfilePopoverAnchor] = useState(null);
+
+  const handleProfileClick = (event) => {
+    setProfilePopoverAnchor(event.currentTarget);
+  };
+
+  const handleProfileClose = () => {
+    setProfilePopoverAnchor(null);
+  };
 
   // Thêm state để kiểm soát việc Admin thêm tài khoản mới
   const [newAccountStudentId, setNewAccountStudentId] = useState('');
