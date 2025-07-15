@@ -52,6 +52,17 @@ const CLOUDINARY_API_URL_IMAGE_UPLOAD = `https://api.cloudinary.com/v1_1/${CLOUD
 const CLOUDINARY_API_URL_AUTO_UPLOAD = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`; // API cho upload tự động (ảnh/video)
 // KẾT THÚC KHAI BÁO CLOUDINARY
 
+// Thêm các state và hàm này vào đầu component App
+const [profilePopoverAnchor, setProfilePopoverAnchor] = useState(null);
+
+const handleProfileClick = (event) => {
+  setProfilePopoverAnchor(event.currentTarget);
+};
+
+const handleProfileClose = () => {
+  setProfilePopoverAnchor(null);
+};
+
 function App() {
   const [storage, setStorage] = useState(null);
   // Các state liên quan tới theme mùa
@@ -5104,233 +5115,233 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               </div>
             </div>
           );
+          case 'myProfileDetails': // Chỉ hiển thị thông tin hồ sơ
+            return (
+              <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+                <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Hồ sơ của tôi</h2>
+                <div className="space-y-4">
+                  {/* Các trường thông tin cá nhân */}
+                  <div>
+                    <label
+                      htmlFor="editFullName"
+                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                    >
+                      Họ tên đầy đủ:
+                    </label>
+                    <input
+                      type="text"
+                      id="editFullName"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="editPhoneNumber"
+                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                    >
+                      Số điện thoại:
+                    </label>
+                    <input
+                      type="text"
+                      id="editPhoneNumber"
+                      value={memberPhoneNumber}
+                      onChange={(e) => setMemberPhoneNumber(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="editStudentId"
+                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                    >
+                      Mã số sinh viên:
+                    </label>
+                    <input
+                      type="text"
+                      id="editStudentId"
+                      value={memberStudentId}
+                      onChange={(e) => setMemberStudentId(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="editBirthday"
+                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                    >
+                      Ngày sinh:
+                    </label>
+                    <input
+                      type="date"
+                      id="editBirthday"
+                      value={memberBirthday}
+                      onChange={(e) => setMemberBirthday(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="editDormEntryDate"
+                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                    >
+                      Ngày nhập KTX:
+                    </label>
+                    <input
+                      type="date"
+                      id="editDormEntryDate"
+                      value={memberDormEntryDate}
+                      onChange={(e) => setMemberDormEntryDate(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="editAcademicLevel"
+                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                    >
+                      Email trường:
+                    </label>
+                    <input
+                      type="text"
+                      id="editAcademicLevel"
+                      value={memberAcademicLevel}
+                      onChange={(e) => setMemberAcademicLevel(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
 
-        case 'adminProfileEdit': // Chỉnh sửa thông tin cá nhân cho Admin
-          return (
-            <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Chỉnh sửa hồ sơ của tôi</h2>
-              {/* Form chỉnh sửa profile tương tự như member */}
-              <div className="space-y-4">
-                <div>
-                  <label
-                    htmlFor="adminEditFullName"
-                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                  >
-                    Họ tên đầy đủ:
-                  </label>
-                  <input
-                    type="text"
-                    id="adminEditFullName"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="adminEditPhoneNumber"
-                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                  >
-                    Số điện thoại:
-                  </label>
-                  <input
-                    type="text"
-                    id="adminEditPhoneNumber"
-                    value={memberPhoneNumber} // Vẫn dùng state này
-                    onChange={(e) => setMemberPhoneNumber(e.target.value)}
-                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="adminEditStudentId"
-                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                  >
-                    Mã số sinh viên:
-                  </label>
-                  <input
-                    type="text"
-                    id="adminEditStudentId"
-                    value={memberStudentId} // Vẫn dùng state này
-                    onChange={(e) => setMemberStudentId(e.target.value)}
-                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="adminEditBirthday"
-                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                  >
-                    Ngày sinh:
-                  </label>
-                  <input
-                    type="date"
-                    id="adminEditBirthday"
-                    value={memberBirthday} // Vẫn dùng state này
-                    onChange={(e) => setMemberBirthday(e.target.value)}
-                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="adminEditDormEntryDate"
-                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                  >
-                    Ngày nhập KTX:
-                  </label>
-                  <input
-                    type="date"
-                    id="adminEditDormEntryDate"
-                    value={memberDormEntryDate} // Vẫn dùng state này
-                    onChange={(e) => setMemberDormEntryDate(e.target.value)}
-                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="adminEditAcademicLevel"
-                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                  >
-                    Email trường:
-                  </label>
-                  <input
-                    type="text"
-                    id="adminEditAcademicLevel"
-                    value={memberAcademicLevel} // Vẫn dùng state này
-                    onChange={(e) => setMemberAcademicLevel(e.target.value)}
-                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                  />
-                </div>
-
-                <div className="mt-8 pt-6 border-t border-gray-300 dark:border-gray-600">
-                  <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-4">Ảnh đại diện</h3>
-                  <div className="flex items-center space-x-4 mb-4">
-                    {userAvatarUrl ? (
-                      <img
-                        src={userAvatarUrl}
-                        alt="Avatar"
-                        className="w-24 h-24 rounded-full object-cover shadow-lg border border-gray-200 dark:border-gray-700"
-                      />
-                    ) : (
-                      <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-5xl">
-                        <i className="fas fa-user-circle"></i>
-                      </div>
-                    )}
-                    <div>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                          setNewAvatarFile(e.target.files[0]);
-                          setAvatarError('');
-                        }}
-                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                      />
-                      {isUploadingAvatar && (
-                        <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2">
-                          <div
-                            className="bg-blue-600 h-2.5 rounded-full"
-                            style={{ width: `${avatarUploadProgress}%` }}
-                          ></div>
+                  {/* Phần tải ảnh đại diện */}
+                  <div className="mt-8 pt-6 border-t border-gray-300 dark:border-gray-600">
+                    <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-4">Ảnh đại diện</h3>
+                    <div className="flex items-center space-x-4 mb-4">
+                      {userAvatarUrl ? (
+                        <img
+                          src={userAvatarUrl}
+                          alt="Avatar"
+                          className="w-24 h-24 rounded-full object-cover shadow-lg border-2 border-gray-200 dark:border-gray-700"
+                        />
+                      ) : (
+                        <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-5xl">
+                          <i className="fas fa-user-circle"></i>
                         </div>
                       )}
-                      {avatarError && <p className="text-red-500 text-sm mt-2">{avatarError}</p>}
-                      <button
-                        onClick={handleUploadMyAvatar}
-                        className="mt-3 px-4 py-2 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
-                        disabled={isUploadingAvatar || !newAvatarFile}
-                      >
-                        {isUploadingAvatar ? (
-                          <i className="fas fa-spinner fa-spin mr-2"></i>
-                        ) : (
-                          <i className="fas fa-upload mr-2"></i>
+                      <div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            setNewAvatarFile(e.target.files[0]);
+                            setAvatarError('');
+                          }}
+                          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                        />
+                        {isUploadingAvatar && (
+                          <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2">
+                            <div
+                              className="bg-blue-600 h-2.5 rounded-full"
+                              style={{ width: `${avatarUploadProgress}%` }}
+                            ></div>
+                          </div>
                         )}
-                        Tải ảnh đại diện
-                      </button>
+                        {avatarError && <p className="text-red-500 text-sm mt-2">{avatarError}</p>}
+                        <button
+                          onClick={handleUploadMyAvatar}
+                          className="mt-3 px-4 py-2 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+                          disabled={isUploadingAvatar || !newAvatarFile}
+                        >
+                          {isUploadingAvatar ? (
+                            <i className="fas fa-spinner fa-spin mr-2"></i>
+                          ) : (
+                            <i className="fas fa-upload mr-2"></i>
+                          )}
+                          Tải ảnh đại diện
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
-
-                <button
-                  onClick={handleSaveUserProfile} // Gọi hàm đã được đổi tên
-                  className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
-                >
-                  <i className="fas fa-save mr-2"></i> Lưu thông tin
-                </button>
-                {/* Có thể thêm nút "Hủy" nếu muốn, nhưng admin sẽ không có chế độ "editProfileMode" như member */}
-
-                {/* Phần đổi mật khẩu */}
-                <div className="mt-10 pt-6 border-t border-gray-300 dark:border-gray-600">
-                  <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-4">Đổi mật khẩu</h3>
-                  <div className="space-y-4">
-                    <div>
-                      <label
-                        htmlFor="oldPasswordAdmin"
-                        className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                      >
-                        Mật khẩu cũ:
-                      </label>
-                      <input
-                        type="password"
-                        id="oldPasswordAdmin"
-                        value={oldPassword}
-                        onChange={(e) => setOldPassword(e.target.value)}
-                        className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Nhập mật khẩu cũ"
-                      />
-                    </div>
-                    <div>
-                      <label
-                        htmlFor="newPasswordAdmin"
-                        className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                      >
-                        Mật khẩu mới:
-                      </label>
-                      <input
-                        type="password"
-                        id="newPasswordAdmin"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)"
-                      />
-                    </div>
-                    <div>
-                      <label
-                        htmlFor="confirmNewPasswordAdmin"
-                        className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                      >
-                        Xác nhận mật khẩu mới:
-                      </label>
-                      <input
-                        type="password"
-                        id="confirmNewPasswordAdmin"
-                        value={confirmNewPassword}
-                        onChange={(e) => setConfirmNewPassword(e.target.value)}
-                        className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Xác nhận mật khẩu mới"
-                      />
-                    </div>
-                    {passwordChangeMessage && (
-                      <p
-                        className={`text-sm text-center mt-4 ${passwordChangeMessage.includes('thành công') ? 'text-green-600' : 'text-red-500'}`}
-                      >
-                        {passwordChangeMessage}
-                      </p>
-                    )}
-                    <button
-                      onClick={handleChangePassword}
-                      className="w-full px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-md hover:bg-red-700 transition-all duration-300"
-                    >
-                      <i className="fas fa-key mr-2"></i> Đổi mật khẩu
-                    </button>
-                  </div>
+                  {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
+                  <button
+                    onClick={handleSaveUserProfile}
+                    className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+                  >
+                    <i className="fas fa-save mr-2"></i> Lưu thông tin
+                  </button>
                 </div>
               </div>
-            </div>
-          );
+            );
+
+          case 'passwordSettings': // MỤC MỚI: Chỉ hiển thị phần đổi mật khẩu
+            return (
+              <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+                <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Đổi mật khẩu</h2>
+                <div className="space-y-4">
+                  <div>
+                    <label
+                      htmlFor="oldPassword"
+                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                    >
+                      Mật khẩu cũ:
+                    </label>
+                    <input
+                      type="password"
+                      id="oldPassword"
+                      value={oldPassword}
+                      onChange={(e) => setOldPassword(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                      placeholder="Nhập mật khẩu cũ"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="newPassword"
+                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                    >
+                      Mật khẩu mới:
+                    </label>
+                    <input
+                      type="password"
+                      id="newPassword"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                      placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="confirmNewPassword"
+                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                    >
+                      Xác nhận mật khẩu mới:
+                    </label>
+                    <input
+                      type="password"
+                      id="confirmNewPassword"
+                      value={confirmNewPassword}
+                      onChange={(e) => setConfirmNewPassword(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                      placeholder="Xác nhận mật khẩu mới"
+                    />
+                  </div>
+                  {passwordChangeMessage && (
+                    <p
+                      className={`text-sm text-center mt-4 ${passwordChangeMessage.includes('thành công') ? 'text-green-600' : 'text-red-500'}`}
+                    >
+                      {passwordChangeMessage}
+                    </p>
+                  )}
+                  <button
+                    onClick={handleChangePassword}
+                    className="w-full px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-md hover:bg-red-700 transition-all duration-300"
+                  >
+                    <i className="fas fa-key mr-2"></i> Đổi mật khẩu
+                  </button>
+                </div>
+              </div>
+            );
           case 'adminCreateAccount': // NEW CASE FOR ADMIN
                 return (
                     <div className="p-6 bg-purple-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
@@ -5861,17 +5872,12 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               )}
             </div>
           );
-        case 'memberProfileEdit': // Chỉnh sửa thông tin cá nhân (thành viên có thể tự chỉnh sửa)
-          return (
-            <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Chỉnh sửa thông tin cá nhân</h2>
-              {!loggedInResidentProfile ? (
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
-                  Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.
-                </p>
-              ) : (
+          case 'myProfileDetails': // MỤC MỚI: Chỉ hiển thị thông tin hồ sơ
+            return (
+              <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+                <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Hồ sơ của tôi</h2>
                 <div className="space-y-4">
-                  {/* CÁC TRƯỜNG DỮ LIỆU CÁ NHÂN ĐỂ CHỈNH SỬA */}
+                  {/* Các trường thông tin cá nhân */}
                   <div>
                     <label
                       htmlFor="editFullName"
@@ -5948,38 +5954,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                     />
                   </div>
                   <div>
-                      <label htmlFor="editEmail" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                          Email cá nhân:
-                      </label>
-                      <div className="flex items-center gap-2">
-                          <input
-                              type="email"
-                              id="editEmail"
-                              value={email}
-                              onChange={(e) => setEmail(e.target.value)}
-                              className="flex-grow shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                              placeholder="Nhập email cá nhân của bạn"
-                          />
-                          {/* NÚT GỬI XÁC THỰC EMAIL */}
-                          <button
-                              onClick={handleResendVerificationEmail}
-                              className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-xl shadow-md hover:bg-indigo-700 transition-all duration-300"
-                              disabled={!email.trim() || (auth.currentUser && auth.currentUser.emailVerified)} // Vô hiệu hóa nếu email trống hoặc đã xác minh
-                          >
-                              <i className="fas fa-paper-plane mr-2"></i>
-                              {auth.currentUser && auth.currentUser.emailVerified ? 'Đã xác minh' : 'Gửi xác thực'}
-                          </button>
-                      </div>
-                      {auth.currentUser && !auth.currentUser.emailVerified && email.trim() && (
-                          <p className="text-red-500 text-xs mt-1">Email chưa xác minh. Vui lòng kiểm tra hộp thư.</p>
-                      )}
-                        {passwordChangeMessage && ( // Dùng lại cho thông báo gửi xác minh
-                          <p className={`text-sm text-center mt-4 ${passwordChangeMessage.includes('thành công') ? 'text-green-600' : 'text-red-500'}`}>
-                              {passwordChangeMessage}
-                          </p>
-                      )}
-                  </div>
-                  <div>
                     <label
                       htmlFor="editAcademicLevel"
                       className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
@@ -5995,6 +5969,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                     />
                   </div>
 
+                  {/* Phần tải ảnh đại diện */}
                   <div className="mt-8 pt-6 border-t border-gray-300 dark:border-gray-600">
                     <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-4">Ảnh đại diện</h3>
                     <div className="flex items-center space-x-4 mb-4">
@@ -6002,7 +5977,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                         <img
                           src={userAvatarUrl}
                           alt="Avatar"
-                          className="w-24 h-24 rounded-full object-cover shadow-lg border border-gray-200 dark:border-gray-700"
+                          className="w-24 h-24 rounded-full object-cover shadow-lg border-2 border-gray-200 dark:border-gray-700"
                         />
                       ) : (
                         <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-5xl">
@@ -6045,70 +6020,66 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                   </div>
 
                   {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
-
                   <button
-                    onClick={handleSaveUserProfile} // <-- Đã đổi tên hàm
+                    onClick={handleSaveUserProfile}
                     className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
                   >
                     <i className="fas fa-save mr-2"></i> Lưu thông tin
                   </button>
-                  <button
-                    onClick={() => setEditProfileMode(false)}
-                    className="w-full mt-2 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
-                  >
-                    Hủy
-                  </button>
                 </div>
-              )}
-              {/* Phần đổi mật khẩu */}
-              <div className="mt-10 pt-6 border-t border-gray-300 dark:border-gray-600">
-                <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-4">Đổi mật khẩu</h3>
+              </div>
+            );
+
+          case 'passwordSettings': // MỤC MỚI: Chỉ hiển thị phần đổi mật khẩu
+            return (
+              <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+                <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Đổi mật khẩu</h2>
                 <div className="space-y-4">
                   <div>
                     <label
-                      htmlFor="oldPasswordMember"
+                      htmlFor="oldPassword"
                       className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
                     >
                       Mật khẩu cũ:
                     </label>
                     <input
                       type="password"
-                      id="oldPasswordMember" // Đổi ID cho phù hợp với member
+                      id="oldPassword"
                       value={oldPassword}
                       onChange={(e) => setOldPassword(e.target.value)}
-                      className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
                       placeholder="Nhập mật khẩu cũ"
                     />
                   </div>
                   <div>
                     <label
-                      htmlFor="newPasswordMember"
+                      htmlFor="newPassword"
                       className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
                     >
                       Mật khẩu mới:
                     </label>
                     <input
                       type="password"
-                      id="newPasswordMember" // Đổi ID cho phù hợp với member
+                      id="newPassword"
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
-                      className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
                       placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)"
                     />
                   </div>
                   <div>
                     <label
-                      htmlFor="confirmNewPasswordMember"
+                      htmlFor="confirmNewPassword"
                       className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
                     >
                       Xác nhận mật khẩu mới:
                     </label>
                     <input
                       type="password"
-                      id="confirmNewPasswordMember" // Đổi ID cho phù hợp với member
+                      id="confirmNewPassword"
                       value={confirmNewPassword}
                       onChange={(e) => setConfirmNewPassword(e.target.value)}
-                      className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
                       placeholder="Xác nhận mật khẩu mới"
                     />
                   </div>
@@ -6127,8 +6098,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                   </button>
                 </div>
               </div>
-            </div>
-          );
+            );
           case 'roomMemories':
             return (
               <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
@@ -6608,37 +6578,21 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
       </div>
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 shadow-md p-4 flex justify-between items-center sticky top-0 z-30">
-        <button
-          className="lg:hidden p-2 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        >
-          <i className="fas fa-bars text-xl"></i>
-        </button>
-        <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Quản lý phòng</h1>
-        <div className="flex items-center space-x-3 mb-4">
-          {userAvatarUrl ? (
-            <img
-              src={userAvatarUrl}
-              alt="Avatar"
-              className="w-12 h-12 rounded-full object-cover border border-gray-200 dark:border-gray-700"
-            />
-          ) : (
-            <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-2xl">
-              <i className="fas fa-user-circle"></i>
-            </div>
-          )}
-          <div>
-            <p className="text-gray-800 dark:text-gray-100 font-semibold">{fullName}</p>
-            {userRole && (
-              <p className="text-gray-600 dark:text-gray-400 text-sm">
-                {userRole === 'admin' ? 'Trưởng phòng/phó phòng' : 'Thành viên'}
-              </p>
-            )}
-          </div>
-        </div>
+        {/* KHỐI BÊN TRÁI: Chứa nút toggle và tiêu đề */}
         <div className="flex items-center space-x-4">
-          {/* Biểu tượng thông báo */}
-          {userId && ( // Chỉ hiển thị nếu đã đăng nhập
+          <button
+            className="lg:hidden p-2 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          >
+            <i className="fas fa-bars text-xl"></i>
+          </button>
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Quản lý phòng</h1>
+        </div>
+
+        {/* KHỐI BÊN PHẢI: Chứa các nút hành động */}
+        <div className="flex items-center space-x-4">
+          {/* Nút thông báo */}
+          {userId && (
             <button
               onClick={() => setShowNotificationsModal(true)}
               className="relative p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 shadow-md hover:shadow-lg transition-all duration-300"
@@ -6651,26 +6605,66 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               )}
             </button>
           )}
-          {/* Theme Toggle Button */}
+          
+          {/* Nút đổi theme */}
           <button
             onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
             className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 shadow-md hover:shadow-lg transition-all duration-300"
           >
             {theme === 'light' ? <i className="fas fa-moon text-lg"></i> : <i className="fas fa-sun text-lg"></i>}
           </button>
-          {/* Nút đăng xuất */}
+          
+          {/* ===== AVATAR VÀ POPOVER PROFILE ===== */}
           {userId && (
-            <button
-              onClick={handleSignOut}
-              className="p-2 rounded-full bg-red-100 dark:bg-red-800 text-red-600 dark:text-red-200 shadow-md hover:shadow-lg hover:bg-red-200 dark:hover:bg-red-700 transition-all duration-300"
-              title="Đăng xuất"
-            >
-              <i className="fas fa-sign-out-alt text-lg"></i>
-            </button>
+            <div className="relative">
+              {/* Nút Avatar */}
+              <button onClick={handleProfileClick} className="focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-full">
+                {userAvatarUrl ? (
+                  <img
+                    src={userAvatarUrl}
+                    alt="Avatar"
+                    className="w-12 h-12 rounded-full object-cover border-2 border-gray-300 dark:border-gray-600"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-2xl border-2 border-gray-300 dark:border-gray-600">
+                    <i className="fas fa-user-circle"></i>
+                  </div>
+                )}
+              </button>
+              
+              {/* Popover Paper */}
+              {Boolean(profilePopoverAnchor) && (
+                <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-40">
+                  <div className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="user-menu-button">
+                    <button
+                      onClick={() => { setActiveSection('myProfileDetails'); handleProfileClose(); }}
+                      className="w-full text-left block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      role="menuitem"
+                    >
+                      Hồ sơ của tôi
+                    </button>
+                    <button
+                      onClick={() => { setActiveSection('passwordSettings'); handleProfileClose(); }}
+                      className="w-full text-left block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      role="menuitem"
+                    >
+                      Mật khẩu
+                    </button>
+                    <div className="border-t border-gray-200 dark:border-gray-700"></div>
+                    <button
+                      onClick={handleSignOut}
+                      className="w-full text-left block px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-gray-700"
+                      role="menuitem"
+                    >
+                      Đăng xuất
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </header>
-
       {/* Main Content Area */}
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
@@ -7016,19 +7010,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                     }}
                   >
                     <i className="fas fa-user-graduate mr-3"></i> Thông tin tiền bối
-                  </button>
-                  <button
-                    className={`w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
-                      activeSection === 'memberProfileEdit'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                    onClick={() => {
-                      setActiveSection('memberProfileEdit');
-                      setIsSidebarOpen(false);
-                    }}
-                  >
-                    <i className="fas fa-user-edit mr-3"></i> Chỉnh sửa thông tin cá nhân
                   </button>
                 </>
               )}
