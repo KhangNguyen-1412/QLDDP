@@ -53,6 +53,8 @@ const CLOUDINARY_API_URL_AUTO_UPLOAD = `https://api.cloudinary.com/v1_1/${CLOUDI
 // KẾT THÚC KHAI BÁO CLOUDINARY
 
 function App() {
+  // Thêm vào cùng với các state khác ở đầu component App
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [storage, setStorage] = useState(null);
   // Các state liên quan tới theme mùa
   const [seasonalEffectElements, setSeasonalEffectElements] = useState([]);
@@ -6699,12 +6701,15 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
         <aside
-          className={`flex-shrink-0 fixed inset-y-0 left-0 w-64 bg-white dark:bg-gray-800 shadow-lg transform ${
+          className={`flex-shrink-0 fixed inset-y-0 left-0 bg-white dark:bg-gray-800 shadow-lg transform ${
             isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-          } lg:relative lg:translate-x-0 transition-transform duration-300 ease-in-out z-20 h-full flex flex-col`}
+          } lg:relative lg:translate-x-0 transition-all duration-300 ease-in-out z-20 h-full flex flex-col ${
+            isSidebarCollapsed ? 'lg:w-20' : 'lg:w-64'
+          }`}
         >
           {/* Close button for mobile sidebar */}
-          <div className="flex-1 p-6 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden">
+          {/* Nút đóng cho di động */}
           <div className="flex justify-end lg:hidden mb-4">
             <button
               onClick={() => setIsSidebarOpen(false)}
@@ -6746,177 +6751,199 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
             </div>
           </div>
           {/* ===== KHỐI THÔNG TIN CÁ NHÂN - KẾT THÚC ===== */}
-          <nav className="space-y-1">
+          {!isSidebarCollapsed && (
+            <div className="ml-4">
+              <p className="font-bold text-gray-800 dark:text-white break-words">{fullName}</p>
+              {memberStudentId && (<p className="text-sm text-gray-600 dark:text-gray-400">{memberStudentId}</p>)}
+              <p className="text-xs text-gray-500 dark:text-gray-300 mt-1">{userRole === 'admin' ? 'Quản trị viên' : 'Thành viên'}</p>
+            </div>
+          )}
+          <nav className="space-y-1 px-4">
             {/* ===== ĐIỀU HƯỚNG CỦA ADMIN ===== */}
             {userId && userRole === 'admin' && (
               <>
                 {/* --- Nhóm Cá Nhân --- */}
                 <div>
-                  <h3 className="sidebar-group-title">Cá Nhân</h3>
+                  {!isSidebarCollapsed && <h3 className="sidebar-group-title">Cá Nhân</h3>}
                   <button
-                    className={`block w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
                       activeSection === 'dashboard'
                         ? 'bg-blue-600 text-white shadow-md'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                     onClick={() => { setActiveSection('dashboard'); setIsSidebarOpen(false); }}
                   >
-                    <i className="fas fa-tachometer-alt mr-3"></i> Dashboard
+                    <i className="fas fa-tachometer-alt"></i>
+                    {!isSidebarCollapsed && <span className="ml-3">Dashboard</span>}
                   </button>
                   <button
-                    className={`block w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
                       activeSection === 'customNotificationDesign'
                         ? 'bg-blue-600 text-white shadow-md'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                     onClick={() => { setActiveSection('customNotificationDesign'); setIsSidebarOpen(false); }}
                   >
-                    <i className="fas fa-bullhorn mr-3"></i> Quản lý Thông báo
+                    <i className="fas fa-bullhorn"></i>
+                    {!isSidebarCollapsed && <span className="ml-3">Quản lý Thông báo</span>}
                   </button>
                 </div>
 
                 {/* --- Nhóm Quản Lý Chung --- */}
                 <div className="pt-2">
-                  <h3 className="sidebar-group-title">Quản Lý Chung</h3>
+                  {!isSidebarCollapsed && <h3 className="sidebar-group-title">Quản Lý Chung</h3>}
                   <button
-                    className={`block w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
                       activeSection === 'residentManagement'
                         ? 'bg-blue-600 text-white shadow-md'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                     onClick={() => { setActiveSection('residentManagement'); setIsSidebarOpen(false); }}
                   >
-                    <i className="fas fa-users mr-3"></i> Quản lý người ở
+                    <i className="fas fa-users"></i>
+                    {!isSidebarCollapsed && <span className="ml-3">Quản lý người ở</span>}
                   </button>
                   <button
-                    className={`block w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
                       activeSection === 'attendanceTracking'
                         ? 'bg-blue-600 text-white shadow-md'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                     onClick={() => { setActiveSection('attendanceTracking'); setIsSidebarOpen(false); }}
                   >
-                    <i className="fas fa-calendar-alt mr-3"></i> Điểm danh hàng ngày
+                    <i className="fas fa-calendar-alt"></i>
+                    {!isSidebarCollapsed && <span className="ml-3">Điểm danh hàng ngày</span>}
                   </button>
                   <button
-                    className={`block w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
                       activeSection === 'billing'
                         ? 'bg-blue-600 text-white shadow-md'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                     onClick={() => { setActiveSection('billing'); setIsSidebarOpen(false); }}
                   >
-                    <i className="fas fa-file-invoice-dollar mr-3"></i> Tính tiền điện nước
+                    <i className="fas fa-file-invoice-dollar"></i>
+                    {!isSidebarCollapsed && <span className="ml-3">Tính tiền điện nước</span>}
                   </button>
                   <button
-                    className={`block w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
                       activeSection === 'costSharing'
                         ? 'bg-blue-600 text-white shadow-md'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                     onClick={() => { setActiveSection('costSharing'); setIsSidebarOpen(false); }}
                   >
-                    <i className="fas fa-handshake mr-3"></i> Chia tiền & Nhắc nhở
+                    <i className="fas fa-handshake"></i>
+                    {!isSidebarCollapsed && <span className="ml-3">Chia tiền & Nhắc nhở</span>}
                   </button>
                   <button
-                    className={`block w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
                       activeSection === 'cleaningSchedule'
                         ? 'bg-blue-600 text-white shadow-md'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                     onClick={() => { setActiveSection('cleaningSchedule'); setIsSidebarOpen(false); }}
                   >
-                    <i className="fas fa-broom mr-3"></i> Lịch trực phòng
+                    <i className="fas fa-broom"></i>
+                    {!isSidebarCollapsed && <span className="ml-3">Lịch trực phòng</span>}
                   </button>
                   <button
-                    className={`block w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
                       activeSection === 'shoeRackManagement'
                         ? 'bg-blue-600 text-white shadow-md'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                     onClick={() => { setActiveSection('shoeRackManagement'); setIsSidebarOpen(false); }}
                   >
-                    <i className="fas fa-shoe-prints mr-3"></i> Quản lý kệ giày
+                    <i className="fas fa-shoe-prints"></i>
+                    {!isSidebarCollapsed && <span className="ml-3">Quản lý kệ giày</span>}
                   </button>
                   <button
-                    className={`block w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
                       activeSection === 'adminCreateAccount'
                         ? 'bg-blue-600 text-white shadow-md'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                     onClick={() => { setActiveSection('adminCreateAccount'); setIsSidebarOpen(false); }}
                   >
-                    <i className="fas fa-user-plus mr-3"></i> Tạo tài khoản mới
+                    <i className="fas fa-user-plus"></i>
+                    {!isSidebarCollapsed && <span className="ml-3">Tạo tài khoản mới</span>}
                   </button>
                 </div>
 
                 {/* --- Nhóm Sinh Hoạt & Lưu Trữ --- */}
                 <div className="pt-2">
-                  <h3 className="sidebar-group-title">Sinh Hoạt & Lưu Trữ</h3>
+                  {!isSidebarCollapsed && <h3 className="sidebar-group-title">Sinh Hoạt & Lưu Trữ</h3>}
                   <button
-                    className={`block w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
                       activeSection === 'commonRoomInfo'
                         ? 'bg-blue-600 text-white shadow-md'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                     onClick={() => { setActiveSection('commonRoomInfo'); setIsSidebarOpen(false); }}
                   >
-                    <i className="fas fa-info-circle mr-3"></i> Thông tin phòng chung
+                    <i className="fas fa-info-circle"></i>
+                    {!isSidebarCollapsed && <span className="ml-3">Thông tin phòng chung</span>}
                   </button>
                   <button
-                    className={`block w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
                       activeSection === 'roomMemories'
                         ? 'bg-blue-600 text-white shadow-md'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                     onClick={() => { setActiveSection('roomMemories'); setIsSidebarOpen(false); }}
                   >
-                    <i className="fas fa-camera mr-3"></i> Kỷ niệm phòng
+                    <i className="fas fa-camera"></i>
+                    {!isSidebarCollapsed && <span className="ml-3">Kỷ niệm phòng</span>}
                   </button>
                   <button
-                    className={`block w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
                       activeSection === 'formerResidents'
                         ? 'bg-blue-600 text-white shadow-md'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                     onClick={() => { setActiveSection('formerResidents'); setIsSidebarOpen(false); }}
                   >
-                    <i className="fas fa-user-graduate mr-3"></i> Thông tin tiền bối
+                    <i className="fas fa-user-graduate"></i>
+                    {!isSidebarCollapsed && <span className="ml-3">Thông tin tiền bối</span>}
                   </button>
                 </div>
 
                 {/* --- Nhóm Báo Cáo & Thống Kê --- */}
                 <div className="pt-2">
-                  <h3 className="sidebar-group-title">Báo Cáo & Thống Kê</h3>
+                  {!isSidebarCollapsed && <h3 className="sidebar-group-title">Báo Cáo & Thống Kê</h3>}
                   <button
-                    className={`block w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
                       activeSection === 'billHistory'
                         ? 'bg-blue-600 text-white shadow-md'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                     onClick={() => { setActiveSection('billHistory'); setIsSidebarOpen(false); }}
                   >
-                    <i className="fas fa-history mr-3"></i> Lịch sử hóa đơn
+                    <i className="fas fa-history"></i>
+                    {!isSidebarCollapsed && <span className="ml-3">Lịch sử hóa đơn</span>}
                   </button>
                   <button
-                    className={`block w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
                       activeSection === 'costSharingHistory'
                         ? 'bg-blue-600 text-white shadow-md'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                     onClick={() => { setActiveSection('costSharingHistory'); setIsSidebarOpen(false); }}
                   >
-                    <i className="fas fa-receipt mr-3"></i> Lịch sử chia tiền
+                    <i className="fas fa-receipt"></i>
+                    {!isSidebarCollapsed && <span className="ml-3">Lịch sử chia tiền</span>}
                   </button>
                   <button
-                    className={`block w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
                       activeSection === 'consumptionStats'
                         ? 'bg-blue-600 text-white shadow-md'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                     onClick={() => { setActiveSection('consumptionStats'); setIsSidebarOpen(false); }}
                   >
-                    <i className="fas fa-chart-bar mr-3"></i> Thống kê tiêu thụ
+                    <i className="fas fa-chart-bar"></i>
+                    {!isSidebarCollapsed && <span className="ml-3">Thống kê tiêu thụ</span>}
                   </button>
                 </div>
               </>
@@ -6927,110 +6954,131 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               <>
                 {/* --- Nhóm Cá Nhân --- */}
                 <div>
-                  <h3 className="sidebar-group-title">Cá Nhân</h3>
+                  {!isSidebarCollapsed && <h3 className="sidebar-group-title">Cá Nhân</h3>}
                   <button
-                    className={`block w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
                       activeSection === 'dashboard'
                         ? 'bg-blue-600 text-white shadow-md'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                     onClick={() => { setActiveSection('dashboard'); setIsSidebarOpen(false); }}
                   >
-                    <i className="fas fa-tachometer-alt mr-3"></i> Dashboard
+                    <i className="fas fa-tachometer-alt"></i>
+                    {!isSidebarCollapsed && <span className="ml-3">Dashboard</span>}
                   </button>
                   <button
-                    className={`block w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
                       activeSection === 'notifications'
                         ? 'bg-blue-600 text-white shadow-md'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                     onClick={() => { setActiveSection('notifications'); setIsSidebarOpen(false); }}
                   >
-                    <i className="fas fa-bell mr-3"></i> Thông báo của tôi
+                    <i className="fas fa-bell"></i>
+                    {!isSidebarCollapsed && <span className="ml-3">Thông báo của tôi</span>}
                   </button>
                   <button
-                    className={`block w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
                       activeSection === 'memberCostSummary'
                         ? 'bg-blue-600 text-white shadow-md'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                     onClick={() => { setActiveSection('memberCostSummary'); setIsSidebarOpen(false); }}
                   >
-                    <i className="fas fa-money-bill-wave mr-3"></i> Chi phí của tôi
+                    <i className="fas fa-money-bill-wave"></i>
+                    {!isSidebarCollapsed && <span className="ml-3">Chi phí của tôi</span>}
                   </button>
                   <button
-                    className={`block w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
                       activeSection === 'memberCleaningSchedule'
                         ? 'bg-blue-600 text-white shadow-md'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                     onClick={() => { setActiveSection('memberCleaningSchedule'); setIsSidebarOpen(false); }}
                   >
-                    <i className="fas fa-broom mr-3"></i> Lịch trực của tôi
+                    <i className="fas fa-broom"></i>
+                    {!isSidebarCollapsed && <span className="ml-3">Lịch trực của tôi</span>}
                   </button>
                 </div>
                 
                 {/* --- Nhóm Sinh Hoạt Chung --- */}
                 <div className="pt-2">
-                  <h3 className="sidebar-group-title">Sinh Hoạt Chung</h3>
+                  {!isSidebarCollapsed && <h3 className="sidebar-group-title">Sinh Hoạt Chung</h3>}
                   <button
-                    className={`block w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
                       activeSection === 'attendanceTracking'
                         ? 'bg-blue-600 text-white shadow-md'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                     onClick={() => { setActiveSection('attendanceTracking'); setIsSidebarOpen(false); }}
                   >
-                    <i className="fas fa-calendar-alt mr-3"></i> Điểm danh
+                    <i className="fas fa-calendar-alt"></i>
+                    {!isSidebarCollapsed && <span className="ml-3">Điểm danh</span>}
                   </button>
                   <button
-                    className={`block w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
                       activeSection === 'shoeRackManagement'
                         ? 'bg-blue-600 text-white shadow-md'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                     onClick={() => { setActiveSection('shoeRackManagement'); setIsSidebarOpen(false); }}
                   >
-                    <i className="fas fa-shoe-prints mr-3"></i> Thông tin kệ giày
+                    <i className="fas fa-shoe-prints"></i>
+                    {!isSidebarCollapsed && <span className="ml-3">Thông tin kệ giày</span>}
                   </button>
                   <button
-                    className={`block w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
                       activeSection === 'commonRoomInfo'
                         ? 'bg-blue-600 text-white shadow-md'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                     onClick={() => { setActiveSection('commonRoomInfo'); setIsSidebarOpen(false); }}
                   >
-                    <i className="fas fa-info-circle mr-3"></i> Thông tin phòng chung
+                    <i className="fas fa-info-circle"></i>
+                    {!isSidebarCollapsed && <span className="ml-3">Thông tin phòng chung</span>}
                   </button>
                   <button
-                    className={`block w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
                       activeSection === 'roomMemories'
                         ? 'bg-blue-600 text-white shadow-md'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                     onClick={() => { setActiveSection('roomMemories'); setIsSidebarOpen(false); }}
                   >
-                    <i className="fas fa-camera mr-3"></i> Kỷ niệm phòng
+                    <i className="fas fa-camera"></i>
+                    {!isSidebarCollapsed && <span className="ml-3">Kỷ niệm phòng</span>}
                   </button>
                   <button
-                    className={`block w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
                       activeSection === 'formerResidents'
                         ? 'bg-blue-600 text-white shadow-md'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                     onClick={() => { setActiveSection('formerResidents'); setIsSidebarOpen(false); }}
                   >
-                    <i className="fas fa-user-graduate mr-3"></i> Thông tin tiền bối
+                    <i className="fas fa-user-graduate"></i>
+                    {!isSidebarCollapsed && <span className="ml-3">Thông tin tiền bối</span>}
                   </button>
                 </div>
               </>
             )}
           </nav>
           </div>
-          {/* Copyright Information */}
-          <div className="mt-auto pt-4 text-center text-gray-500 dark:text-gray-400 text-xs">
-            © Bản quyền thuộc về Nguyễn Huỳnh Phúc Khang 2025
+          {/* Nút thu gọn Sidebar và Copyright */}
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+            {/* Nút chỉ hiển thị trên màn hình lớn */}
+            <button 
+              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
+              className="hidden lg:block w-full py-2 px-4 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
+            >
+              <i className={`fas ${isSidebarCollapsed ? 'fa-angle-right' : 'fa-angle-left'}`}></i>
+              {!isSidebarCollapsed && <span className="ml-3">Thu gọn</span>}
+            </button>
+            {!isSidebarCollapsed && (
+              <div className="mt-4 text-center text-gray-500 dark:text-gray-400 text-xs">
+                © Bản quyền thuộc về Nguyễn Huỳnh Phúc Khang 2025
+              </div>
+            )}
           </div>
         </aside>
 
