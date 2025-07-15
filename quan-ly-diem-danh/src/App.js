@@ -6697,529 +6697,520 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
             )}
           </div>
         </header>
-      {/* Main Content Area */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <aside
-          className={`flex-shrink-0 fixed inset-y-0 left-0 bg-white dark:bg-gray-800 shadow-lg transform ${
-            isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-          } lg:relative lg:translate-x-0 transition-all duration-300 ease-in-out z-20 h-full flex flex-col ${
-            isSidebarCollapsed ? 'lg:w-20' : 'lg:w-64'
-          }`}
-        >
-          {/* Close button for mobile sidebar */}
-          <div className="flex-1 overflow-y-auto overflow-x-hidden">
-          {/* Nút đóng cho di động */}
-          <div className="flex justify-end lg:hidden mb-4">
-            <button
-              onClick={() => setIsSidebarOpen(false)}
-              className="p-2 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        {/* Container chính cho sidebar và nội dung - thêm "relative group" */}
+        <div className="relative flex flex-1 h-full">
+            {/* Sidebar */}
+            <aside
+                className={`flex-shrink-0 fixed inset-y-0 left-0 bg-white dark:bg-gray-800 shadow-lg transform ${
+                    isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+                } lg:relative lg:translate-x-0 transition-all duration-300 ease-in-out z-20 h-full flex flex-col ${
+                    isSidebarCollapsed ? 'lg:w-20' : 'lg:w-64'
+                }`}
             >
-              <i className="fas fa-times text-xl"></i>
-            </button>
-          </div>
+                {/* Khối nội dung chính của sidebar, có thể cuộn */}
+                <div className="flex-1 overflow-y-auto overflow-x-hidden">
+                    <div className="flex justify-end lg:hidden p-4">
+                        <button onClick={() => setIsSidebarOpen(false)} className="p-2 rounded-md text-gray-700 dark:text-gray-300">
+                            <i className="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                    
+                    {/* Khối thông tin cá nhân */}
+                    <div className={`flex items-center p-4 border-b border-gray-200 dark:border-gray-700 mb-4 ${isSidebarCollapsed && 'lg:justify-center'}`}>
+                        <div className="flex-shrink-0">
+                            {userAvatarUrl ? (
+                                <img src={userAvatarUrl} alt="Avatar" className="w-14 h-14 rounded-full object-cover"/>
+                            ) : (
+                                <div className="w-14 h-14 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-3xl">
+                                    <i className="fas fa-user-circle"></i>
+                                </div>
+                            )}
+                        </div>
+                        {!isSidebarCollapsed && (
+                            <div className="ml-4">
+                                <p className="font-bold text-gray-800 dark:text-white break-words">{fullName}</p>
+                                {memberStudentId && (<p className="text-sm text-gray-600 dark:text-gray-400">{memberStudentId}</p>)}
+                                <p className="text-xs text-gray-500 dark:text-gray-300 mt-1">{userRole === 'admin' ? 'Quản trị viên' : 'Thành viên'}</p>
+                            </div>
+                        )}
+                    </div>
 
-          {/* ===== KHỐI THÔNG TIN CÁ NHÂN - BẮT ĐẦU ===== */}
-          <div className="flex items-center p-4 border-b border-gray-200 dark:border-gray-700 mb-4">
-            {/* Avatar */}
-            <div className="flex-shrink-0">
-              {userAvatarUrl ? (
-                <img
-                  src={userAvatarUrl}
-                  alt="Avatar"
-                  className="w-14 h-14 rounded-full object-cover"
-                />
-              ) : (
-                <div className="w-14 h-14 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-3xl">
-                  <i className="fas fa-user-circle"></i>
-                </div>
-              )}
-            </div>
-            {/* Name, ID, Role */}
-            <div className="ml-4">
-              <p className="font-bold text-gray-800 dark:text-white break-words">
-                {fullName}
-              </p>
-              {memberStudentId && (
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {memberStudentId}
-                </p>
-              )}
-              <p className="text-xs text-gray-500 dark:text-gray-300 mt-1">
-                {userRole === 'admin' ? 'Trưởng phòng/phó phòng' : 'Thành viên'}
-              </p>
-            </div>
-          </div>
-          <nav className="space-y-1 px-4">
-            {/* ===== ĐIỀU HƯỚNG CỦA ADMIN ===== */}
-            {userId && userRole === 'admin' && (
-              <>
-                {/* --- Nhóm Cá Nhân --- */}
-                <div>
-                  {!isSidebarCollapsed && <h3 className="sidebar-group-title">Cá Nhân</h3>}
-                  <button
-                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                      activeSection === 'dashboard'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                    onClick={() => { setActiveSection('dashboard'); setIsSidebarOpen(false); }}
-                  >
-                    <i className="fas fa-tachometer-alt"></i>
-                    {!isSidebarCollapsed && <span className="ml-3">Dashboard</span>}
-                  </button>
-                  <button
-                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                      activeSection === 'customNotificationDesign'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                    onClick={() => { setActiveSection('customNotificationDesign'); setIsSidebarOpen(false); }}
-                  >
-                    <i className="fas fa-bullhorn"></i>
-                    {!isSidebarCollapsed && <span className="ml-3">Quản lý Thông báo</span>}
-                  </button>
-                </div>
+                    {/* Nav */}
+                    <nav className="space-y-1 px-4">
+                        {/* ===== ĐIỀU HƯỚNG CỦA ADMIN ===== */}
+                        {userId && userRole === 'admin' && (
+                          <>
+                            {/* --- Nhóm Cá Nhân --- */}
+                            <div>
+                              {!isSidebarCollapsed && <h3 className="sidebar-group-title">Cá Nhân</h3>}
+                              <button
+                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                  activeSection === 'dashboard'
+                                    ? 'bg-blue-600 text-white shadow-md'
+                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                }`}
+                                onClick={() => { setActiveSection('dashboard'); setIsSidebarOpen(false); }}
+                              >
+                                <i className="fas fa-tachometer-alt"></i>
+                                {!isSidebarCollapsed && <span className="ml-3">Dashboard</span>}
+                              </button>
+                              <button
+                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                  activeSection === 'customNotificationDesign'
+                                    ? 'bg-blue-600 text-white shadow-md'
+                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                }`}
+                                onClick={() => { setActiveSection('customNotificationDesign'); setIsSidebarOpen(false); }}
+                              >
+                                <i className="fas fa-bullhorn"></i>
+                                {!isSidebarCollapsed && <span className="ml-3">Quản lý Thông báo</span>}
+                              </button>
+                            </div>
 
-                {/* --- Nhóm Quản Lý Chung --- */}
-                <div className="pt-2">
-                  {!isSidebarCollapsed && <h3 className="sidebar-group-title">Quản Lý Chung</h3>}
-                  <button
-                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                      activeSection === 'residentManagement'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                    onClick={() => { setActiveSection('residentManagement'); setIsSidebarOpen(false); }}
-                  >
-                    <i className="fas fa-users"></i>
-                    {!isSidebarCollapsed && <span className="ml-3">Quản lý người ở</span>}
-                  </button>
-                  <button
-                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                      activeSection === 'attendanceTracking'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                    onClick={() => { setActiveSection('attendanceTracking'); setIsSidebarOpen(false); }}
-                  >
-                    <i className="fas fa-calendar-alt"></i>
-                    {!isSidebarCollapsed && <span className="ml-3">Điểm danh hàng ngày</span>}
-                  </button>
-                  <button
-                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                      activeSection === 'billing'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                    onClick={() => { setActiveSection('billing'); setIsSidebarOpen(false); }}
-                  >
-                    <i className="fas fa-file-invoice-dollar"></i>
-                    {!isSidebarCollapsed && <span className="ml-3">Tính tiền điện nước</span>}
-                  </button>
-                  <button
-                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                      activeSection === 'costSharing'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                    onClick={() => { setActiveSection('costSharing'); setIsSidebarOpen(false); }}
-                  >
-                    <i className="fas fa-handshake"></i>
-                    {!isSidebarCollapsed && <span className="ml-3">Chia tiền & Nhắc nhở</span>}
-                  </button>
-                  <button
-                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                      activeSection === 'cleaningSchedule'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                    onClick={() => { setActiveSection('cleaningSchedule'); setIsSidebarOpen(false); }}
-                  >
-                    <i className="fas fa-broom"></i>
-                    {!isSidebarCollapsed && <span className="ml-3">Lịch trực phòng</span>}
-                  </button>
-                  <button
-                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                      activeSection === 'shoeRackManagement'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                    onClick={() => { setActiveSection('shoeRackManagement'); setIsSidebarOpen(false); }}
-                  >
-                    <i className="fas fa-shoe-prints"></i>
-                    {!isSidebarCollapsed && <span className="ml-3">Quản lý kệ giày</span>}
-                  </button>
-                  <button
-                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                      activeSection === 'adminCreateAccount'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                    onClick={() => { setActiveSection('adminCreateAccount'); setIsSidebarOpen(false); }}
-                  >
-                    <i className="fas fa-user-plus"></i>
-                    {!isSidebarCollapsed && <span className="ml-3">Tạo tài khoản mới</span>}
-                  </button>
-                </div>
+                            {/* --- Nhóm Quản Lý Chung --- */}
+                            <div className="pt-2">
+                              {!isSidebarCollapsed && <h3 className="sidebar-group-title">Quản Lý Chung</h3>}
+                              <button
+                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                  activeSection === 'residentManagement'
+                                    ? 'bg-blue-600 text-white shadow-md'
+                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                }`}
+                                onClick={() => { setActiveSection('residentManagement'); setIsSidebarOpen(false); }}
+                              >
+                                <i className="fas fa-users"></i>
+                                {!isSidebarCollapsed && <span className="ml-3">Quản lý người ở</span>}
+                              </button>
+                              <button
+                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                  activeSection === 'attendanceTracking'
+                                    ? 'bg-blue-600 text-white shadow-md'
+                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                }`}
+                                onClick={() => { setActiveSection('attendanceTracking'); setIsSidebarOpen(false); }}
+                              >
+                                <i className="fas fa-calendar-alt"></i>
+                                {!isSidebarCollapsed && <span className="ml-3">Điểm danh hàng ngày</span>}
+                              </button>
+                              <button
+                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                  activeSection === 'billing'
+                                    ? 'bg-blue-600 text-white shadow-md'
+                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                }`}
+                                onClick={() => { setActiveSection('billing'); setIsSidebarOpen(false); }}
+                              >
+                                <i className="fas fa-file-invoice-dollar"></i>
+                                {!isSidebarCollapsed && <span className="ml-3">Tính tiền điện nước</span>}
+                              </button>
+                              <button
+                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                  activeSection === 'costSharing'
+                                    ? 'bg-blue-600 text-white shadow-md'
+                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                }`}
+                                onClick={() => { setActiveSection('costSharing'); setIsSidebarOpen(false); }}
+                              >
+                                <i className="fas fa-handshake"></i>
+                                {!isSidebarCollapsed && <span className="ml-3">Chia tiền & Nhắc nhở</span>}
+                              </button>
+                              <button
+                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                  activeSection === 'cleaningSchedule'
+                                    ? 'bg-blue-600 text-white shadow-md'
+                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                }`}
+                                onClick={() => { setActiveSection('cleaningSchedule'); setIsSidebarOpen(false); }}
+                              >
+                                <i className="fas fa-broom"></i>
+                                {!isSidebarCollapsed && <span className="ml-3">Lịch trực phòng</span>}
+                              </button>
+                              <button
+                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                  activeSection === 'shoeRackManagement'
+                                    ? 'bg-blue-600 text-white shadow-md'
+                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                }`}
+                                onClick={() => { setActiveSection('shoeRackManagement'); setIsSidebarOpen(false); }}
+                              >
+                                <i className="fas fa-shoe-prints"></i>
+                                {!isSidebarCollapsed && <span className="ml-3">Quản lý kệ giày</span>}
+                              </button>
+                              <button
+                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                  activeSection === 'adminCreateAccount'
+                                    ? 'bg-blue-600 text-white shadow-md'
+                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                }`}
+                                onClick={() => { setActiveSection('adminCreateAccount'); setIsSidebarOpen(false); }}
+                              >
+                                <i className="fas fa-user-plus"></i>
+                                {!isSidebarCollapsed && <span className="ml-3">Tạo tài khoản mới</span>}
+                              </button>
+                            </div>
 
-                {/* --- Nhóm Sinh Hoạt & Lưu Trữ --- */}
-                <div className="pt-2">
-                  {!isSidebarCollapsed && <h3 className="sidebar-group-title">Sinh Hoạt & Lưu Trữ</h3>}
-                  <button
-                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                      activeSection === 'commonRoomInfo'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                    onClick={() => { setActiveSection('commonRoomInfo'); setIsSidebarOpen(false); }}
-                  >
-                    <i className="fas fa-info-circle"></i>
-                    {!isSidebarCollapsed && <span className="ml-3">Thông tin phòng chung</span>}
-                  </button>
-                  <button
-                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                      activeSection === 'roomMemories'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                    onClick={() => { setActiveSection('roomMemories'); setIsSidebarOpen(false); }}
-                  >
-                    <i className="fas fa-camera"></i>
-                    {!isSidebarCollapsed && <span className="ml-3">Kỷ niệm phòng</span>}
-                  </button>
-                  <button
-                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                      activeSection === 'formerResidents'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                    onClick={() => { setActiveSection('formerResidents'); setIsSidebarOpen(false); }}
-                  >
-                    <i className="fas fa-user-graduate"></i>
-                    {!isSidebarCollapsed && <span className="ml-3">Thông tin tiền bối</span>}
-                  </button>
-                </div>
+                            {/* --- Nhóm Sinh Hoạt & Lưu Trữ --- */}
+                            <div className="pt-2">
+                              {!isSidebarCollapsed && <h3 className="sidebar-group-title">Sinh Hoạt & Lưu Trữ</h3>}
+                              <button
+                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                  activeSection === 'commonRoomInfo'
+                                    ? 'bg-blue-600 text-white shadow-md'
+                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                }`}
+                                onClick={() => { setActiveSection('commonRoomInfo'); setIsSidebarOpen(false); }}
+                              >
+                                <i className="fas fa-info-circle"></i>
+                                {!isSidebarCollapsed && <span className="ml-3">Thông tin phòng chung</span>}
+                              </button>
+                              <button
+                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                  activeSection === 'roomMemories'
+                                    ? 'bg-blue-600 text-white shadow-md'
+                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                }`}
+                                onClick={() => { setActiveSection('roomMemories'); setIsSidebarOpen(false); }}
+                              >
+                                <i className="fas fa-camera"></i>
+                                {!isSidebarCollapsed && <span className="ml-3">Kỷ niệm phòng</span>}
+                              </button>
+                              <button
+                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                  activeSection === 'formerResidents'
+                                    ? 'bg-blue-600 text-white shadow-md'
+                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                }`}
+                                onClick={() => { setActiveSection('formerResidents'); setIsSidebarOpen(false); }}
+                              >
+                                <i className="fas fa-user-graduate"></i>
+                                {!isSidebarCollapsed && <span className="ml-3">Thông tin tiền bối</span>}
+                              </button>
+                            </div>
 
-                {/* --- Nhóm Báo Cáo & Thống Kê --- */}
-                <div className="pt-2">
-                  {!isSidebarCollapsed && <h3 className="sidebar-group-title">Báo Cáo & Thống Kê</h3>}
-                  <button
-                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                      activeSection === 'billHistory'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                    onClick={() => { setActiveSection('billHistory'); setIsSidebarOpen(false); }}
-                  >
-                    <i className="fas fa-history"></i>
-                    {!isSidebarCollapsed && <span className="ml-3">Lịch sử hóa đơn</span>}
-                  </button>
-                  <button
-                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                      activeSection === 'costSharingHistory'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                    onClick={() => { setActiveSection('costSharingHistory'); setIsSidebarOpen(false); }}
-                  >
-                    <i className="fas fa-receipt"></i>
-                    {!isSidebarCollapsed && <span className="ml-3">Lịch sử chia tiền</span>}
-                  </button>
-                  <button
-                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                      activeSection === 'consumptionStats'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                    onClick={() => { setActiveSection('consumptionStats'); setIsSidebarOpen(false); }}
-                  >
-                    <i className="fas fa-chart-bar"></i>
-                    {!isSidebarCollapsed && <span className="ml-3">Thống kê tiêu thụ</span>}
-                  </button>
-                </div>
-              </>
-            )}
+                            {/* --- Nhóm Báo Cáo & Thống Kê --- */}
+                            <div className="pt-2">
+                              {!isSidebarCollapsed && <h3 className="sidebar-group-title">Báo Cáo & Thống Kê</h3>}
+                              <button
+                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                  activeSection === 'billHistory'
+                                    ? 'bg-blue-600 text-white shadow-md'
+                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                }`}
+                                onClick={() => { setActiveSection('billHistory'); setIsSidebarOpen(false); }}
+                              >
+                                <i className="fas fa-history"></i>
+                                {!isSidebarCollapsed && <span className="ml-3">Lịch sử hóa đơn</span>}
+                              </button>
+                              <button
+                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                  activeSection === 'costSharingHistory'
+                                    ? 'bg-blue-600 text-white shadow-md'
+                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                }`}
+                                onClick={() => { setActiveSection('costSharingHistory'); setIsSidebarOpen(false); }}
+                              >
+                                <i className="fas fa-receipt"></i>
+                                {!isSidebarCollapsed && <span className="ml-3">Lịch sử chia tiền</span>}
+                              </button>
+                              <button
+                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                  activeSection === 'consumptionStats'
+                                    ? 'bg-blue-600 text-white shadow-md'
+                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                }`}
+                                onClick={() => { setActiveSection('consumptionStats'); setIsSidebarOpen(false); }}
+                              >
+                                <i className="fas fa-chart-bar"></i>
+                                {!isSidebarCollapsed && <span className="ml-3">Thống kê tiêu thụ</span>}
+                              </button>
+                            </div>
+                          </>
+                        )}
 
-            {/* ===== ĐIỀU HƯỚNG CỦA MEMBER ===== */}
-            {userId && userRole === 'member' && (
-              <>
-                {/* --- Nhóm Cá Nhân --- */}
-                <div>
-                  {!isSidebarCollapsed && <h3 className="sidebar-group-title">Cá Nhân</h3>}
-                  <button
-                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                      activeSection === 'dashboard'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                    onClick={() => { setActiveSection('dashboard'); setIsSidebarOpen(false); }}
-                  >
-                    <i className="fas fa-tachometer-alt"></i>
-                    {!isSidebarCollapsed && <span className="ml-3">Dashboard</span>}
-                  </button>
-                  <button
-                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                      activeSection === 'notifications'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                    onClick={() => { setActiveSection('notifications'); setIsSidebarOpen(false); }}
-                  >
-                    <i className="fas fa-bell"></i>
-                    {!isSidebarCollapsed && <span className="ml-3">Thông báo của tôi</span>}
-                  </button>
-                  <button
-                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                      activeSection === 'memberCostSummary'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                    onClick={() => { setActiveSection('memberCostSummary'); setIsSidebarOpen(false); }}
-                  >
-                    <i className="fas fa-money-bill-wave"></i>
-                    {!isSidebarCollapsed && <span className="ml-3">Chi phí của tôi</span>}
-                  </button>
-                  <button
-                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                      activeSection === 'memberCleaningSchedule'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                    onClick={() => { setActiveSection('memberCleaningSchedule'); setIsSidebarOpen(false); }}
-                  >
-                    <i className="fas fa-broom"></i>
-                    {!isSidebarCollapsed && <span className="ml-3">Lịch trực của tôi</span>}
-                  </button>
+                        {/* ===== ĐIỀU HƯỚNG CỦA MEMBER ===== */}
+                        {userId && userRole === 'member' && (
+                          <>
+                            {/* --- Nhóm Cá Nhân --- */}
+                            <div>
+                              {!isSidebarCollapsed && <h3 className="sidebar-group-title">Cá Nhân</h3>}
+                              <button
+                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                  activeSection === 'dashboard'
+                                    ? 'bg-blue-600 text-white shadow-md'
+                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                }`}
+                                onClick={() => { setActiveSection('dashboard'); setIsSidebarOpen(false); }}
+                              >
+                                <i className="fas fa-tachometer-alt"></i>
+                                {!isSidebarCollapsed && <span className="ml-3">Dashboard</span>}
+                              </button>
+                              <button
+                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                  activeSection === 'notifications'
+                                    ? 'bg-blue-600 text-white shadow-md'
+                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                }`}
+                                onClick={() => { setActiveSection('notifications'); setIsSidebarOpen(false); }}
+                              >
+                                <i className="fas fa-bell"></i>
+                                {!isSidebarCollapsed && <span className="ml-3">Thông báo của tôi</span>}
+                              </button>
+                              <button
+                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                  activeSection === 'memberCostSummary'
+                                    ? 'bg-blue-600 text-white shadow-md'
+                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                }`}
+                                onClick={() => { setActiveSection('memberCostSummary'); setIsSidebarOpen(false); }}
+                              >
+                                <i className="fas fa-money-bill-wave"></i>
+                                {!isSidebarCollapsed && <span className="ml-3">Chi phí của tôi</span>}
+                              </button>
+                              <button
+                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                  activeSection === 'memberCleaningSchedule'
+                                    ? 'bg-blue-600 text-white shadow-md'
+                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                }`}
+                                onClick={() => { setActiveSection('memberCleaningSchedule'); setIsSidebarOpen(false); }}
+                              >
+                                <i className="fas fa-broom"></i>
+                                {!isSidebarCollapsed && <span className="ml-3">Lịch trực của tôi</span>}
+                              </button>
+                            </div>
+                            
+                            {/* --- Nhóm Sinh Hoạt Chung --- */}
+                            <div className="pt-2">
+                              {!isSidebarCollapsed && <h3 className="sidebar-group-title">Sinh Hoạt Chung</h3>}
+                              <button
+                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                  activeSection === 'attendanceTracking'
+                                    ? 'bg-blue-600 text-white shadow-md'
+                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                }`}
+                                onClick={() => { setActiveSection('attendanceTracking'); setIsSidebarOpen(false); }}
+                              >
+                                <i className="fas fa-calendar-alt"></i>
+                                {!isSidebarCollapsed && <span className="ml-3">Điểm danh</span>}
+                              </button>
+                              <button
+                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                  activeSection === 'shoeRackManagement'
+                                    ? 'bg-blue-600 text-white shadow-md'
+                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                }`}
+                                onClick={() => { setActiveSection('shoeRackManagement'); setIsSidebarOpen(false); }}
+                              >
+                                <i className="fas fa-shoe-prints"></i>
+                                {!isSidebarCollapsed && <span className="ml-3">Thông tin kệ giày</span>}
+                              </button>
+                              <button
+                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                  activeSection === 'commonRoomInfo'
+                                    ? 'bg-blue-600 text-white shadow-md'
+                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                }`}
+                                onClick={() => { setActiveSection('commonRoomInfo'); setIsSidebarOpen(false); }}
+                              >
+                                <i className="fas fa-info-circle"></i>
+                                {!isSidebarCollapsed && <span className="ml-3">Thông tin phòng chung</span>}
+                              </button>
+                              <button
+                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                  activeSection === 'roomMemories'
+                                    ? 'bg-blue-600 text-white shadow-md'
+                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                }`}
+                                onClick={() => { setActiveSection('roomMemories'); setIsSidebarOpen(false); }}
+                              >
+                                <i className="fas fa-camera"></i>
+                                {!isSidebarCollapsed && <span className="ml-3">Kỷ niệm phòng</span>}
+                              </button>
+                              <button
+                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                  activeSection === 'formerResidents'
+                                    ? 'bg-blue-600 text-white shadow-md'
+                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                }`}
+                                onClick={() => { setActiveSection('formerResidents'); setIsSidebarOpen(false); }}
+                              >
+                                <i className="fas fa-user-graduate"></i>
+                                {!isSidebarCollapsed && <span className="ml-3">Thông tin tiền bối</span>}
+                              </button>
+                            </div>
+                          </>
+                        )}
+                    </nav>
                 </div>
                 
-                {/* --- Nhóm Sinh Hoạt Chung --- */}
-                <div className="pt-2">
-                  {!isSidebarCollapsed && <h3 className="sidebar-group-title">Sinh Hoạt Chung</h3>}
-                  <button
-                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                      activeSection === 'attendanceTracking'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                    onClick={() => { setActiveSection('attendanceTracking'); setIsSidebarOpen(false); }}
-                  >
-                    <i className="fas fa-calendar-alt"></i>
-                    {!isSidebarCollapsed && <span className="ml-3">Điểm danh</span>}
-                  </button>
-                  <button
-                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                      activeSection === 'shoeRackManagement'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                    onClick={() => { setActiveSection('shoeRackManagement'); setIsSidebarOpen(false); }}
-                  >
-                    <i className="fas fa-shoe-prints"></i>
-                    {!isSidebarCollapsed && <span className="ml-3">Thông tin kệ giày</span>}
-                  </button>
-                  <button
-                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                      activeSection === 'commonRoomInfo'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                    onClick={() => { setActiveSection('commonRoomInfo'); setIsSidebarOpen(false); }}
-                  >
-                    <i className="fas fa-info-circle"></i>
-                    {!isSidebarCollapsed && <span className="ml-3">Thông tin phòng chung</span>}
-                  </button>
-                  <button
-                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                      activeSection === 'roomMemories'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                    onClick={() => { setActiveSection('roomMemories'); setIsSidebarOpen(false); }}
-                  >
-                    <i className="fas fa-camera"></i>
-                    {!isSidebarCollapsed && <span className="ml-3">Kỷ niệm phòng</span>}
-                  </button>
-                  <button
-                    className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                      activeSection === 'formerResidents'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                    onClick={() => { setActiveSection('formerResidents'); setIsSidebarOpen(false); }}
-                  >
-                    <i className="fas fa-user-graduate"></i>
-                    {!isSidebarCollapsed && <span className="ml-3">Thông tin tiền bối</span>}
-                  </button>
+                {/* Copyright */}
+                <div className={`p-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0 ${isSidebarCollapsed && 'hidden'}`}>
+                    <div className="text-center text-gray-500 dark:text-gray-400 text-xs">
+                        © Bản quyền thuộc về Nguyễn Huỳnh Phúc Khang 2025
+                    </div>
                 </div>
-              </>
-            )}
-          </nav>
-          </div>
-          {/* Nút thu gọn Sidebar và Copyright */}
-          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
-            {/* Nút chỉ hiển thị trên màn hình lớn */}
+            </aside>
+            
+            {/* ===== NÚT THU GỌN MỚI - NẰM NGOÀI SIDEBAR ===== */}
             <button 
-              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
-              className="hidden lg:block w-full py-2 px-4 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
+                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
+                className={`hidden lg:block absolute top-1/2 -translate-y-1/2 z-30
+                            bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-300 
+                            border border-gray-200 dark:border-gray-600 rounded-full 
+                            w-8 h-8 flex items-center justify-center
+                            opacity-0 group-hover:opacity-100 transition-all duration-300
+                            ${isSidebarCollapsed ? 'left-16' : 'left-60'}`}
+                style={{ transform: 'translateY(-50%)' }}
             >
-              <i className={`fas ${isSidebarCollapsed ? 'fa-angle-right' : 'fa-angle-left'}`}></i>
-              {!isSidebarCollapsed && <span className="ml-3">Thu gọn</span>}
+                <i className={`fas ${isSidebarCollapsed ? 'fa-angle-right' : 'fa-angle-left'}`}></i>
             </button>
-            {!isSidebarCollapsed && (
-              <div className="mt-4 text-center text-gray-500 dark:text-gray-400 text-xs">
-                © Bản quyền thuộc về Nguyễn Huỳnh Phúc Khang 2025
-              </div>
+
+            {/* Lớp phủ */}
+            {isSidebarOpen && (
+                <div
+                    onClick={() => setIsSidebarOpen(false)}
+                    className="fixed inset-0 bg-black bg-opacity-50 z-10 lg:hidden"
+                    aria-hidden="true"
+                ></div>
             )}
-          </div>
-        </aside>
 
-        {isSidebarOpen && (
-          <div
-            onClick={() => setIsSidebarOpen(false)}
-            className="fixed inset-0 bg-black bg-opacity-50 z-10 lg:hidden"
-            aria-hidden="true"
-          ></div>
-        )}
+            {/* Main Content Area */}
+            <main className={`h-full p-4 transition-all duration-300 ease-in-out overflow-y-auto w-full ${isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
+                {userId ? (
+                    renderSection()
+                ) : (
+                  <div className="mb-8 p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg mx-auto max-w-lg">
+                  {/* Tab Navigation */}
+                  <div className="flex justify-center mb-6 border-b border-gray-300 dark:border-gray-600">
+                    <button
+                      className={`px-4 py-2 text-lg font-semibold ${authMode === 'login' ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400' : 'text-gray-600 dark:text-gray-400 hover:text-blue-500'}`}
+                      onClick={() => {
+                        setAuthMode('login');
+                        setAuthError('');
+                      }}>
+                      Đăng nhập
+                    </button>
+                    <button
+                      className={`px-4 py-2 text-lg font-semibold ${authMode === 'register' ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400' : 'text-gray-600 dark:text-gray-400 hover:text-blue-500'}`}
+                      onClick={() => {
+                        setAuthMode('register');
+                        setAuthError('');
+                      }}>
+                      Đăng ký
+                    </button>
+                  </div>
 
-        {/* Content Area */}
-        <main className={`flex-1 h-full p-4 transition-all duration-300 ease-in-out overflow-y-auto ${isSidebarOpen && window.innerWidth < 1024 ? 'sidebar-open-overlay' : ''}`}>          {userId ? (
-            renderSection()
-          ) : (
-            // BẮT ĐẦU KHỐI ĐĂNG NHẬP / ĐĂNG KÝ MỚI
-            <div className="mb-8 p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg mx-auto max-w-lg">
-              {/* Tab Navigation */}
-              <div className="flex justify-center mb-6 border-b border-gray-300 dark:border-gray-600">
-                <button
-                  className={`px-4 py-2 text-lg font-semibold ${authMode === 'login' ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400' : 'text-gray-600 dark:text-gray-400 hover:text-blue-500'}`}
-                  onClick={() => {
-                    setAuthMode('login');
-                    setAuthError('');
-                  }}>
-                  Đăng nhập
-                </button>
-                <button
-                  className={`px-4 py-2 text-lg font-semibold ${authMode === 'register' ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400' : 'text-gray-600 dark:text-gray-400 hover:text-blue-500'}`}
-                  onClick={() => {
-                    setAuthMode('register');
-                    setAuthError('');
-                  }}>
-                  Đăng ký
-                </button>
-              </div>
+                  {!isAuthReady ? (
+                    <p className="text-blue-600 dark:text-blue-300 text-center text-lg">Đang kết nối Firebase...</p>
+                  ) : (
+                    <>
+                      {/* FORM ĐĂNG NHẬP */}
+                      {authMode === 'login' && (
+                        <div className="flex flex-col space-y-4">
+                          <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 text-center">Đăng nhập tài khoản</h2>
+                          <div>
+                            <label htmlFor="studentIdLogin" className="sr-only">Mã số sinh viên</label>
+                            <input
+                              type="text"
+                              id="studentIdLogin"
+                              placeholder="Mã số sinh viên"
+                              value={studentIdForLogin}
+                              onChange={(e) => setStudentIdForLogin(e.target.value)}
+                              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                            />
+                          </div>
+                          <div>
+                            <label htmlFor="passwordLogin" className="sr-only">Mật khẩu</label>
+                            <input
+                              type="password"
+                              id="passwordLogin"
+                              placeholder="Mật khẩu"
+                              value={password}
+                              onChange={(e) => setPassword(e.target.value)}
+                              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                            />
+                          </div>
+                          {authError && <p className="text-red-500 text-sm text-center">{authError}</p>}
+                          <button
+                            onClick={handleSignIn}
+                            className="w-full px-6 py-2 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+                          >
+                            Đăng nhập
+                          </button>
+                          <button
+                            onClick={() => setShowForgotPasswordModal(true)}
+                            className="w-full mt-2 text-blue-600 dark:text-blue-400 hover:underline text-sm font-semibold"
+                          >
+                            Quên mật khẩu?
+                          </button>
+                        </div>
+                      )}
 
-              {!isAuthReady ? (
-                <p className="text-blue-600 dark:text-blue-300 text-center text-lg">Đang kết nối Firebase...</p>
-              ) : (
-                <>
-                  {/* FORM ĐĂNG NHẬP */}
-                  {authMode === 'login' && (
-                    <div className="flex flex-col space-y-4">
-                      <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 text-center">Đăng nhập tài khoản</h2>
-                      <div>
-                        <label htmlFor="studentIdLogin" className="sr-only">Mã số sinh viên</label>
-                        <input
-                          type="text"
-                          id="studentIdLogin"
-                          placeholder="Mã số sinh viên"
-                          value={studentIdForLogin}
-                          onChange={(e) => setStudentIdForLogin(e.target.value)}
-                          className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="passwordLogin" className="sr-only">Mật khẩu</label>
-                        <input
-                          type="password"
-                          id="passwordLogin"
-                          placeholder="Mật khẩu"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                        />
-                      </div>
-                      {authError && <p className="text-red-500 text-sm text-center">{authError}</p>}
-                      <button
-                        onClick={handleSignIn}
-                        className="w-full px-6 py-2 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
-                      >
-                        Đăng nhập
-                      </button>
-                      <button
-                        onClick={() => setShowForgotPasswordModal(true)}
-                        className="w-full mt-2 text-blue-600 dark:text-blue-400 hover:underline text-sm font-semibold"
-                      >
-                        Quên mật khẩu?
-                      </button>
-                    </div>
+                      {/* FORM ĐĂNG KÝ */}
+                      {authMode === 'register' && (
+                        <div className="flex flex-col space-y-4">
+                          <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 text-center">Tạo tài khoản mới</h2>
+                          <div>
+                            <label htmlFor="fullNameRegister" className="sr-only">Họ tên đầy đủ</label>
+                            <input
+                              type="text"
+                              id="fullNameRegister"
+                              placeholder="Họ tên đầy đủ"
+                              value={fullName}
+                              onChange={(e) => setFullName(e.target.value)}
+                              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                            />
+                          </div>
+                          <div>
+                            <label htmlFor="studentIdRegister" className="sr-only">Mã số sinh viên</label>
+                            <input
+                              type="text"
+                              id="studentIdRegister"
+                              placeholder="Mã số sinh viên (dùng để đăng nhập)"
+                              value={newStudentIdForAuth}
+                              onChange={(e) => setNewStudentIdForAuth(e.target.value)}
+                              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                            />
+                          </div>
+                          {/* ===== TRƯỜNG EMAIL MỚI ĐƯỢC THÊM VÀO ĐÂY ===== */}
+                          <div>
+                            <label htmlFor="emailRegister" className="sr-only">Email cá nhân</label>
+                            <input
+                              type="email"
+                              id="emailRegister"
+                              placeholder="Email cá nhân (để xác minh tài khoản)"
+                              value={personalEmailForRegister}
+                              onChange={(e) => setPersonalEmailForRegister(e.target.value)}
+                              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                            />
+                          </div>
+                          {/* ===== KẾT THÚC TRƯỜNG EMAIL MỚI ===== */}
+                          <div>
+                            <label htmlFor="passwordRegister" className="sr-only">Mật khẩu</label>
+                            <input
+                              type="password"
+                              id="passwordRegister"
+                              placeholder="Mật khẩu (ít nhất 6 ký tự)"
+                              value={password}
+                              onChange={(e) => setPassword(e.targe.value)}
+                              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                            />
+                          </div>
+                          {authError && <p className="text-red-500 text-sm text-center">{authError}</p>}
+                          <button
+                            onClick={handleRegister}
+                            className="w-full px-6 py-2 bg-purple-600 text-white font-semibold rounded-xl shadow-md hover:bg-purple-700 transition-all duration-300"
+                          >
+                            Đăng ký
+                          </button>
+                        </div>
+                      )}                
+                      </>
                   )}
-
-                  {/* FORM ĐĂNG KÝ */}
-                  {authMode === 'register' && (
-                    <div className="flex flex-col space-y-4">
-                      <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 text-center">Tạo tài khoản mới</h2>
-                      <div>
-                        <label htmlFor="fullNameRegister" className="sr-only">Họ tên đầy đủ</label>
-                        <input
-                          type="text"
-                          id="fullNameRegister"
-                          placeholder="Họ tên đầy đủ"
-                          value={fullName}
-                          onChange={(e) => setFullName(e.target.value)}
-                          className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="studentIdRegister" className="sr-only">Mã số sinh viên</label>
-                        <input
-                          type="text"
-                          id="studentIdRegister"
-                          placeholder="Mã số sinh viên (dùng để đăng nhập)"
-                          value={newStudentIdForAuth}
-                          onChange={(e) => setNewStudentIdForAuth(e.target.value)}
-                          className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                        />
-                      </div>
-                      {/* ===== TRƯỜNG EMAIL MỚI ĐƯỢC THÊM VÀO ĐÂY ===== */}
-                      <div>
-                        <label htmlFor="emailRegister" className="sr-only">Email cá nhân</label>
-                        <input
-                          type="email"
-                          id="emailRegister"
-                          placeholder="Email cá nhân (để xác minh tài khoản)"
-                          value={personalEmailForRegister}
-                          onChange={(e) => setPersonalEmailForRegister(e.target.value)}
-                          className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                        />
-                      </div>
-                      {/* ===== KẾT THÚC TRƯỜNG EMAIL MỚI ===== */}
-                      <div>
-                        <label htmlFor="passwordRegister" className="sr-only">Mật khẩu</label>
-                        <input
-                          type="password"
-                          id="passwordRegister"
-                          placeholder="Mật khẩu (ít nhất 6 ký tự)"
-                          value={password}
-                          onChange={(e) => setPassword(e.targe.value)}
-                          className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                        />
-                      </div>
-                      {authError && <p className="text-red-500 text-sm text-center">{authError}</p>}
-                      <button
-                        onClick={handleRegister}
-                        className="w-full px-6 py-2 bg-purple-600 text-white font-semibold rounded-xl shadow-md hover:bg-purple-700 transition-all duration-300"
-                      >
-                        Đăng ký
-                      </button>
-                    </div>
-                  )}                
-                  </>
-              )}
-            </div>
-            // KẾT THÚC KHỐI ĐĂNG NHẬP / ĐĂNG KÝ MỚI
-          )}
-        </main>
-      </div>
+                </div>
+                )}
+            </main>
+        </div>
 
       {/* Modals - Giữ chúng ở phạm vi toàn cục để chồng lên nhau */}
       {selectedBillDetails &&
