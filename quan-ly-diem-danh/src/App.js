@@ -6732,7 +6732,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
             </div>
             {/* Name, ID, Role */}
             <div className="ml-4">
-              <p className="font-bold text-gray-800 dark:text-white truncate">
+              <p className="font-bold text-gray-800 dark:text-white break-words">
                 {fullName}
               </p>
               {memberStudentId && (
