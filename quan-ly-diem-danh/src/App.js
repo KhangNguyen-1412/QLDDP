@@ -3715,7 +3715,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                     <table className="min-w-full bg-white dark:bg-gray-800">
                       <thead>
                         <tr>
-                          <th className="py-3 px-6 text-left sticky left-0 bg-green-100 dark:bg-gray-700 z-20 border-r border-green-200 dark:border-gray-600 rounded-tl-xl text-green-800 dark:text-green-200 uppercase text-sm leading-normal">
+                          <th className="py-3 px-4 text-left sticky left-0 z-10 bg-green-100 dark:bg-gray-700 border-r border-green-200 dark:border-gray-600 text-green-800 dark:text-green-200 uppercase text-sm font-semibold">
                             Tên
                           </th>
                           {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map((day) => (
@@ -5582,7 +5582,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                     <table className="min-w-full bg-white dark:bg-gray-800">
                       <thead>
                         <tr>
-                          <th className="py-3 px-6 text-left sticky left-0 bg-green-100 dark:bg-gray-700 z-20 border-r border-green-200 dark:border-gray-600 rounded-tl-xl text-green-800 dark:text-green-200 uppercase text-sm leading-normal">
+                          <th className="py-3 px-4 text-left sticky left-0 z-10 bg-green-100 dark:bg-gray-700 border-r border-green-200 dark:border-gray-600 text-green-800 dark:text-green-200 uppercase text-sm font-semibold">
                             Tên
                           </th>
                           {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map((day) => (
