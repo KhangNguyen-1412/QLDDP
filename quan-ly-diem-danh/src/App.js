@@ -201,6 +201,8 @@ function App() {
   const [searchTermMemory, setSearchTermMemory] = useState('');
   const [filterUploaderMemory, setFilterUploaderMemory] = useState('all'); // 'all' hoặc userId
 
+  const [showAddMemoryModal, setShowAddMemoryModal] = useState(false);
+
   // States for Former Residents <-- KHAI BÁO CHÍNH XÁC VÀ DUY NHẤT Ở ĐÂY
   const [formerResidents, setFormerResidents] = useState([]); // <-- Đảm bảo dòng này tồn tại và không bị xóa
   const [newFormerResidentName, setNewFormerResidentName] = useState('');
@@ -295,13 +297,12 @@ function App() {
       setNewMemoryImageFile([]); // Reset mảng file
       setUploadProgress(0);
       setIsUploadingMemory(false);
-      setMemoryError('');
+      setShowAddMemoryModal(false);
       alert('Đã thêm kỷ niệm mới thành công!');
       console.log('Đã thêm kỷ niệm mới thành công!');
     } catch (error) {
       console.error('Lỗi khi thêm kỷ niệm (tổng thể):', error);
       setMemoryError(`Lỗi khi thêm kỷ niệm: ${error.message}`);
-      setIsUploadingMemory(false);
     }
   };
 
@@ -4623,6 +4624,85 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                     </button>
                   </div>
                 )}
+
+                {/* ===== POPUP ĐĂNG KỶ NIỆM MỚI ===== */}
+                {showAddMemoryModal && (
+                  <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+                      <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
+                        Đăng Kỷ niệm mới
+                      </h3>
+                      <form onSubmit={handleAddMemory} className="space-y-4">
+                        <div>
+                          <label htmlFor="eventName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                            Tên sự kiện:
+                          </label>
+                          <input
+                            type="text"
+                            id="eventName"
+                            value={newMemoryEventName}
+                            onChange={(e) => setNewMemoryEventName(e.target.value)}
+                            className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white dark:bg-gray-700"
+                            placeholder="Ví dụ: Sinh nhật Duy, Chuyến đi Vũng Tàu"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="photoDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                            Ngày chụp/quay:
+                          </label>
+                          <input
+                            type="date"
+                            id="photoDate"
+                            value={newMemoryPhotoDate}
+                            onChange={(e) => setNewMemoryPhotoDate(e.target.value)}
+                            className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white dark:bg-gray-700"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="memoryImageFile" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                            Chọn ảnh/video:
+                          </label>
+                          <input
+                            type="file"
+                            id="memoryImageFile"
+                            accept="image/*,video/*"
+                            multiple
+                            onChange={(e) => setNewMemoryImageFile(Array.from(e.target.files))}
+                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-50 file:text-yellow-700 hover:file:bg-yellow-100"
+                            required
+                          />
+                          {isUploadingMemory && (
+                            <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2">
+                              <div className="bg-yellow-600 h-2.5 rounded-full" style={{ width: `${uploadProgress}%` }}></div>
+                            </div>
+                          )}
+                          {uploadProgress > 0 && uploadProgress < 100 && (
+                            <p className="text-gray-500 dark:text-gray-400 text-sm mt-1 text-right">{uploadProgress}% tải lên</p>
+                          )}
+                        </div>
+                        {memoryError && <p className="text-red-500 text-sm text-center mt-4">{memoryError}</p>}
+                        <div className="flex space-x-4 mt-6">
+                            <button
+                              type="button"
+                              onClick={() => setShowAddMemoryModal(false)}
+                              className="w-1/2 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
+                            >
+                              Hủy
+                            </button>
+                            <button
+                              type="submit"
+                              className="w-1/2 px-6 py-3 bg-yellow-600 text-white font-semibold rounded-xl shadow-md hover:bg-yellow-700 transition-all duration-300"
+                              disabled={isUploadingMemory}
+                            >
+                              {isUploadingMemory ? <i className="fas fa-spinner fa-spin"></i> : 'Đăng'}
+                            </button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           case 'formerResidents': // Thông tin tiền bối
@@ -6335,6 +6415,84 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                     >
                       Trang sau
                     </button>
+                  </div>
+                )}
+                {/* ===== POPUP ĐĂNG KỶ NIỆM MỚI ===== */}
+                {showAddMemoryModal && (
+                  <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+                      <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
+                        Đăng Kỷ niệm mới
+                      </h3>
+                      <form onSubmit={handleAddMemory} className="space-y-4">
+                        <div>
+                          <label htmlFor="eventName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                            Tên sự kiện:
+                          </label>
+                          <input
+                            type="text"
+                            id="eventName"
+                            value={newMemoryEventName}
+                            onChange={(e) => setNewMemoryEventName(e.target.value)}
+                            className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white dark:bg-gray-700"
+                            placeholder="Ví dụ: Sinh nhật Duy, Chuyến đi Vũng Tàu"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="photoDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                            Ngày chụp/quay:
+                          </label>
+                          <input
+                            type="date"
+                            id="photoDate"
+                            value={newMemoryPhotoDate}
+                            onChange={(e) => setNewMemoryPhotoDate(e.target.value)}
+                            className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white dark:bg-gray-700"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="memoryImageFile" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                            Chọn ảnh/video:
+                          </label>
+                          <input
+                            type="file"
+                            id="memoryImageFile"
+                            accept="image/*,video/*"
+                            multiple
+                            onChange={(e) => setNewMemoryImageFile(Array.from(e.target.files))}
+                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-50 file:text-yellow-700 hover:file:bg-yellow-100"
+                            required
+                          />
+                          {isUploadingMemory && (
+                            <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2">
+                              <div className="bg-yellow-600 h-2.5 rounded-full" style={{ width: `${uploadProgress}%` }}></div>
+                            </div>
+                          )}
+                          {uploadProgress > 0 && uploadProgress < 100 && (
+                            <p className="text-gray-500 dark:text-gray-400 text-sm mt-1 text-right">{uploadProgress}% tải lên</p>
+                          )}
+                        </div>
+                        {memoryError && <p className="text-red-500 text-sm text-center mt-4">{memoryError}</p>}
+                        <div className="flex space-x-4 mt-6">
+                            <button
+                              type="button"
+                              onClick={() => setShowAddMemoryModal(false)}
+                              className="w-1/2 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
+                            >
+                              Hủy
+                            </button>
+                            <button
+                              type="submit"
+                              className="w-1/2 px-6 py-3 bg-yellow-600 text-white font-semibold rounded-xl shadow-md hover:bg-yellow-700 transition-all duration-300"
+                              disabled={isUploadingMemory}
+                            >
+                              {isUploadingMemory ? <i className="fas fa-spinner fa-spin"></i> : 'Đăng'}
+                            </button>
+                        </div>
+                      </form>
+                    </div>
                   </div>
                 )}
               </div>
