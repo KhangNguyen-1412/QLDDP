@@ -213,6 +213,7 @@ function App() {
   const [newFormerResidentDormEntryDate, setNewFormerResidentDormEntryDate] = useState('');
   const [newFormerResidentAcademicLevel, setNewFormerResidentAcademicLevel] = useState('');
   const [newFormerResidentDeactivatedDate, setNewFormerResidentDeactivatedDate] = useState(''); // Ngày vô hiệu hóa thủ công
+  const [showAddFormerResidentModal, setShowAddFormerResidentModal] = useState(false);
 
   const [notifications, setNotifications] = useState([]);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
@@ -1640,6 +1641,7 @@ const handleAvatarFileChange = (event) => {
       setNewFormerResidentAvatarFile(null); // Reset input file avatar
       setFormerResidentAvatarUploadProgress(0);
       setFormerResidentAvatarError(''); // Reset lỗi avatar
+      setShowAddFormerResidentModal(false);
 
       alert('Đã thêm tiền bối thành công!');
       console.log('Đã thêm tiền bối thủ công thành công!');
@@ -4636,300 +4638,145 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 )}
               </div>
             );          
-            case 'formerResidents': // Thông tin tiền bối
-          return (
-            <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">Thông tin tiền bối</h2>
-
-              {/* Form thêm tiền bối thủ công (Chỉ cho Admin) */}
-              {userRole === 'admin' && (
-                <form
-                  onSubmit={handleAddFormerResidentManually}
-                  className="mb-8 p-4 bg-green-100 dark:bg-gray-800 rounded-xl shadow-inner border border-green-200 dark:border-gray-600"
-                >
-                  <h3 className="text-xl font-bold text-green-700 dark:text-green-200 mb-4">Thêm tiền bối thủ công</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <label
-                        htmlFor="formerName"
-                        className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+            case 'formerResidents':
+              return (
+                <div className="p-6 bg-purple-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+                  {/* ===== TIÊU ĐỀ VÀ NÚT BẤM MỚI ===== */}
+                  <div className="flex justify-between items-center mb-5">
+                    <h2 className="text-2xl font-bold text-purple-800 dark:text-purple-200">Thông tin Tiền bối</h2>
+                    {userRole === 'admin' && (
+                      <button
+                        onClick={() => setShowAddFormerResidentModal(true)}
+                        className="bg-purple-500 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:bg-purple-600 transition-transform transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                        title="Thêm tiền bối mới"
                       >
-                        Họ tên:
-                      </label>
-                      <input
-                        type="text"
-                        id="formerName"
-                        value={newFormerResidentName}
-                        onChange={(e) => setNewFormerResidentName(e.target.value)}
-                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500"
-                        placeholder="Nguyễn Văn A"
-                      />
-                    </div>
-                    <div>
-                      <label
-                        htmlFor="formerEmail"
-                        className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                      >
-                        Email:
-                      </label>
-                      <input
-                        type="email"
-                        id="formerEmail"
-                        value={newFormerResidentEmail}
-                        onChange={(e) => setNewFormerResidentEmail(e.target.value)}
-                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500"
-                        placeholder="nguyenvana@example.com"
-                      />
-                    </div>
-                    <div>
-                      <label
-                        htmlFor="formerPhone"
-                        className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                      >
-                        SĐT:
-                      </label>
-                      <input
-                        type="text"
-                        id="formerPhone"
-                        value={newFormerResidentPhone}
-                        onChange={(e) => setNewFormerResidentPhone(e.target.value)}
-                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500"
-                        placeholder="0123456789"
-                      />
-                    </div>
-                    <div>
-                      <label
-                        htmlFor="formerStudentId"
-                        className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                      >
-                        MSSV:
-                      </label>
-                      <input
-                        type="text"
-                        id="formerStudentId"
-                        value={newFormerResidentStudentId}
-                        onChange={(e) => setNewFormerResidentStudentId(e.target.value)}
-                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500"
-                        placeholder="B1234567"
-                      />
-                    </div>
-                    <div>
-                      <label
-                        htmlFor="formerBirthday"
-                        className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                      >
-                        Ngày sinh:
-                      </label>
-                      <input
-                        type="date"
-                        id="formerBirthday"
-                        value={newFormerResidentBirthday}
-                        onChange={(e) => setNewFormerResidentBirthday(e.target.value)}
-                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500"
-                      />
-                    </div>
-                    <div>
-                      <label
-                        htmlFor="formerDormEntryDate"
-                        className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                      >
-                        Ngày nhập KTX:
-                      </label>
-                      <input
-                        type="date"
-                        id="formerDormEntryDate"
-                        value={newFormerResidentDormEntryDate}
-                        onChange={(e) => setNewFormerResidentDormEntryDate(e.target.value)}
-                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500"
-                      />
-                    </div>
-                    <div>
-                      <label
-                        htmlFor="formerAcademicLevel"
-                        className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                      >
-                        Cấp:
-                      </label>
-                      <input
-                        type="text"
-                        id="formerAcademicLevel"
-                        value={newFormerResidentAcademicLevel}
-                        onChange={(e) => setNewFormerResidentAcademicLevel(e.target.value)}
-                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500"
-                        placeholder="Đại học"
-                      />
-                    </div>
-                    <div>
-                      <label
-                        htmlFor="formerDeactivatedDate"
-                        className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                      >
-                        Ngày ra khỏi phòng (Ngày vô hiệu hóa):
-                      </label>
-                      <input
-                        type="date"
-                        id="formerDeactivatedDate"
-                        value={newFormerResidentDeactivatedDate}
-                        onChange={(e) => setNewFormerResidentDeactivatedDate(e.target.value)}
-                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-green-500 focus:border-green-500"
-                      />
-                    </div>
-                    {/* Phần chọn ảnh đại diện cho tiền bối */}
-                    <div className="md:col-span-2">
-                      {' '}
-                      {/* Có thể làm cho input này chiếm 2 cột */}
-                      <label
-                        htmlFor="formerAvatarFile"
-                        className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                      >
-                        Ảnh đại diện (Tùy chọn):
-                      </label>
-                      <input
-                        type="file"
-                        id="formerAvatarFile"
-                        accept="image/*"
-                        onChange={(e) => {
-                          setNewFormerResidentAvatarFile(e.target.files[0]);
-                          setFormerResidentAvatarError('');
-                        }}
-                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
-                      />
-                      {isUploadingFormerResidentAvatar && (
-                        <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2">
-                          <div
-                            className="bg-green-600 h-2.5 rounded-full"
-                            style={{ width: `${formerResidentAvatarUploadProgress}%` }}
-                          ></div>
-                        </div>
-                      )}
-                      {formerResidentAvatarError && (
-                        <p className="text-red-500 text-sm mt-2">{formerResidentAvatarError}</p>
-                      )}
-                    </div>
+                        <i className="fas fa-user-plus text-xl"></i>
+                      </button>
+                    )}
                   </div>
-                  {/* Toàn bộ div cho input file, progress bar và formerResidentError ĐÃ XÓA */}
-                  <button
-                    type="submit"
-                    className="w-full px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75"
-                    // Thuộc tính disabled={isUploadingFormerResident} đã bị xóa
-                  >
-                    <i className="fas fa-plus-circle mr-2"></i>
-                    Thêm tiền bối
-                  </button>
-                </form>
-              )}
 
-              {/* Nút "Chuyển người dùng sang tiền bối" (Nếu bạn vẫn muốn dùng chức năng này cho admin, nó thường được đặt ở Quản lý người ở) */}
-              {userRole === 'admin' && (
-                <button
-                  onClick={() => {
-                    alert('Nút này dùng để chuyển người ở hiện tại sang tiền bối từ mục "Quản lý người ở".');
-                  }}
-                  className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 mb-6"
-                >
-                  <i className="fas fa-exchange-alt mr-2"></i> Chuyển người dùng hiện tại sang tiền bối
-                </button>
-              )}
+                  {/* Phần tìm kiếm (giữ nguyên) */}
+                  <div className="mb-4">
+                    <input
+                      type="text"
+                      placeholder="Tìm kiếm theo tên hoặc MSSV..."
+                      value={searchTermFormerResident}
+                      onChange={(e) => setSearchTermFormerResident(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
 
-              {/* Danh sách các tiền bối đã lưu */}
-              <h3 className="text-xl font-bold text-green-700 dark:text-green-200 mb-4">Danh sách tiền bối</h3>
-              {formerResidents.length === 0 ? (
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
-                  Chưa có thông tin tiền bối nào được lưu.
-                </p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {formerResidents.map((resident) => (
-                    <div
-                      key={resident.id}
-                      className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700"
-                    >
-                      {/* HIỂN THỊ AVATAR */}
-                      {formerResidentAvatarUrls[resident.id] ? (
-                        <img
-                          src={formerResidentAvatarUrls[resident.id]}
-                          alt={`Avatar của ${resident.name}`}
-                          className="w-full h-48 object-cover cursor-pointer"
-                          onClick={() =>
-                            setSelectedImageToZoom({
-                              fileUrl: resident.photoURL,
-                              fileType: 'image',
-                              eventName: `Avatar của ${resident.name}`,
-                            })
-                          }
-                        />
-                      ) : (
-                        <div className="w-full h-48 bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 text-6xl">
-                          <i className="fas fa-user-circle"></i>
+                  {/* Danh sách tiền bối */}
+                  <div className="space-y-4">
+                    {filteredFormerResidents.map((resident) => (
+                      <div key={resident.id} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md flex justify-between items-center">
+                        <div>
+                          <p className="font-bold text-gray-800 dark:text-white">{resident.name}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">MSSV: {resident.studentId}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">Liên hệ: {resident.contact}</p>
+                          {resident.notes && <p className="text-xs text-gray-500 dark:text-gray-300 mt-1">Ghi chú: {resident.notes}</p>}
                         </div>
-                      )}
-                      <div className="p-4">
-                        <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">{resident.name}</h4>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                          <i className="fas fa-envelope mr-2"></i>Email: {resident.email || 'N/A'}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                          <i className="fas fa-phone mr-2"></i>SĐT: {resident.phoneNumber || 'N/A'}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                          <i className="fas fa-id-badge mr-2"></i>MSSV: {resident.studentId || 'N/A'}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                          <i className="fas fa-birthday-cake mr-2"></i>Ngày sinh: {resident.birthday || 'N/A'}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                          <i className="fas fa-calendar-alt mr-2"></i>Ngày nhập KTX: {resident.dormEntryDate || 'N/A'}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                          <i className="fas fa-graduation-cap mr-2"></i>Cấp: {resident.academicLevel || 'N/A'}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                          <i className="fas fa-door-open mr-2"></i>Ngày ra khỏi phòng:{' '}
-                          {resident.deactivatedAt && typeof resident.deactivatedAt.toLocaleDateString === 'function'
-                            ? resident.deactivatedAt.toLocaleDateString('vi-VN')
-                            : resident.deactivatedAt || 'N/A'}
-                        </p>
                         {userRole === 'admin' && (
-                          <div className="flex mt-4 space-x-2">
+                          <div className="flex space-x-2">
                             <button
-                              onClick={() =>
-                                setEditingFormerResident({
-                                  // Thiết lập tiền bối đang chỉnh sửa
-                                  id: resident.id,
-                                  name: resident.name,
-                                  email: resident.email || '',
-                                  phoneNumber: resident.phoneNumber || '',
-                                  studentId: resident.studentId || '',
-                                  birthday: resident.birthday || '',
-                                  dormEntryDate: resident.dormEntryDate || '',
-                                  academicLevel: resident.academicLevel || '',
-                                  // Đảm bảo deactivatedAt là string định dạng YYYY-MM-DD
-                                  deactivatedAt:
-                                    resident.deactivatedAt instanceof Date
-                                      ? formatDate(resident.deactivatedAt)
-                                      : resident.deactivatedAt || '',
-                                  photoURL: resident.photoURL || null, // Thêm photoURL vào state
-                                })
-                              }
-                              className="px-4 py-2 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-600 transition-colors duration-200"
+                              onClick={() => handleEditFormerResident(resident)}
+                              className="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600"
                             >
-                              <i className="fas fa-edit mr-2"></i>Chỉnh sửa
+                              Sửa
                             </button>
                             <button
                               onClick={() => handleDeleteFormerResident(resident.id)}
-                              className="px-4 py-2 bg-red-500 text-white rounded-lg shadow hover:bg-red-600 transition-colors duration-200"
+                              className="px-3 py-1 bg-red-500 text-white text-xs rounded-lg hover:bg-red-600"
                             >
-                              <i className="fas fa-trash mr-2"></i>Xóa
+                              Xóa
                             </button>
                           </div>
                         )}
                       </div>
+                    ))}
+                  </div>
+
+                  {/* ===== POPUP THÊM TIỀN BỐI MỚI ===== */}
+                  {showAddFormerResidentModal && (
+                    <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4">
+                      <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md">
+                        <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
+                          Thêm Tiền bối
+                        </h3>
+                        <form onSubmit={handleAddFormerResident} className="space-y-4">
+                          <div>
+                            <label htmlFor="formerResidentName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                              Họ tên:
+                            </label>
+                            <input
+                              type="text"
+                              id="formerResidentName"
+                              value={newFormerResidentName}
+                              onChange={(e) => setNewFormerResidentName(e.target.value)}
+                              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label htmlFor="formerResidentStudentId" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                              Mã số sinh viên:
+                            </label>
+                            <input
+                              type="text"
+                              id="formerResidentStudentId"
+                              value={newFormerResidentStudentId}
+                              onChange={(e) => setNewFormerResidentStudentId(e.target.value)}
+                              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label htmlFor="formerResidentContact" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                              Thông tin liên hệ:
+                            </label>
+                            <input
+                              type="text"
+                              id="formerResidentContact"
+                              value={newFormerResidentContact}
+                              onChange={(e) => setNewFormerResidentContact(e.target.value)}
+                              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700"
+                              placeholder="SĐT, Facebook, Zalo..."
+                            />
+                          </div>
+                          <div>
+                            <label htmlFor="formerResidentNotes" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                              Ghi chú:
+                            </label>
+                            <textarea
+                              id="formerResidentNotes"
+                              value={newFormerResidentNotes}
+                              onChange={(e) => setNewFormerResidentNotes(e.target.value)}
+                              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700"
+                              rows="3"
+                              placeholder="Ví dụ: Khóa, chuyên ngành, công ty hiện tại..."
+                            ></textarea>
+                          </div>
+                          <div className="flex space-x-4 mt-6">
+                            <button
+                              type="button"
+                              onClick={() => setShowAddFormerResidentModal(false)}
+                              className="w-1/2 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400"
+                            >
+                              Hủy
+                            </button>
+                            <button
+                              type="submit"
+                              className="w-1/2 px-6 py-3 bg-purple-600 text-white font-semibold rounded-xl shadow-md hover:bg-purple-700"
+                            >
+                              Thêm
+                            </button>
+                          </div>
+                        </form>
+                      </div>
                     </div>
-                  ))}
+                  )}
                 </div>
-              )}
-            </div>
-          );
+              );
         default:
           return (
             <div className="text-center p-8 bg-gray-100 dark:bg-gray-700 rounded-xl shadow-inner">
