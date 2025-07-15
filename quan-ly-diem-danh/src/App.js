@@ -1,3 +1,6 @@
+// Thêm các dòng này vào đầu file App.js
+import Popover from '@mui/material/Popover';
+import Paper from '@mui/material/Paper';
 import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
@@ -6614,55 +6617,73 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
             {theme === 'light' ? <i className="fas fa-moon text-lg"></i> : <i className="fas fa-sun text-lg"></i>}
           </button>
           
-          {/* ===== AVATAR VÀ POPOVER PROFILE ===== */}
-          {userId && (
-            <div className="relative">
-              {/* Nút Avatar */}
-              <button onClick={handleProfileClick} className="focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-full">
-                {userAvatarUrl ? (
-                  <img
-                    src={userAvatarUrl}
-                    alt="Avatar"
-                    className="w-12 h-12 rounded-full object-cover border-2 border-gray-300 dark:border-gray-600"
-                  />
-                ) : (
-                  <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-2xl border-2 border-gray-300 dark:border-gray-600">
-                    <i className="fas fa-user-circle"></i>
-                  </div>
-                )}
-              </button>
-              
-              {/* Popover Paper */}
-              {Boolean(profilePopoverAnchor) && (
-                <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-40">
-                  <div className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="user-menu-button">
-                    <button
-                      onClick={() => { setActiveSection('myProfileDetails'); handleProfileClose(); }}
-                      className="w-full text-left block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      role="menuitem"
-                    >
-                      Hồ sơ của tôi
-                    </button>
-                    <button
-                      onClick={() => { setActiveSection('passwordSettings'); handleProfileClose(); }}
-                      className="w-full text-left block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      role="menuitem"
-                    >
-                      Mật khẩu
-                    </button>
-                    <div className="border-t border-gray-200 dark:border-gray-700"></div>
-                    <button
-                      onClick={handleSignOut}
-                      className="w-full text-left block px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-gray-700"
-                      role="menuitem"
-                    >
-                      Đăng xuất
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+            {/* ===== AVATAR VÀ POPOVER PROFILE SỬ DỤNG MUI ===== */}
+            {userId && (
+              <div className="relative">
+                {/* Nút Avatar */}
+                <button onClick={handleProfileClick} className="focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-full">
+                  {userAvatarUrl ? (
+                    <img
+                      src={userAvatarUrl}
+                      alt="Avatar"
+                      className="w-12 h-12 rounded-full object-cover border-2 border-gray-300 dark:border-gray-600"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-2xl border-2 border-gray-300 dark:border-gray-600">
+                      <i className="fas fa-user-circle"></i>
+                    </div>
+                  )}
+                </button>
+                
+                {/* MUI Popover */}
+                <Popover
+                  open={Boolean(profilePopoverAnchor)}
+                  anchorEl={profilePopoverAnchor}
+                  onClose={handleProfileClose}
+                  anchorOrigin={{
+                    vertical: 'bottom',
+                    horizontal: 'right',
+                  }}
+                  transformOrigin={{
+                    vertical: 'top',
+                    horizontal: 'right',
+                  }}
+                  // Dùng Paper để tạo nền và đổ bóng
+                  PaperProps={{
+                    sx: {
+                      bgcolor: theme === 'dark' ? '#1F2937' : 'background.paper', // Màu nền cho theme tối
+                      color: theme === 'dark' ? 'white' : 'black',
+                      borderRadius: '8px', // Bo góc
+                      boxShadow: '0 4px 20px rgb(0 0 0 / 0.1)', // Đổ bóng
+                    },
+                  }}
+                >
+                  <Paper className="w-48 bg-transparent"> {/* Thẻ Paper bên trong để chứa menu */}
+                      <div className="py-1">
+                        <button
+                          onClick={() => { setActiveSection('myProfileDetails'); handleProfileClose(); }}
+                          className="w-full text-left block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+                        >
+                          Hồ sơ của tôi
+                        </button>
+                        <button
+                          onClick={() => { setActiveSection('passwordSettings'); handleProfileClose(); }}
+                          className="w-full text-left block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+                        >
+                          Mật khẩu
+                        </button>
+                        <div className="border-t border-gray-200 dark:border-gray-600 my-1"></div>
+                        <button
+                          onClick={handleSignOut}
+                          className="w-full text-left block px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-gray-700"
+                        >
+                          Đăng xuất
+                        </button>
+                      </div>
+                  </Paper>
+                </Popover>
+              </div>
+            )}
         </div>
       </header>
       {/* Main Content Area */}
