@@ -3686,85 +3686,86 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               )}
             </div>
           );
-        case 'attendanceTracking':
-          return (
-            <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">Điểm danh theo tháng</h2>
-              <div className="mb-6 flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4">
-                <label htmlFor="monthSelector" className="font-semibold text-gray-700 dark:text-gray-300 text-lg">
-                  Chọn tháng:
-                </label>
-                <input
-                  type="month"
-                  id="monthSelector"
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700"
-                />
-              </div>
-
-              {displayedResidents.length === 0 ? (
-                userRole === 'member' && !loggedInResidentProfile ? (
-                  <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
-                    Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.
-                  </p>
-                ) : (
-                  <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
-                    Vui lòng thêm người trong phòng vào danh sách để bắt đầu điểm danh.
-                  </p>
-                )
-              ) : (
-                <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-                  <table className="min-w-full bg-white dark:bg-gray-800">
-                    <thead>
-                      <tr>
-                        <th className="py-3 px-6 text-left sticky left-0 bg-green-100 dark:bg-gray-700 z-20 border-r border-green-200 dark:border-gray-600 rounded-tl-xl text-green-800 dark:text-green-200 uppercase text-sm leading-normal">
-                          Tên
-                        </th>
-                        {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map((day) => (
-                          <th
-                            key={day}
-                            className="py-3 px-2 text-center border-l border-green-200 dark:border-gray-600 text-green-800 dark:text-green-200 uppercase text-sm leading-normal"
-                          >
-                            {day}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
-                      {displayedResidents.map((resident) => (
-                        <tr
-                          key={resident.id}
-                          className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
-                        >
-                          <td className="py-3 px-6 text-left whitespace-nowrap font-medium sticky left-0 bg-white dark:bg-gray-800 z-10 border-r border-gray-200 dark:border-gray-700">
-                            {resident.name}
-                          </td>
-                          {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map((day) => {
-                            const dayString = String(day).padStart(2, '0');
-                            const isPresent = monthlyAttendanceData[resident.id]?.[dayString] === 1;
-                            return (
-                              <td
-                                key={day}
-                                className="py-3 px-2 text-center border-l border-gray-200 dark:border-gray-700"
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={isPresent}
-                                  onChange={() => handleToggleDailyPresence(resident.id, day)}
-                                  className="form-checkbox h-5 w-5 text-green-600 dark:text-green-400 rounded focus:ring-green-500 cursor-pointer"
-                                />
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+          case 'attendanceTracking':
+            return (
+              <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+                <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">
+                  {userRole === 'admin' ? 'Điểm danh theo tháng' : 'Điểm danh của tôi'}
+                </h2>
+                <div className="mb-6 flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4">
+                  <label htmlFor="monthSelector" className="font-semibold text-gray-700 dark:text-gray-300 text-lg">
+                    Chọn tháng:
+                  </label>
+                  <input
+                    type="month"
+                    id="monthSelector"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700"
+                  />
                 </div>
-              )}
-            </div>
-          );
+
+                {/* ===== KHUNG CHỨA CÓ THANH CUỘN NGANG ===== */}
+                <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                  {displayedResidents.length === 0 ? (
+                    <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
+                      Chưa có người ở nào để điểm danh.
+                    </p>
+                  ) : (
+                    <table className="min-w-full bg-white dark:bg-gray-800">
+                      <thead>
+                        <tr>
+                          <th className="py-3 px-6 text-left sticky left-0 bg-green-100 dark:bg-gray-700 z-20 border-r border-green-200 dark:border-gray-600 rounded-tl-xl text-green-800 dark:text-green-200 uppercase text-sm leading-normal">
+                            Tên
+                          </th>
+                          {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map((day) => (
+                            <th
+                              key={day}
+                              className="py-3 px-2 text-center border-l border-green-200 dark:border-gray-600 text-green-800 dark:text-green-200 uppercase text-sm leading-normal"
+                            >
+                              {day}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
+                        {displayedResidents.map((resident) => {
+                          const isMyRow = loggedInResidentProfile && resident.id === loggedInResidentProfile.id;
+                          return (
+                            <tr
+                              key={resident.id}
+                              className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+                            >
+                              <td className="py-3 px-6 text-left whitespace-nowrap font-medium sticky left-0 bg-white dark:bg-gray-800 z-10 border-r border-gray-200 dark:border-gray-700">
+                                {resident.name}
+                              </td>
+                              {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map((day) => {
+                                const dayString = String(day).padStart(2, '0');
+                                const isPresent = monthlyAttendanceData[resident.id]?.[dayString] === 1;
+                                return (
+                                  <td
+                                    key={day}
+                                    className="py-3 px-2 text-center border-l border-gray-200 dark:border-gray-700"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isPresent}
+                                      onChange={() => handleToggleDailyPresence(resident.id, day)}
+                                      disabled={userRole === 'member' && !isMyRow}
+                                      className="form-checkbox h-5 w-5 rounded focus:ring-green-500 cursor-pointer text-green-600 dark:text-green-400 dark:disabled:bg-slate-500 dark:disabled:border-slate-400 dark:disabled:checked:bg-yellow-600 dark:disabled:checked:border-transparent"
+                                    />
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            );
         case 'billing':
           return (
             <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
@@ -5552,93 +5553,87 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               </div>
             </div>
           );
-        case 'attendanceTracking': // Điểm danh của tôi
-          return (
-            <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">Điểm danh của tôi</h2>
-              {/* Giữ nguyên phần chọn tháng */}
-              <div className="mb-6 flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4">
-                <label htmlFor="monthSelector" className="font-semibold text-gray-700 dark:text-gray-300 text-lg">
-                  Chọn tháng:
-                </label>
-                <input
-                  type="month"
-                  id="monthSelector"
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700"
-                />
-              </div>
-
-              {displayedResidents.length === 0 ? (
-                // Thông báo này sẽ ít khi xuất hiện vì displayedResidents giờ chứa tất cả cư dân hoạt động
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
-                  Chưa có người ở nào trong danh sách hoạt động.
-                </p>
-              ) : (
-                <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-                  <table className="min-w-full bg-white dark:bg-gray-800">
-                    <thead>
-                      <tr>
-                        <th className="py-3 px-6 text-left sticky left-0 bg-green-100 dark:bg-gray-700 z-20 border-r border-green-200 dark:border-gray-600 rounded-tl-xl text-green-800 dark:text-green-200 uppercase text-sm leading-normal">
-                          Tên
-                        </th>
-                        {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map((day) => (
-                          <th
-                            key={day}
-                            className="py-3 px-2 text-center border-l border-green-200 dark:border-gray-600 text-green-800 dark:text-green-200 uppercase text-sm leading-normal"
-                          >
-                            {day}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
-                      {displayedResidents.map((resident) => {
-                        // Xác định xem hàng này có phải của người dùng đang đăng nhập không
-                        const isMyRow = loggedInResidentProfile && resident.id === loggedInResidentProfile.id;
-                        return (
-                          <tr
-                            key={resident.id}
-                            className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
-                          >
-                            <td className="py-3 px-6 text-left whitespace-nowrap font-medium sticky left-0 bg-white dark:bg-gray-800 z-10 border-r border-gray-200 dark:border-gray-700">
-                              {resident.name}
-                              {!isMyRow && <span className="ml-2 text-xs text-gray-500 dark:text-gray-400"></span>}{' '}
-                              {/* Thêm nhãn để phân biệt */}
-                            </td>
-                            {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map((day) => {
-                              const dayString = String(day).padStart(2, '0');
-                              const isPresent = monthlyAttendanceData[resident.id]?.[dayString] === 1;
-                              return (
-                                <td
-                                  key={day}
-                                  className="py-3 px-2 text-center border-l border-gray-200 dark:border-gray-700"
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={isPresent}
-                                    onChange={() => handleToggleDailyPresence(resident.id, day)}
-                                    disabled={!isMyRow} // Vô hiệu hóa nếu là member và không phải hàng của mình
-                                    className="form-checkbox h-5 w-5 rounded focus:ring-green-500
-                                                text-green-600 dark:text-green-400 
-                                                dark:disabled:bg-slate-700 dark:disabled:border-gray-600
-                                                dark:disabled:checked:bg-yellow-600 dark:disabled:checked:border-transparent
-                                                cursor-pointer"                                  
-                                  />
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+          case 'attendanceTracking':
+            return (
+              <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+                <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">
+                  {userRole === 'admin' ? 'Điểm danh theo tháng' : 'Điểm danh của tôi'}
+                </h2>
+                <div className="mb-6 flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4">
+                  <label htmlFor="monthSelector" className="font-semibold text-gray-700 dark:text-gray-300 text-lg">
+                    Chọn tháng:
+                  </label>
+                  <input
+                    type="month"
+                    id="monthSelector"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700"
+                  />
                 </div>
-              )}
-            </div>
-          );
-        case 'memberCostSummary': // Chi phí của tôi
+
+                {/* ===== KHUNG CHỨA CÓ THANH CUỘN NGANG ===== */}
+                <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                  {displayedResidents.length === 0 ? (
+                    <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
+                      Chưa có người ở nào để điểm danh.
+                    </p>
+                  ) : (
+                    <table className="min-w-full bg-white dark:bg-gray-800">
+                      <thead>
+                        <tr>
+                          <th className="py-3 px-6 text-left sticky left-0 bg-green-100 dark:bg-gray-700 z-20 border-r border-green-200 dark:border-gray-600 rounded-tl-xl text-green-800 dark:text-green-200 uppercase text-sm leading-normal">
+                            Tên
+                          </th>
+                          {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map((day) => (
+                            <th
+                              key={day}
+                              className="py-3 px-2 text-center border-l border-green-200 dark:border-gray-600 text-green-800 dark:text-green-200 uppercase text-sm leading-normal"
+                            >
+                              {day}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
+                        {displayedResidents.map((resident) => {
+                          const isMyRow = loggedInResidentProfile && resident.id === loggedInResidentProfile.id;
+                          return (
+                            <tr
+                              key={resident.id}
+                              className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+                            >
+                              <td className="py-3 px-6 text-left whitespace-nowrap font-medium sticky left-0 bg-white dark:bg-gray-800 z-10 border-r border-gray-200 dark:border-gray-700">
+                                {resident.name}
+                              </td>
+                              {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map((day) => {
+                                const dayString = String(day).padStart(2, '0');
+                                const isPresent = monthlyAttendanceData[resident.id]?.[dayString] === 1;
+                                return (
+                                  <td
+                                    key={day}
+                                    className="py-3 px-2 text-center border-l border-gray-200 dark:border-gray-700"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isPresent}
+                                      onChange={() => handleToggleDailyPresence(resident.id, day)}
+                                      disabled={userRole === 'member' && !isMyRow}
+                                      className="form-checkbox h-5 w-5 rounded focus:ring-green-500 cursor-pointer text-green-600 dark:text-green-400 dark:disabled:bg-slate-500 dark:disabled:border-slate-400 dark:disabled:checked:bg-yellow-600 dark:disabled:checked:border-transparent"
+                                    />
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            );        
+          case 'memberCostSummary': // Chi phí của tôi
           // Hiển thị tóm tắt chi phí mới nhất và nút đánh dấu đã đóng
           const latestCostSharingRecord = costSharingHistory[0];
           return (
