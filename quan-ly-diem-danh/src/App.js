@@ -2534,7 +2534,7 @@ const handleAvatarFileChange = (event) => {
         dormEntryDate: editingFormerResident.dormEntryDate.trim() || null,
         academicLevel: editingFormerResident.academicLevel.trim() || null,
         deactivatedAt: editingFormerResident.deactivatedAt, // Lưu ý: giữ nguyên định dạng (string YYYY-MM-DD)
-        photoURL: avatarDownloadURL,
+        photoURL: avatarUrl,
         lastUpdatedBy: userId,
         lastUpdatedAt: serverTimestamp(),
       });
