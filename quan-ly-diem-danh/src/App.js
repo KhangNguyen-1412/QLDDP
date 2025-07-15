@@ -6973,6 +6973,14 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
           </div>
         </aside>
 
+        {isSidebarOpen && (
+          <div
+            onClick={() => setIsSidebarOpen(false)}
+            className="fixed inset-0 bg-black bg-opacity-50 z-10 lg:hidden"
+            aria-hidden="true"
+          ></div>
+        )}
+
         {/* Content Area */}
         <main className={`flex-1 h-full p-4 transition-all duration-300 ease-in-out overflow-y-auto ${isSidebarOpen && window.innerWidth < 1024 ? 'sidebar-open-overlay' : ''}`}>          {userId ? (
             renderSection()
