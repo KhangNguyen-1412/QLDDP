@@ -4696,11 +4696,28 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                   <div className="space-y-4">
                     {filteredFormerResidents.map((resident) => (
                       <div key={resident.id} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md flex justify-between items-center">
-                        <div>
-                          <p className="font-bold text-gray-800 dark:text-white">{resident.name}</p>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">MSSV: {resident.studentId}</p>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">Liên hệ: {resident.contact}</p>
-                          {resident.notes && <p className="text-xs text-gray-500 dark:text-gray-300 mt-1">Ghi chú: {resident.notes}</p>}
+                        <div className="flex items-center">
+                          {/* Avatar */}
+                          <div className="flex-shrink-0 mr-4">
+                            {resident.photoURL ? (
+                              <img
+                                src={resident.photoURL}
+                                alt={`Avatar của ${resident.name}`}
+                                className="w-16 h-16 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 text-3xl">
+                                <i className="fas fa-user-circle"></i>
+                              </div>
+                            )}
+                          </div>
+                          {/* Thông tin chữ */}
+                          <div>
+                            <p className="font-bold text-gray-800 dark:text-white">{resident.name}</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">MSSV: {resident.studentId}</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">Liên hệ: {resident.contact}</p>
+                            {resident.notes && <p className="text-xs text-gray-500 dark:text-gray-300 mt-1">Ghi chú: {resident.notes}</p>}
+                          </div>
                         </div>
                         {userRole === 'admin' && (
                           <div className="flex space-x-2">
