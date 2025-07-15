@@ -227,3 +227,7 @@ code {
         opacity: 0; /* Biến mất */
     }
 }
+
+.sidebar-group-title {
+  @apply text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-4 pt-4 pb-2;
+}
