@@ -2519,11 +2519,14 @@ const handleAvatarFileChange = (event) => {
     }
 
     try {
+      let avatarDownloadURL = null;
       const formerResidentDocRef = doc(
         db,
         `artifacts/${currentAppId}/public/data/formerResidents`,
         editingFormerResident.id,
       );
+      avatarDownloadURL = response.data.secure_url;
+      console.log('Avatar tiền bối tải lên Cloudinary thành công, URL:', avatarDownloadURL);
 
       await updateDoc(formerResidentDocRef, {
         name: editingFormerResident.name.trim(),
@@ -2534,7 +2537,7 @@ const handleAvatarFileChange = (event) => {
         dormEntryDate: editingFormerResident.dormEntryDate.trim() || null,
         academicLevel: editingFormerResident.academicLevel.trim() || null,
         deactivatedAt: editingFormerResident.deactivatedAt, // Lưu ý: giữ nguyên định dạng (string YYYY-MM-DD)
-        photoURL: avatarUrl,
+        photoURL: avatarDownloadURL,
         lastUpdatedBy: userId,
         lastUpdatedAt: serverTimestamp(),
       });
