@@ -6698,7 +6698,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
           </div>
         </header>
         {/* Container chính cho sidebar và nội dung - thêm "relative group" */}
-        <div className="relative flex flex-1 h-full">
+        <div className="relative group flex flex-1 h-full">
             {/* Sidebar */}
             <aside
                 className={`flex-shrink-0 fixed inset-y-0 left-0 bg-white dark:bg-gray-800 shadow-lg transform ${
