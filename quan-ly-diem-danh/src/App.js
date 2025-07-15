@@ -6713,6 +6713,39 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               <i className="fas fa-times text-xl"></i>
             </button>
           </div>
+
+          {/* ===== KHỐI THÔNG TIN CÁ NHÂN - BẮT ĐẦU ===== */}
+          <div className="flex items-center p-4 border-b border-gray-200 dark:border-gray-700 mb-4">
+            {/* Avatar */}
+            <div className="flex-shrink-0">
+              {userAvatarUrl ? (
+                <img
+                  src={userAvatarUrl}
+                  alt="Avatar"
+                  className="w-14 h-14 rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-14 h-14 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-3xl">
+                  <i className="fas fa-user-circle"></i>
+                </div>
+              )}
+            </div>
+            {/* Name, ID, Role */}
+            <div className="ml-4">
+              <p className="font-bold text-gray-800 dark:text-white truncate">
+                {fullName}
+              </p>
+              {memberStudentId && (
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {memberStudentId}
+                </p>
+              )}
+              <p className="text-xs text-gray-500 dark:text-gray-300 mt-1">
+                {userRole === 'admin' ? 'Quản trị viên' : 'Thành viên'}
+              </p>
+            </div>
+          </div>
+          {/* ===== KHỐI THÔNG TIN CÁ NHÂN - KẾT THÚC ===== */}
           <nav className="space-y-1">
             {/* ===== ĐIỀU HƯỚNG CỦA ADMIN ===== */}
             {userId && userRole === 'admin' && (
