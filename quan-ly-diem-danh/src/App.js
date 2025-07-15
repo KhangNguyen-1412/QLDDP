@@ -70,6 +70,28 @@ function App() {
     setProfilePopoverAnchor(null);
   };
 
+  const popoverRef = useRef(null); // Tạo một ref
+
+  useEffect(() => {
+    // Hàm để xử lý khi click ra ngoài
+    function handleClickOutside(event) {
+      // Nếu popover đang mở và vị trí click không nằm trong popover
+      if (popoverRef.current && !popoverRef.current.contains(event.target)) {
+        handleProfileClose(); // Thì đóng popover
+      }
+    }
+
+    // Thêm trình lắng nghe sự kiện khi popover mở
+    if (profilePopoverAnchor) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    // Dọn dẹp trình lắng nghe khi component unmount hoặc popover đóng
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [profilePopoverAnchor]);
+
   // Thêm state để kiểm soát việc Admin thêm tài khoản mới
   const [newAccountStudentId, setNewAccountStudentId] = useState('');
   const [newAccountPassword, setNewAccountPassword] = useState('');
@@ -6636,7 +6658,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 
                 {/* Popover Paper tự tạo bằng div */}
                 {Boolean(profilePopoverAnchor) && (
-                  <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-40">
+                  <div ref={popoverRef} className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-40">
                     <div className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="user-menu-button">
                       <button
                         onClick={() => { setActiveSection('myProfileDetails'); handleProfileClose(); }}
