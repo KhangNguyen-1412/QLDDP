@@ -4686,7 +4686,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                         {userRole === 'admin' && (
                           <div className="flex space-x-2">
                             <button
-                              onClick={() => handleEditFormerResident(resident)}
+                              onClick={() => handleUpdateFormerResident(resident)}
                               className="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600"
                             >
                               Sửa
@@ -4710,7 +4710,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                         <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
                           Thêm Tiền bối
                         </h3>
-                        <form onSubmit={handleAddFormerResident} className="space-y-4">
+                        <form onSubmit={handleAddFormerResidentManually} className="space-y-4">
                           <div>
                             <label htmlFor="formerResidentName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
                               Họ tên:
