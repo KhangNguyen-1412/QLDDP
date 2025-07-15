@@ -6750,14 +6750,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               </p>
             </div>
           </div>
-          {/* ===== KHỐI THÔNG TIN CÁ NHÂN - KẾT THÚC ===== */}
-          {!isSidebarCollapsed && (
-            <div className="ml-4">
-              <p className="font-bold text-gray-800 dark:text-white break-words">{fullName}</p>
-              {memberStudentId && (<p className="text-sm text-gray-600 dark:text-gray-400">{memberStudentId}</p>)}
-              <p className="text-xs text-gray-500 dark:text-gray-300 mt-1">{userRole === 'admin' ? 'Quản trị viên' : 'Thành viên'}</p>
-            </div>
-          )}
           <nav className="space-y-1 px-4">
             {/* ===== ĐIỀU HƯỚNG CỦA ADMIN ===== */}
             {userId && userRole === 'admin' && (
