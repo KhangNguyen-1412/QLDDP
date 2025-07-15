@@ -1,6 +1,3 @@
-// Thêm các dòng này vào đầu file App.js
-import Popover from '@mui/material/Popover';
-import Paper from '@mui/material/Paper';
 import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
@@ -6592,32 +6589,32 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
           <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Quản lý phòng</h1>
         </div>
 
-        {/* KHỐI BÊN PHẢI: Chứa các nút hành động */}
-        <div className="flex items-center space-x-4">
-          {/* Nút thông báo */}
-          {userId && (
+        {/* Khối bên phải */}
+          <div className="flex items-center space-x-4">
+            {/* Nút thông báo */}
+            {userId && (
+                <button
+                  onClick={() => setShowNotificationsModal(true)}
+                  className="relative p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 shadow-md hover:shadow-lg transition-all duration-300"
+                >
+                  <i className="fas fa-bell text-lg"></i>
+                  {unreadNotificationsCount > 0 && (
+                    <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">
+                      {unreadNotificationsCount}
+                    </span>
+                  )}
+                </button>
+            )}
+            
+            {/* Nút đổi theme */}
             <button
-              onClick={() => setShowNotificationsModal(true)}
-              className="relative p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 shadow-md hover:shadow-lg transition-all duration-300"
+              onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+              className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 shadow-md hover:shadow-lg transition-all duration-300"
             >
-              <i className="fas fa-bell text-lg"></i>
-              {unreadNotificationsCount > 0 && (
-                <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">
-                  {unreadNotificationsCount}
-                </span>
-              )}
+              {theme === 'light' ? <i className="fas fa-moon text-lg"></i> : <i className="fas fa-sun text-lg"></i>}
             </button>
-          )}
-          
-          {/* Nút đổi theme */}
-          <button
-            onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-            className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 shadow-md hover:shadow-lg transition-all duration-300"
-          >
-            {theme === 'light' ? <i className="fas fa-moon text-lg"></i> : <i className="fas fa-sun text-lg"></i>}
-          </button>
-          
-            {/* ===== AVATAR VÀ POPOVER PROFILE SỬ DỤNG MUI ===== */}
+            
+            {/* ===== AVATAR VÀ POPOVER PROFILE (BẰNG TAILWIND CSS) ===== */}
             {userId && (
               <div className="relative">
                 {/* Nút Avatar */}
@@ -6635,57 +6632,39 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                   )}
                 </button>
                 
-                {/* MUI Popover */}
-                <Popover
-                  open={Boolean(profilePopoverAnchor)}
-                  anchorEl={profilePopoverAnchor}
-                  onClose={handleProfileClose}
-                  anchorOrigin={{
-                    vertical: 'bottom',
-                    horizontal: 'right',
-                  }}
-                  transformOrigin={{
-                    vertical: 'top',
-                    horizontal: 'right',
-                  }}
-                  // Dùng Paper để tạo nền và đổ bóng
-                  PaperProps={{
-                    sx: {
-                      bgcolor: theme === 'dark' ? '#1F2937' : 'background.paper', // Màu nền cho theme tối
-                      color: theme === 'dark' ? 'white' : 'black',
-                      borderRadius: '8px', // Bo góc
-                      boxShadow: '0 4px 20px rgb(0 0 0 / 0.1)', // Đổ bóng
-                    },
-                  }}
-                >
-                  <Paper className="w-48 bg-transparent"> {/* Thẻ Paper bên trong để chứa menu */}
-                      <div className="py-1">
-                        <button
-                          onClick={() => { setActiveSection('myProfileDetails'); handleProfileClose(); }}
-                          className="w-full text-left block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
-                        >
-                          Hồ sơ của tôi
-                        </button>
-                        <button
-                          onClick={() => { setActiveSection('passwordSettings'); handleProfileClose(); }}
-                          className="w-full text-left block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
-                        >
-                          Mật khẩu
-                        </button>
-                        <div className="border-t border-gray-200 dark:border-gray-600 my-1"></div>
-                        <button
-                          onClick={handleSignOut}
-                          className="w-full text-left block px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-gray-700"
-                        >
-                          Đăng xuất
-                        </button>
-                      </div>
-                  </Paper>
-                </Popover>
+                {/* Popover Paper tự tạo bằng div */}
+                {Boolean(profilePopoverAnchor) && (
+                  <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-40">
+                    <div className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="user-menu-button">
+                      <button
+                        onClick={() => { setActiveSection('myProfileDetails'); handleProfileClose(); }}
+                        className="w-full text-left block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        role="menuitem"
+                      >
+                        Hồ sơ của tôi
+                      </button>
+                      <button
+                        onClick={() => { setActiveSection('passwordSettings'); handleProfileClose(); }}
+                        className="w-full text-left block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        role="menuitem"
+                      >
+                        Mật khẩu
+                      </button>
+                      <div className="border-t border-gray-200 dark:border-gray-700"></div>
+                      <button
+                        onClick={handleSignOut}
+                        className="w-full text-left block px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-gray-700"
+                        role="menuitem"
+                      >
+                        Đăng xuất
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
-        </div>
-      </header>
+          </div>
+        </header>
       {/* Main Content Area */}
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
