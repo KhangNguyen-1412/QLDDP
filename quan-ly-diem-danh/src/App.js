@@ -224,7 +224,7 @@ function App() {
   const [passwordChangeMessage, setPasswordChangeMessage] = useState(''); // Để hiển thị thông báo thành công/lỗi khi đổi mật khẩu
 
   // State for sidebar navigation
-  const [activeSection, setActiveSection] = useState('residentManagement');
+  const [activeSection, setActiveSection] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const hasInitialized = useRef(false);
