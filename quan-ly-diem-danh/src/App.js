@@ -61,8 +61,10 @@ function App() {
   const [profilePopoverAnchor, setProfilePopoverAnchor] = useState(null);
 
   const handleProfileClick = (event) => {
-    setProfilePopoverAnchor(event.currentTarget);
-  };
+  // Nếu popover đã mở (anchor đã tồn tại), thì đóng nó lại.
+  // Ngược lại, nếu đang đóng, thì mở nó ra.
+  setProfilePopoverAnchor(profilePopoverAnchor ? null : event.currentTarget);
+};
 
   const handleProfileClose = () => {
     setProfilePopoverAnchor(null);
