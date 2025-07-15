@@ -4642,6 +4642,10 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               </div>
             );          
             case 'formerResidents':
+              const filteredFormerResidents = formerResidents.filter(resident =>
+                (resident.name?.toLowerCase().includes(searchTermFormerResident.toLowerCase())) ||
+                (resident.studentId?.toLowerCase().includes(searchTermFormerResident.toLowerCase()))
+              );
               return (
                 <div className="p-6 bg-purple-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
                   {/* ===== TIÊU ĐỀ VÀ NÚT BẤM MỚI ===== */}
