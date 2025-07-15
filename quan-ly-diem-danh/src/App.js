@@ -3132,7 +3132,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
     const prompt = `Bạn là một trợ lý quản lý phòng. Hãy tạo một lịch trực phòng lau dọn cho các thành viên sau: ${residentNames.join(', ')}.
     Lịch trình nên kéo dài trong ${numDaysForSchedule} ngày, bắt đầu từ hôm nay (${formatDate(today)}).
     Các công việc chính cần phân công luân phiên hàng ngày là:
-    - Quét phòng, lau phòng, đổ rác
+    Trực phòng
 
     Hãy đảm bảo mỗi người có ít nhất một công việc trong lịch trình.
     Trả về dưới dạng một mảng JSON, mỗi đối tượng trong mảng có các thuộc tính sau:
@@ -6741,7 +6741,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 </p>
               )}
               <p className="text-xs text-gray-500 dark:text-gray-300 mt-1">
-                {userRole === 'admin' ? 'Quản trị viên' : 'Thành viên'}
+                {userRole === 'admin' ? 'Trưởng phòng/phó phòng' : 'Thành viên'}
               </p>
             </div>
           </div>
