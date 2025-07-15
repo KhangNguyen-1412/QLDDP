@@ -214,6 +214,9 @@ function App() {
   const [newFormerResidentAcademicLevel, setNewFormerResidentAcademicLevel] = useState('');
   const [newFormerResidentDeactivatedDate, setNewFormerResidentDeactivatedDate] = useState(''); // Ngày vô hiệu hóa thủ công
   const [showAddFormerResidentModal, setShowAddFormerResidentModal] = useState(false);
+  const [searchTermFormerResident, setSearchTermFormerResident] = useState('');
+  const [newFormerResidentContact, setNewFormerResidentContact] = useState('');
+  const [newFormerResidentNotes, setNewFormerResidentNotes] = useState('');
 
   const [notifications, setNotifications] = useState([]);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
