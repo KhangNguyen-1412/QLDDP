@@ -2476,6 +2476,25 @@ const handleAvatarFileChange = (event) => {
   // Thêm vào danh sách các useState của bạn
   const [editingFormerResident, setEditingFormerResident] = useState(null); // Lưu trữ đối tượng tiền bối đang được chỉnh sửa
 
+  // Hàm này để MỞ POPUP và nạp dữ liệu vào form chỉnh sửa
+  const handleEditFormerResident = (resident) => {
+    setEditingFormerResident({
+      id: resident.id,
+      name: resident.name,
+      email: resident.email || '',
+      phoneNumber: resident.phoneNumber || '',
+      studentId: resident.studentId || '',
+      birthday: resident.birthday || '',
+      dormEntryDate: resident.dormEntryDate || '',
+      academicLevel: resident.academicLevel || '',
+      // Đảm bảo deactivatedAt là string định dạng YYYY-MM-DD
+      deactivatedAt: resident.deactivatedAt instanceof Date
+        ? formatDate(resident.deactivatedAt)
+        : resident.deactivatedAt || '',
+      photoURL: resident.photoURL || null,
+    });
+  };
+  
   // Thêm hàm này vào file App.js của bạn
   const handleUpdateFormerResident = async (e) => {
     e.preventDefault();
@@ -4686,7 +4705,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                         {userRole === 'admin' && (
                           <div className="flex space-x-2">
                             <button
-                              onClick={() => handleUpdateFormerResident(resident)}
+                              onClick={() => handleEditFormerResident (resident)}
                               className="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600"
                             >
                               Sửa
@@ -7890,12 +7909,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
             <div className="flex-1 overflow-y-auto pr-2">
               <form onSubmit={handleUpdateFormerResident} className="space-y-4">
                 <div>
-                  <label
-                    htmlFor="editFormerName"
-                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                  >
-                    Họ tên:
-                  </label>
+                  <label htmlFor="editFormerName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Họ tên:</label>
                   <input
                     type="text"
                     id="editFormerName"
@@ -7905,12 +7919,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                   />
                 </div>
                 <div>
-                  <label
-                    htmlFor="editFormerEmail"
-                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                  >
-                    Email:
-                  </label>
+                  <label htmlFor="editFormerEmail" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email:</label>
                   <input
                     type="email"
                     id="editFormerEmail"
@@ -7920,29 +7929,17 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                   />
                 </div>
                 <div>
-                  <label
-                    htmlFor="editFormerPhone"
-                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                  >
-                    SĐT:
-                  </label>
+                  <label htmlFor="editFormerPhone" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">SĐT:</label>
                   <input
                     type="text"
                     id="editFormerPhone"
                     value={editingFormerResident.phoneNumber}
-                    onChange={(e) =>
-                      setEditingFormerResident({ ...editingFormerResident, phoneNumber: e.target.value })
-                    }
+                    onChange={(e) => setEditingFormerResident({ ...editingFormerResident, phoneNumber: e.target.value })}
                     className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
                 <div>
-                  <label
-                    htmlFor="editFormerStudentId"
-                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                  >
-                    MSSV:
-                  </label>
+                  <label htmlFor="editFormerStudentId" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">MSSV:</label>
                   <input
                     type="text"
                     id="editFormerStudentId"
@@ -7952,12 +7949,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                   />
                 </div>
                 <div>
-                  <label
-                    htmlFor="editFormerBirthday"
-                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                  >
-                    Ngày sinh:
-                  </label>
+                  <label htmlFor="editFormerBirthday" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày sinh:</label>
                   <input
                     type="date"
                     id="editFormerBirthday"
@@ -7967,129 +7959,74 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                   />
                 </div>
                 <div>
-                  <label
-                    htmlFor="editFormerDormEntryDate"
-                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                  >
-                    Ngày nhập KTX:
-                  </label>
+                  <label htmlFor="editFormerDormEntryDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày nhập KTX:</label>
                   <input
                     type="date"
                     id="editFormerDormEntryDate"
                     value={editingFormerResident.dormEntryDate}
-                    onChange={(e) =>
-                      setEditingFormerResident({ ...editingFormerResident, dormEntryDate: e.target.value })
-                    }
+                    onChange={(e) => setEditingFormerResident({ ...editingFormerResident, dormEntryDate: e.target.value })}
                     className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
                 <div>
-                  <label
-                    htmlFor="editFormerAcademicLevel"
-                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                  >
-                    Cấp:
-                  </label>
+                  <label htmlFor="editFormerAcademicLevel" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Cấp:</label>
                   <input
                     type="text"
                     id="editFormerAcademicLevel"
                     value={editingFormerResident.academicLevel}
-                    onChange={(e) =>
-                      setEditingFormerResident({ ...editingFormerResident, academicLevel: e.target.value })
-                    }
+                    onChange={(e) => setEditingFormerResident({ ...editingFormerResident, academicLevel: e.target.value })}
                     className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
                 <div>
-                  <label
-                    htmlFor="editFormerDeactivatedDate"
-                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                  >
-                    Ngày ra khỏi phòng (Ngày vô hiệu hóa):
-                  </label>
+                  <label htmlFor="editFormerDeactivatedDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ngày ra khỏi phòng:</label>
                   <input
                     type="date"
                     id="editFormerDeactivatedDate"
                     value={editingFormerResident.deactivatedAt}
-                    onChange={(e) =>
-                      setEditingFormerResident({ ...editingFormerResident, deactivatedAt: e.target.value })
-                    }
+                    onChange={(e) => setEditingFormerResident({ ...editingFormerResident, deactivatedAt: e.target.value })}
                     className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-                {/* Phần chọn ảnh đại diện cho tiền bối (trong modal chỉnh sửa) */}
-                <div className="mt-8 pt-6 border-t border-gray-300 dark:border-gray-600">
-                  <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-4">Ảnh đại diện</h3>
-                  <div className="flex items-center space-x-4 mb-4">
-                    {/* Hiển thị avatar hiện tại nếu có */}
-                    {editingFormerResident.photoURL ? ( // photoURL từ đối tượng editingFormerResident
-                      <img
-                        src={editingFormerResident.photoURL}
-                        alt="Avatar"
-                        className="w-24 h-24 rounded-full object-cover shadow-lg border border-gray-200 dark:border-gray-700"
-                      />
-                    ) : (
-                      <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-5xl">
-                        <i className="fas fa-user-circle"></i>
-                      </div>
-                    )}
-                    <div>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                          setNewFormerResidentAvatarFile(e.target.files[0]);
-                          setFormerResidentAvatarError('');
-                        }}
-                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                      />
-                      {isUploadingFormerResidentAvatar && (
-                        <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2">
-                          <div
-                            className="bg-blue-600 h-2.5 rounded-full"
-                            style={{ width: `${formerResidentAvatarUploadProgress}%` }}
-                          ></div>
-                        </div>
-                      )}
-                      {formerResidentAvatarError && (
-                        <p className="text-red-500 text-sm mt-2">{formerResidentAvatarError}</p>
-                      )}
-                      <button
-                        // Gọi hàm tải lên avatar riêng biệt, có thể dùng lại handleUploadFormerResidentAvatar
-                        onClick={() => handleUploadFormerResidentAvatar(editingFormerResident.id)}
-                        className="mt-3 px-4 py-2 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
-                        disabled={isUploadingFormerResidentAvatar || !newFormerResidentAvatarFile}
-                      >
-                        {isUploadingFormerResidentAvatar ? (
-                          <i className="fas fa-spinner fa-spin mr-2"></i>
-                        ) : (
-                          <i className="fas fa-upload mr-2"></i>
-                        )}
-                        Cập nhật Avatar
-                      </button>
-                    </div>
-                  </div>
+                <div>
+                  <label htmlFor="editFormerContact" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Thông tin liên hệ:</label>
+                  <input
+                    type="text"
+                    id="editFormerContact"
+                    value={editingFormerResident.contact}
+                    onChange={(e) => setEditingFormerResident({ ...editingFormerResident, contact: e.target.value })}
+                    className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="editFormerNotes" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Ghi chú:</label>
+                  <textarea
+                    id="editFormerNotes"
+                    value={editingFormerResident.notes}
+                    onChange={(e) => setEditingFormerResident({ ...editingFormerResident, notes: e.target.value })}
+                    className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                    rows="3"
+                  ></textarea>
+                </div>
+
+                {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
+                
+                <div className="flex justify-between space-x-4 mt-6">
+                  <button
+                    type="submit"
+                    className="flex-1 px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700"
+                  >
+                    <i className="fas fa-save mr-2"></i> Lưu thay đổi
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setEditingFormerResident(null); setAuthError(''); }}
+                    className="flex-1 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400"
+                  >
+                    Hủy
+                  </button>
                 </div>
               </form>
-            </div>
-            {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
-            <div className="flex justify-between space-x-4 mt-6">
-              <button
-                type="submit"
-                className="flex-1 px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
-              >
-                <i className="fas fa-save mr-2"></i> Lưu thay đổi
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingFormerResident(null);
-                  setAuthError('');
-                }}
-                className="flex-1 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
-              >
-                Hủy
-              </button>
             </div>
           </div>
         </div>
