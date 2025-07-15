@@ -6895,19 +6895,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                     <i className="fas fa-user-graduate mr-3"></i> Thông tin tiền bối
                   </button>
                   <button
-                    className={`block mb-1 w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
-                      activeSection === 'adminProfileEdit'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                    onClick={() => {
-                      setActiveSection('adminProfileEdit');
-                      setIsSidebarOpen(false);
-                    }}
-                  >
-                    <i className="fas fa-user-cog mr-3"></i> Chỉnh sửa hồ sơ của tôi
-                  </button>
-                  <button
                       className={`block mb-1 w-full text-left py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
                           activeSection === 'adminCreateAccount' // New active section
                               ? 'bg-blue-600 text-white shadow-md'
