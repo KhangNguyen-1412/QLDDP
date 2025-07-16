@@ -5619,7 +5619,13 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                                       checked={isPresent}
                                       onChange={() => handleToggleDailyPresence(resident.id, day)}
                                       disabled={userRole === 'member' && !isMyRow}
-                                      className="form-checkbox h-5 w-5 rounded focus:ring-green-500 cursor-pointer text-green-600 dark:text-green-400 dark:disabled:bg-slate-500 dark:disabled:border-slate-400 dark:disabled:checked:bg-yellow-600 dark:disabled:checked:border-transparent"
+                                      className=" form-checkbox h-5 w-5 rounded focus:ring-green-500 cursor-pointer 
+                                                  text-green-600 
+                                                  disabled:checked:bg-red-500 
+                                                  dark:text-green-400 
+                                                  dark:disabled:bg-slate-700 
+                                                  dark:disabled:checked:bg-yellow-600 
+                                                  dark:disabled:checked:border-transparent"
                                     />
                                   </td>
                                 );
