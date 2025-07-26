@@ -4394,107 +4394,60 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               )}
             </div>
           );
-        case 'commonRoomInfo': // New section for common room information
-          return (
-            <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Thông tin phòng chung</h2>
-              {residents.length === 0 ? (
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
-                  Chưa có người ở nào trong danh sách.
-                </p>
-              ) : (
-                <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-                  <table className="min-w-full bg-white dark:bg-gray-800">
-                    <thead>
-                      <tr>
-                        <th className="py-3 px-4 text-center text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">
-                          Avatar
-                        </th>
-                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">
-                          Họ tên
-                        </th>
-                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">
-                          Email
-                        </th>
-                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">
-                          SĐT
-                        </th>
-                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">
-                          MSSV
-                        </th>
-                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">
-                          Ngày sinh
-                        </th>
-                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">
-                          Ngày nhập KTX
-                        </th>
-                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">
-                          Email trường
-                        </th>
-                        <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">
-                          Trạng thái
-                        </th>
-                        {userRole === 'admin' && (
-                          <th className="py-3 px-4 text-center text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">
-                            Hành động
-                          </th>
-                        )}
-                      </tr>
-                    </thead>
-                    <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
+          case 'commonRoomInfo':
+            // Phân quyền hiển thị ngay tại đây
+            if (userRole === 'admin') {
+              // ===== GIAO DIỆN "THẺ THÀNH VIÊN" CHO ADMIN =====
+              return (
+                <div className="p-4 md:p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg w-full">
+                  <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">
+                    Thông tin phòng chung
+                  </h2>
+                  {residents.length === 0 ? (
+                    <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
+                      Chưa có người ở nào trong danh sách.
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {residents.map((resident) => {
                         const linkedUser = allUsersData.find((user) => user.linkedResidentId === resident.id);
                         return (
-                          <tr
-                            key={resident.id}
-                            className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
-                          >
-                            {/* NEW: Avatar Column Data */}
-                            <td className="py-3 px-4 text-center">
-                              {linkedUser?.photoURL ? (
-                                <img
-                                  src={linkedUser.photoURL}
-                                  alt="Avatar"
-                                  className="w-10 h-10 rounded-full object-cover mx-auto"
-                                />
-                              ) : (
-                                <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-xl mx-auto">
-                                  <i className="fas fa-user-circle"></i>
-                                </div>
-                              )}
-                              {userRole === 'admin' && linkedUser && ( // Chỉ hiển thị nút cho admin và nếu có user liên kết
-                                <button
-                                  onClick={() => setSelectedResidentForAvatarUpload(linkedUser)}
-                                  className="mt-1 text-blue-500 hover:text-blue-700 text-xs"
-                                >
-                                  {linkedUser.photoURL ? 'Thay đổi' : 'Đặt ảnh'}
-                                </button>
-                              )}
-                            </td>
-                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.fullName || resident.name}</td>
-                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.email || 'N/A'}</td>
-                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.phoneNumber || 'N/A'}</td>
-                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.studentId || 'N/A'}</td>
-                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.birthday || 'N/A'}</td>
-                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.dormEntryDate || 'N/A'}</td>
-                            <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.academicLevel || 'N/A'}</td>
-                            <td className="py-3 px-4 whitespace-nowrap">
-                              <span
-                                className={`font-semibold ${resident.isActive ? 'text-green-600' : 'text-red-500'}`}
-                              >
-                                {resident.isActive ? 'Hoạt động' : 'Vô hiệu hóa'}
-                              </span>
-                            </td>
-                            {userRole === 'admin' && (
-                              <td className="py-3 px-4 text-center">
-                                <button
-                                  onClick={() => handleEditCommonResidentDetails(resident)}
-                                  className="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg shadow-sm hover:bg-blue-600 transition-colors"
-                                >
-                                  Điều chỉnh
-                                </button>
-                                {/* ===== NÚT TRAO QUYỀN MỚI ===== */}
-                                {linkedUser && linkedUser.role === 'member' && (
+                          <div key={resident.id} className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 flex flex-col justify-between transition-transform transform hover:scale-105 duration-300">
+                            {/* Phần Header của Thẻ */}
+                            <div className="flex items-start mb-4">
+                              <div className="relative">
+                                {linkedUser?.photoURL ? (
+                                  <img src={linkedUser.photoURL} alt="Avatar" className="w-16 h-16 rounded-full object-cover border-2 border-gray-200 dark:border-gray-600"/>
+                                ) : (
+                                  <div className="w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-3xl text-gray-400">
+                                    <i className="fas fa-user-circle"></i>
+                                  </div>
+                                )}
+                                <span className={`absolute bottom-0 right-0 block h-4 w-4 rounded-full border-2 border-white dark:border-gray-800 ${resident.isActive ? 'bg-green-500' : 'bg-gray-400'}`}></span>
+                              </div>
+                              <div className="ml-4">
+                                <p className="font-bold text-lg text-gray-900 dark:text-white break-words">{linkedUser?.fullName || resident.name}</p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">{linkedUser?.role === 'admin' ? 'Quản trị viên' : 'Thành viên'}</p>
+                              </div>
+                            </div>
+                            {/* Phần Thân của Thẻ - Chi tiết */}
+                            <div className="space-y-3 text-sm">
+                              <div className="flex items-center text-gray-700 dark:text-gray-300">
+                                <i className="fas fa-id-badge w-5 text-center mr-2 text-blue-500"></i>
+                                <span>{linkedUser?.studentId || 'N/A'}</span>
+                              </div>
+                              <div className="flex items-center text-gray-700 dark:text-gray-300">
+                                <i className="fas fa-envelope w-5 text-center mr-2 text-blue-500"></i>
+                                <span>{linkedUser?.email || 'N/A'}</span>
+                              </div>
+                              <div className="flex items-center text-gray-700 dark:text-gray-300">
+                                <i className="fas fa-phone w-5 text-center mr-2 text-blue-500"></i>
+                                <span>{linkedUser?.phoneNumber || 'N/A'}</span>
+                              </div>
+                            </div>
+                            {/* Phần Footer của Thẻ - Hành động (Admin) */}
+                            <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end space-x-2">
+                              {linkedUser && linkedUser.role === 'member' && (
                                   <button
                                     onClick={() => handleToggleAttendancePermission(linkedUser.id, linkedUser.canTakeAttendance || false)}
                                     className={`px-3 py-1 text-white text-xs rounded-lg shadow-sm ${
@@ -4502,22 +4455,76 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                                       ? 'bg-red-500 hover:bg-red-600' 
                                       : 'bg-green-500 hover:bg-green-600'
                                     }`}
+                                    title={linkedUser.canTakeAttendance ? 'Thu hồi quyền điểm danh' : 'Trao quyền điểm danh'}
                                   >
-                                    {linkedUser.canTakeAttendance ? 'Thu hồi quyền' : 'Trao quyền DD'}
+                                    <i className="fas fa-tasks"></i>
                                   </button>
-                                )}
-                              </td>
-                            )}
-                          </tr>
+                              )}
+                              <button
+                                onClick={() => handleEditCommonResidentDetails(resident)}
+                                className="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg shadow-sm hover:bg-blue-600"
+                                title="Điều chỉnh thông tin"
+                              >
+                                <i className="fas fa-edit"></i>
+                              </button>
+                            </div>
+                          </div>
                         );
                       })}
-                    </tbody>
-                  </table>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          );
-          case 'roomMemories':
+              );
+            } else {
+              // ===== GIAO DIỆN BẢNG TRUYỀN THỐNG CHO MEMBER =====
+              return (
+                <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+                  <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Thông tin phòng chung</h2>
+                  {residents.length === 0 ? (
+                    <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
+                      Chưa có người ở nào trong danh sách.
+                    </p>
+                  ) : (
+                    <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                      <table className="min-w-full bg-white dark:bg-gray-800">
+                        <thead>
+                          <tr>
+                            <th className="py-3 px-4 text-center text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Avatar</th>
+                            <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Họ tên</th>
+                            <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Email</th>
+                            <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">SĐT</th>
+                            <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">MSSV</th>
+                          </tr>
+                        </thead>
+                        <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
+                          {residents.map((resident) => {
+                            const linkedUser = allUsersData.find((user) => user.linkedResidentId === resident.id);
+                            return (
+                              <tr key={resident.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                                <td className="py-3 px-4 text-center">
+                                  {linkedUser?.photoURL ? (
+                                    <img src={linkedUser.photoURL} alt="Avatar" className="w-10 h-10 rounded-full object-cover mx-auto"/>
+                                  ) : (
+                                    <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-xl mx-auto">
+                                      <i className="fas fa-user-circle"></i>
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.fullName || resident.name}</td>
+                                <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.email || 'N/A'}</td>
+                                <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.phoneNumber || 'N/A'}</td>
+                                <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.studentId || 'N/A'}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              );
+            }          
+            case 'roomMemories':
             return (
               <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
                 {/* ===== TIÊU ĐỀ VÀ NÚT BẤM MỚI ===== */}
