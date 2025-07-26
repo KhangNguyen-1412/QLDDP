@@ -5593,7 +5593,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               </div>
             </div>
           );
-          case 'attendanceTracking':
+          case 'attendanceTracking':{
             return (
               <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
                 <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">
@@ -5678,7 +5678,8 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                   )}
                 </div>
               </div>
-            );        
+            ); 
+          }       
           case 'memberCostSummary': // Chi phí của tôi
           // Hiển thị tóm tắt chi phí mới nhất và nút đánh dấu đã đóng
           const latestCostSharingRecord = costSharingHistory[0];
