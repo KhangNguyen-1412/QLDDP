@@ -4415,7 +4415,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                           <div key={resident.id} className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 flex flex-col justify-between transition-transform transform hover:scale-105 duration-300">
                             {/* Phần Header của Thẻ */}
                             <div className="flex items-start mb-4">
-                              <div className="relative">
+                              <div className="relative group"> {/* Thêm 'group' để tạo hiệu ứng hover */}
                                 {linkedUser?.photoURL ? (
                                   <img src={linkedUser.photoURL} alt="Avatar" className="w-16 h-16 rounded-full object-cover border-2 border-gray-200 dark:border-gray-600"/>
                                 ) : (
@@ -4424,6 +4424,17 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                                   </div>
                                 )}
                                 <span className={`absolute bottom-0 right-0 block h-4 w-4 rounded-full border-2 border-white dark:border-gray-800 ${resident.isActive ? 'bg-green-500' : 'bg-gray-400'}`}></span>
+                                
+                                {/* ===== NÚT THAY ĐỔI AVATAR ĐƯỢC THÊM VÀO ĐÂY ===== */}
+                                {linkedUser && (
+                                  <button 
+                                    onClick={() => setSelectedResidentForAvatarUpload(linkedUser)}
+                                    className="absolute inset-0 w-16 h-16 rounded-full bg-black bg-opacity-0 group-hover:bg-opacity-50 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                                    title="Thay đổi ảnh đại diện"
+                                  >
+                                    <i className="fas fa-camera text-xl"></i>
+                                  </button>
+                                )}
                               </div>
                               <div className="ml-4">
                                 <p className="font-bold text-lg text-gray-900 dark:text-white break-words">{linkedUser?.fullName || resident.name}</p>
