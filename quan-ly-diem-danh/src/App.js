@@ -5594,6 +5594,8 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
             </div>
           );
           case 'attendanceTracking':{
+            const currentUserData = allUsersData.find(u => u.id === userId);
+            const memberCanTakeAttendance = currentUserData?.canTakeAttendance === true;
             return (
               <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
                 <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">
