@@ -240,6 +240,28 @@ function App() {
   // New state for Image Lightbox/Zoom
   const [selectedImageToZoom, setSelectedImageToZoom] = useState(null); // Lưu URL của ảnh muốn phóng to
 
+  // Hàm trao quyền cho member điểm danh
+  const handleToggleAttendancePermission = async (targetUserId, currentStatus) => {
+    if (userRole !== 'admin') {
+      setAuthError('Bạn không có quyền thực hiện thao tác này.');
+      return;
+    }
+    if (!window.confirm(`Bạn có chắc chắn muốn ${currentStatus ? 'thu hồi' : 'trao'} quyền điểm danh cho người này?`)) {
+      return;
+    }
+
+    const userDocRef = doc(db, `artifacts/${currentAppId}/public/data/users`, targetUserId);
+    try {
+      await updateDoc(userDocRef, {
+        canTakeAttendance: !currentStatus // Đảo ngược trạng thái hiện tại
+      });
+      alert(`Đã ${!currentStatus ? 'trao' : 'thu hồi'} quyền điểm danh thành công!`);
+    } catch (error) {
+      console.error("Lỗi khi cập nhật quyền điểm danh:", error);
+      setAuthError('Đã xảy ra lỗi khi cập nhật quyền.');
+    }
+  };
+
   // Hàm để thêm một kỷ niệm mới
   const handleAddMemory = async (e) => {
     e.preventDefault();
@@ -2612,11 +2634,16 @@ const handleUpdateFormerResident = async (e) => {
       return;
     }
 
-    // Một thành viên chỉ có thể chuyển đổi điểm danh của chính hồ sơ cư dân được liên kết
-    if (userRole === 'member' && loggedInResidentProfile && residentId !== loggedInResidentProfile.id) {
+    // Lấy thông tin chi tiết của người dùng đang đăng nhập
+    const currentUserData = allUsersData.find(u => u.id === userId);
+    const memberCanTakeAttendance = currentUserData?.canTakeAttendance === true;
+
+    // Thành viên chỉ có thể điểm danh nếu là BẢN THÂN hoặc CÓ QUYỀN ĐẶC BIỆT
+    if (userRole === 'member' && !memberCanTakeAttendance && loggedInResidentProfile && residentId !== loggedInResidentProfile.id) {
       setAuthError('Bạn chỉ có thể điểm danh cho bản thân.');
       return;
     }
+
     // Nếu thành viên chưa có hồ sơ cư dân liên kết
     if (userRole === 'member' && !loggedInResidentProfile) {
       setAuthError('Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.');
@@ -4466,6 +4493,19 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                                 >
                                   Điều chỉnh
                                 </button>
+                                {/* ===== NÚT TRAO QUYỀN MỚI ===== */}
+                                {linkedUser && linkedUser.role === 'member' && (
+                                  <button
+                                    onClick={() => handleToggleAttendancePermission(linkedUser.id, linkedUser.canTakeAttendance || false)}
+                                    className={`px-3 py-1 text-white text-xs rounded-lg shadow-sm ${
+                                      linkedUser.canTakeAttendance 
+                                      ? 'bg-red-500 hover:bg-red-600' 
+                                      : 'bg-green-500 hover:bg-green-600'
+                                    }`}
+                                  >
+                                    {linkedUser.canTakeAttendance ? 'Thu hồi quyền' : 'Trao quyền DD'}
+                                  </button>
+                                )}
                               </td>
                             )}
                           </tr>
@@ -5618,7 +5658,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                                       type="checkbox"
                                       checked={isPresent}
                                       onChange={() => handleToggleDailyPresence(resident.id, day)}
-                                      disabled={userRole === 'member' && !isMyRow}
+                                      disabled={!isMyRow && !memberCanTakeAttendance} 
                                       className=" form-checkbox h-5 w-5 rounded focus:ring-green-500 cursor-pointer 
                                                   text-green-600 
                                                   disabled:checked:bg-red-500 
