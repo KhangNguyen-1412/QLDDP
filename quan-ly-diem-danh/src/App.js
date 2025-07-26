@@ -1780,6 +1780,7 @@ const handleAvatarFileChange = (event) => {
 
   const [selectedMemoryForLightbox, setSelectedMemoryForLightbox] = useState(null); // Lưu toàn bộ đối tượng memory
   const [currentLightboxIndex, setCurrentLightboxIndex] = useState(0); // Index của file đang hiển thị
+  const [selectedMemoryDetails, setSelectedMemoryDetails] = useState(null);
 
   // New states for avatar upload in the common room info modal
   const [selectedResidentForAvatarUpload, setSelectedResidentForAvatarUpload] = useState(null);
@@ -4587,6 +4588,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                         <div
                           key={memory.id}
                           className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden transition-transform transform hover:scale-105 duration-200"
+                          onClick={() => setSelectedMemoryDetails(memory)}
                         >
                           <div className="relative aspect-video bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
                             {memory.files && memory.files.length > 0 ? (
@@ -6200,6 +6202,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                           <div
                             key={memory.id}
                             className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden transition-transform transform hover:scale-105 duration-200"
+                            onClick={() => setSelectedMemoryDetails(memory)}
                           >
                             <div className="relative aspect-video bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
                               {memory.files && memory.files.length > 0 ? (
@@ -7310,6 +7313,59 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               >
                 Đóng
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* =================================================== */}
+        {/* ===== MODAL CHI TIẾT BÀI ĐĂNG KỶ NIỆM ===== */}
+        {/* =================================================== */}
+        {selectedMemoryDetails && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
+            onClick={() => setSelectedMemoryDetails(null)} // Đóng khi bấm ra ngoài
+          >
+            <div 
+              className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col"
+              onClick={(e) => e.stopPropagation()} // Ngăn không cho popup tự đóng khi bấm vào bên trong
+            >
+              {/* Header của Popup */}
+              <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+                <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
+                  {selectedMemoryDetails.eventName}
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Ngày chụp: {selectedMemoryDetails.photoDate}
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Đăng bởi: {selectedMemoryDetails.uploadedByName || 'N/A'}
+                </p>
+              </div>
+
+              {/* Nội dung hình ảnh/video */}
+              <div className="flex-1 p-6 overflow-y-auto">
+                <div className="grid grid-cols-1 gap-4">
+                  {selectedMemoryDetails.files && selectedMemoryDetails.files.map((file, index) => (
+                    <div key={index}>
+                      {file.fileType === 'image' ? (
+                        <img src={file.fileUrl} alt={`File ${index + 1}`} className="w-full h-auto rounded-lg object-contain" />
+                      ) : (
+                        <video src={file.fileUrl} controls className="w-full h-auto rounded-lg"></video>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Footer của Popup */}
+              <div className="p-6 border-t border-gray-200 dark:border-gray-700">
+                <button
+                  onClick={() => setSelectedMemoryDetails(null)}
+                  className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+                >
+                  Đóng
+                </button>
+              </div>
             </div>
           </div>
         )}
