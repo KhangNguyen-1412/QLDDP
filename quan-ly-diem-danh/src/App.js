@@ -2541,10 +2541,10 @@ const handleUpdateFormerResident = async (e) => {
   }
 
   try {
-    // Giữ lại URL avatar cũ làm mặc định
-    let avatarDownloadURL = editingFormerResident.photoURL; 
+    // Bước 1: Giữ lại URL avatar cũ làm giá trị mặc định
+    let avatarDownloadURL = editingFormerResident.photoURL;
 
-    // CHỈ TẢI LÊN NẾU CÓ FILE MỚI ĐƯỢC CHỌN
+    // Bước 2: CHỈ TẢI LÊN NẾU CÓ FILE MỚI ĐƯỢC CHỌN
     if (editingFormerResidentAvatarFile) {
       setIsUploadingEditingFormerResidentAvatar(true);
       setUploadEditingFormerResidentAvatarProgress(0);
@@ -2578,13 +2578,13 @@ const handleUpdateFormerResident = async (e) => {
       }
     }
 
+    // Bước 3: Cập nhật tài liệu trong Firestore
     const formerResidentDocRef = doc(
       db,
       `artifacts/${currentAppId}/public/data/formerResidents`,
       editingFormerResident.id
     );
 
-    // Dữ liệu cần cập nhật, loại bỏ ID
     const { id, ...dataToUpdate } = editingFormerResident;
 
     await updateDoc(formerResidentDocRef, {
@@ -2601,8 +2601,8 @@ const handleUpdateFormerResident = async (e) => {
     console.error('Lỗi khi cập nhật tiền bối:', error);
     setAuthError(`Lỗi khi cập nhật tiền bối: ${error.message}`);
   }
-};
-  // Vô hiệu hóa hoặc kích hoạt lại một cư dân
+};  
+// Vô hiệu hóa hoặc kích hoạt lại một cư dân
   const handleToggleResidentActiveStatus = async (residentId, residentName, currentStatus) => {
     setAuthError('');
     setBillingError('');
