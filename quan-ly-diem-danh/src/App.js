@@ -29,7 +29,6 @@ import {
 import { getStorage, ref, uploadBytesResumable, getDownloadURL} from 'firebase/storage'; // Thêm imports cho Firebase Storage
 import axios from 'axios';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { useTranslation } from 'react-i18next';
 
 // Firebase Config - Moved outside the component to be a constant
 const firebaseConfig = {
@@ -54,11 +53,6 @@ const CLOUDINARY_API_URL_AUTO_UPLOAD = `https://api.cloudinary.com/v1_1/${CLOUDI
 // KẾT THÚC KHAI BÁO CLOUDINARY
 
 function App() {
-  const { t, i18n } = useTranslation();
-
-  const changeLanguage = (lng) => {
-    i18n.changeLanguage(lng);
-  };
   // Thêm vào cùng với các state khác ở đầu component App
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [storage, setStorage] = useState(null);
