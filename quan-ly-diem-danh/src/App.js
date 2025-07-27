@@ -6594,7 +6594,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                         role="menuitem"
                       >
                         <i className="fas fa-user-circle mr-3"></i>
-                        {t('my_profile')}
+                        Hồ sơ của tôi
                       </button>
                       <button
                         onClick={() => { setActiveSection('passwordSettings'); handleProfileClose(); }}
@@ -6602,7 +6602,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                         role="menuitem"
                       >
                         <i className="fas fa-key mr-3"></i>
-                        {t('password')}
+                        Mật khẩu
                       </button>
                       <div className="border-t border-gray-200 dark:border-gray-600"></div>
                       <button
@@ -6611,7 +6611,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                         role="menuitem"
                       >
                         <i className="fas fa-sign-out-alt mr-3"></i>
-                        {t('logout')}
+                        Đăng xuất
                       </button>
                     </div>
                   </div>
@@ -6665,7 +6665,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                         <>
                           {/* --- Nhóm Cá Nhân --- */}
                           <div>
-                            {!isSidebarCollapsed && <h3 className="sidebar-group-title">{t('personal')}</h3>}
+                            {!isSidebarCollapsed && <h3 className="sidebar-group-title">Cá Nhân</h3>}
                             <button
                               className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
                                 activeSection === 'dashboard'
@@ -6675,7 +6675,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                               onClick={() => { setActiveSection('dashboard'); setIsSidebarOpen(false); }}
                             >
                               <i className="fas fa-tachometer-alt"></i>
-                              {!isSidebarCollapsed && <span className="ml-3">{t('dashboard')}</span>}
+                              {!isSidebarCollapsed && <span className="ml-3">Dashboard</span>}
                             </button>
                             <button
                               className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
@@ -6784,7 +6784,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                               onClick={() => { setActiveSection('commonRoomInfo'); setIsSidebarOpen(false); }}
                             >
                               <i className="fas fa-info-circle"></i>
-                              {!isSidebarCollapsed && <span className="ml-3">{t('room_info')}</span>}
+                              {!isSidebarCollapsed && <span className="ml-3">Thông tin phòng chung</span>}
                             </button>
                             <button
                               className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
@@ -6795,7 +6795,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                               onClick={() => { setActiveSection('roomMemories'); setIsSidebarOpen(false); }}
                             >
                               <i className="fas fa-camera"></i>
-                              {!isSidebarCollapsed && <span className="ml-3">{t('room_memories')}</span>}
+                              {!isSidebarCollapsed && <span className="ml-3">Kỷ niệm phòng</span>}
                             </button>
                             <button
                               className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
@@ -6806,7 +6806,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                               onClick={() => { setActiveSection('formerResidents'); setIsSidebarOpen(false); }}
                             >
                               <i className="fas fa-user-graduate"></i>
-                              {!isSidebarCollapsed && <span className="ml-3">{t('seniors_info')}</span>}
+                              {!isSidebarCollapsed && <span className="ml-3">Thông tin tiền bối</span>}
                             </button>
                           </div>
 
@@ -6855,7 +6855,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                         <>
                           {/* --- Nhóm Cá Nhân --- */}
                           <div>
-                            {!isSidebarCollapsed && <h3 className="sidebar-group-title">{t('personal')}</h3>}
+                            {!isSidebarCollapsed && <h3 className="sidebar-group-title">Cá Nhân</h3>}
                             <button
                               className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
                                 activeSection === 'dashboard'
@@ -6865,7 +6865,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                               onClick={() => { setActiveSection('dashboard'); setIsSidebarOpen(false); }}
                             >
                               <i className="fas fa-tachometer-alt"></i>
-                              {!isSidebarCollapsed && <span className="ml-3">{t('dashboard')}</span>}
+                              {!isSidebarCollapsed && <span className="ml-3">Dashboard</span>}
                             </button>
                             <button
                               className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
@@ -6876,7 +6876,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                               onClick={() => { setActiveSection('notifications'); setIsSidebarOpen(false); }}
                             >
                               <i className="fas fa-bell"></i>
-                              {!isSidebarCollapsed && <span className="ml-3">{t('notifications')}</span>}
+                              {!isSidebarCollapsed && <span className="ml-3">Thông báo của tôi</span>}
                             </button>
                             <button
                               className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
@@ -6887,7 +6887,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                               onClick={() => { setActiveSection('memberCostSummary'); setIsSidebarOpen(false); }}
                             >
                               <i className="fas fa-money-bill-wave"></i>
-                              {!isSidebarCollapsed && <span className="ml-3">{t('my_costs')}</span>}
+                              {!isSidebarCollapsed && <span className="ml-3">Chi phí của tôi</span>}
                             </button>
                             <button
                               className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
@@ -6898,13 +6898,13 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                               onClick={() => { setActiveSection('memberCleaningSchedule'); setIsSidebarOpen(false); }}
                             >
                               <i className="fas fa-broom"></i>
-                              {!isSidebarCollapsed && <span className="ml-3">{t('my_duties')}</span>}
+                              {!isSidebarCollapsed && <span className="ml-3">Lịch trực của tôi</span>}
                             </button>
                           </div>
                           
                           {/* --- Nhóm Sinh Hoạt Chung --- */}
                           <div className="pt-2">
-                            {!isSidebarCollapsed && <h3 className="sidebar-group-title">{t('general_living')}</h3>}
+                            {!isSidebarCollapsed && <h3 className="sidebar-group-title">Sinh Hoạt Chung</h3>}
                             <button
                               className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
                                 activeSection === 'attendanceTracking'
@@ -6914,7 +6914,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                               onClick={() => { setActiveSection('attendanceTracking'); setIsSidebarOpen(false); }}
                             >
                               <i className="fas fa-calendar-alt"></i>
-                              {!isSidebarCollapsed && <span className="ml-3">{t('attendance')}</span>}
+                              {!isSidebarCollapsed && <span className="ml-3">Điểm danh</span>}
                             </button>
                             <button
                               className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
@@ -6936,7 +6936,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                               onClick={() => { setActiveSection('commonRoomInfo'); setIsSidebarOpen(false); }}
                             >
                               <i className="fas fa-info-circle"></i>
-                              {!isSidebarCollapsed && <span className="ml-3">{t('room_info')}</span>}
+                              {!isSidebarCollapsed && <span className="ml-3">Thông tin phòng chung</span>}
                             </button>
                             <button
                               className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
@@ -6947,7 +6947,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                               onClick={() => { setActiveSection('roomMemories'); setIsSidebarOpen(false); }}
                             >
                               <i className="fas fa-camera"></i>
-                              {!isSidebarCollapsed && <span className="ml-3">{t('room_memories')}</span>}
+                              {!isSidebarCollapsed && <span className="ml-3">Kỷ niệm phòng</span>}
                             </button>
                             <button
                               className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
@@ -6958,7 +6958,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                               onClick={() => { setActiveSection('formerResidents'); setIsSidebarOpen(false); }}
                             >
                               <i className="fas fa-user-graduate"></i>
-                              {!isSidebarCollapsed && <span className="ml-3">{t('seniors_info')}</span>}
+                              {!isSidebarCollapsed && <span className="ml-3">Thông tin tiền bối</span>}
                             </button>
                           </div>
                         </>
