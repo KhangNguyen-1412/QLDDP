@@ -6563,15 +6563,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
             >
               {theme === 'light' ? <i className="fas fa-moon text-lg"></i> : <i className="fas fa-sun text-lg"></i>}
             </button>
-
-            {/*Nút chuyển đổi ngôn ngữ*/}
-            <button
-              onClick={() => changeLanguage(i18n.language === 'vi' ? 'en' : 'vi')}
-              className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 shadow-md hover:shadow-lg transition-all duration-300"
-              title="Change language"
-            >
-              {i18n.language === 'vi' ? '🇬🇧' : '🇻🇳'}
-            </button>
             
             {/* ===== AVATAR VÀ POPOVER PROFILE (BẰNG TAILWIND CSS) ===== */}
             {userId && (
