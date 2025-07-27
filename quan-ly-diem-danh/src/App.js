@@ -53,6 +53,11 @@ const CLOUDINARY_API_URL_AUTO_UPLOAD = `https://api.cloudinary.com/v1_1/${CLOUDI
 // KẾT THÚC KHAI BÁO CLOUDINARY
 
 function App() {
+  const { t, i18n } = useTranslation();
+
+  const changeLanguage = (lng) => {
+    i18n.changeLanguage(lng);
+  };
   // Thêm vào cùng với các state khác ở đầu component App
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [storage, setStorage] = useState(null);
@@ -6563,6 +6568,15 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
             >
               {theme === 'light' ? <i className="fas fa-moon text-lg"></i> : <i className="fas fa-sun text-lg"></i>}
             </button>
+
+            {/*Nút chuyển đổi ngôn ngữ*/}
+            <button
+              onClick={() => changeLanguage(i18n.language === 'vi' ? 'en' : 'vi')}
+              className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 shadow-md hover:shadow-lg transition-all duration-300"
+              title="Change language"
+            >
+              {i18n.language === 'vi' ? '🇬🇧' : '🇻🇳'}
+            </button>
             
             {/* ===== AVATAR VÀ POPOVER PROFILE (BẰNG TAILWIND CSS) ===== */}
             {userId && (
@@ -6581,7 +6595,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                     </div>
                   )}
                 </button>
-                
                 {/* Popover Paper tự tạo bằng div */}
                 {Boolean(profilePopoverAnchor) && (
                   <div 
@@ -6595,7 +6608,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                         role="menuitem"
                       >
                         <i className="fas fa-user-circle mr-3"></i>
-                        Hồ sơ của tôi
+                        {t('my_profile')}
                       </button>
                       <button
                         onClick={() => { setActiveSection('passwordSettings'); handleProfileClose(); }}
@@ -6603,7 +6616,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                         role="menuitem"
                       >
                         <i className="fas fa-key mr-3"></i>
-                        Mật khẩu
+                        {t('password')}
                       </button>
                       <div className="border-t border-gray-200 dark:border-gray-600"></div>
                       <button
@@ -6612,7 +6625,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                         role="menuitem"
                       >
                         <i className="fas fa-sign-out-alt mr-3"></i>
-                        Đăng xuất
+                        {t('logout')}
                       </button>
                     </div>
                   </div>
@@ -6661,309 +6674,309 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
 
                     {/* Nav */}
                     <nav className="space-y-1 px-4">
-                        {/* ===== ĐIỀU HƯỚNG CỦA ADMIN ===== */}
-                        {userId && userRole === 'admin' && (
-                          <>
-                            {/* --- Nhóm Cá Nhân --- */}
-                            <div>
-                              {!isSidebarCollapsed && <h3 className="sidebar-group-title">Cá Nhân</h3>}
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'dashboard'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('dashboard'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-tachometer-alt"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Dashboard</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'customNotificationDesign'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('customNotificationDesign'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-bullhorn"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Quản lý Thông báo</span>}
-                              </button>
-                            </div>
+                      {/* ===== ĐIỀU HƯỚNG CỦA ADMIN ===== */}
+                      {userId && userRole === 'admin' && (
+                        <>
+                          {/* --- Nhóm Cá Nhân --- */}
+                          <div>
+                            {!isSidebarCollapsed && <h3 className="sidebar-group-title">{t('personal')}</h3>}
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'dashboard'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('dashboard'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-tachometer-alt"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">{t('dashboard')}</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'customNotificationDesign'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('customNotificationDesign'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-bullhorn"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Quản lý Thông báo</span>}
+                            </button>
+                          </div>
 
-                            {/* --- Nhóm Quản Lý Chung --- */}
-                            <div className="pt-2">
-                              {!isSidebarCollapsed && <h3 className="sidebar-group-title">Quản Lý Chung</h3>}
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'residentManagement'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('residentManagement'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-users"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Quản lý người ở</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'attendanceTracking'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('attendanceTracking'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-calendar-alt"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Điểm danh hàng ngày</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'billing'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('billing'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-file-invoice-dollar"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Tính tiền điện nước</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'costSharing'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('costSharing'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-handshake"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Chia tiền & Nhắc nhở</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'cleaningSchedule'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('cleaningSchedule'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-broom"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Lịch trực phòng</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'shoeRackManagement'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('shoeRackManagement'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-shoe-prints"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Quản lý kệ giày</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'adminCreateAccount'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('adminCreateAccount'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-user-plus"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Tạo tài khoản mới</span>}
-                              </button>
-                            </div>
+                          {/* --- Nhóm Quản Lý Chung --- */}
+                          <div className="pt-2">
+                            {!isSidebarCollapsed && <h3 className="sidebar-group-title">Quản Lý Chung</h3>}
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'residentManagement'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('residentManagement'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-users"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Quản lý người ở</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'attendanceTracking'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('attendanceTracking'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-calendar-alt"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Điểm danh hàng ngày</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'billing'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('billing'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-file-invoice-dollar"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Tính tiền điện nước</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'costSharing'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('costSharing'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-handshake"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Chia tiền & Nhắc nhở</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'cleaningSchedule'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('cleaningSchedule'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-broom"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Lịch trực phòng</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'shoeRackManagement'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('shoeRackManagement'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-shoe-prints"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Quản lý kệ giày</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'adminCreateAccount'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('adminCreateAccount'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-user-plus"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Tạo tài khoản mới</span>}
+                            </button>
+                          </div>
 
-                            {/* --- Nhóm Sinh Hoạt & Lưu Trữ --- */}
-                            <div className="pt-2">
-                              {!isSidebarCollapsed && <h3 className="sidebar-group-title">Sinh Hoạt & Lưu Trữ</h3>}
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'commonRoomInfo'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('commonRoomInfo'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-info-circle"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Thông tin phòng chung</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'roomMemories'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('roomMemories'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-camera"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Kỷ niệm phòng</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'formerResidents'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('formerResidents'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-user-graduate"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Thông tin tiền bối</span>}
-                              </button>
-                            </div>
+                          {/* --- Nhóm Sinh Hoạt & Lưu Trữ --- */}
+                          <div className="pt-2">
+                            {!isSidebarCollapsed && <h3 className="sidebar-group-title">Sinh Hoạt & Lưu Trữ</h3>}
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'commonRoomInfo'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('commonRoomInfo'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-info-circle"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">{t('room_info')}</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'roomMemories'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('roomMemories'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-camera"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">{t('room_memories')}</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'formerResidents'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('formerResidents'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-user-graduate"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">{t('seniors_info')}</span>}
+                            </button>
+                          </div>
 
-                            {/* --- Nhóm Báo Cáo & Thống Kê --- */}
-                            <div className="pt-2">
-                              {!isSidebarCollapsed && <h3 className="sidebar-group-title">Báo Cáo & Thống Kê</h3>}
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'billHistory'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('billHistory'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-history"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Lịch sử hóa đơn</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'costSharingHistory'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('costSharingHistory'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-receipt"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Lịch sử chia tiền</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'consumptionStats'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('consumptionStats'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-chart-bar"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Thống kê tiêu thụ</span>}
-                              </button>
-                            </div>
-                          </>
-                        )}
+                          {/* --- Nhóm Báo Cáo & Thống Kê --- */}
+                          <div className="pt-2">
+                            {!isSidebarCollapsed && <h3 className="sidebar-group-title">Báo Cáo & Thống Kê</h3>}
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'billHistory'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('billHistory'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-history"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Lịch sử hóa đơn</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'costSharingHistory'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('costSharingHistory'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-receipt"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Lịch sử chia tiền</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'consumptionStats'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('consumptionStats'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-chart-bar"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Thống kê tiêu thụ</span>}
+                            </button>
+                          </div>
+                        </>
+                      )}
 
-                        {/* ===== ĐIỀU HƯỚNG CỦA MEMBER ===== */}
-                        {userId && userRole === 'member' && (
-                          <>
-                            {/* --- Nhóm Cá Nhân --- */}
-                            <div>
-                              {!isSidebarCollapsed && <h3 className="sidebar-group-title">Cá Nhân</h3>}
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'dashboard'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('dashboard'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-tachometer-alt"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Dashboard</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'notifications'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('notifications'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-bell"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Thông báo của tôi</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'memberCostSummary'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('memberCostSummary'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-money-bill-wave"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Chi phí của tôi</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'memberCleaningSchedule'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('memberCleaningSchedule'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-broom"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Lịch trực của tôi</span>}
-                              </button>
-                            </div>
-                            
-                            {/* --- Nhóm Sinh Hoạt Chung --- */}
-                            <div className="pt-2">
-                              {!isSidebarCollapsed && <h3 className="sidebar-group-title">Sinh Hoạt Chung</h3>}
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'attendanceTracking'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('attendanceTracking'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-calendar-alt"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Điểm danh</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'shoeRackManagement'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('shoeRackManagement'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-shoe-prints"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Thông tin kệ giày</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'commonRoomInfo'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('commonRoomInfo'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-info-circle"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Thông tin phòng chung</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'roomMemories'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('roomMemories'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-camera"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Kỷ niệm phòng</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'formerResidents'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('formerResidents'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-user-graduate"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Thông tin tiền bối</span>}
-                              </button>
-                            </div>
-                          </>
-                        )}
+                      {/* ===== ĐIỀU HƯỚNG CỦA MEMBER ===== */}
+                      {userId && userRole === 'member' && (
+                        <>
+                          {/* --- Nhóm Cá Nhân --- */}
+                          <div>
+                            {!isSidebarCollapsed && <h3 className="sidebar-group-title">{t('personal')}</h3>}
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'dashboard'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('dashboard'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-tachometer-alt"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">{t('dashboard')}</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'notifications'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('notifications'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-bell"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">{t('notifications')}</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'memberCostSummary'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('memberCostSummary'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-money-bill-wave"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">{t('my_costs')}</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'memberCleaningSchedule'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('memberCleaningSchedule'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-broom"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">{t('my_duties')}</span>}
+                            </button>
+                          </div>
+                          
+                          {/* --- Nhóm Sinh Hoạt Chung --- */}
+                          <div className="pt-2">
+                            {!isSidebarCollapsed && <h3 className="sidebar-group-title">{t('general_living')}</h3>}
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'attendanceTracking'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('attendanceTracking'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-calendar-alt"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">{t('attendance')}</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'shoeRackManagement'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('shoeRackManagement'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-shoe-prints"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Thông tin kệ giày</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'commonRoomInfo'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('commonRoomInfo'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-info-circle"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">{t('room_info')}</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'roomMemories'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('roomMemories'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-camera"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">{t('room_memories')}</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'formerResidents'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('formerResidents'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-user-graduate"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">{t('seniors_info')}</span>}
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </nav>
                 </div>
                 
