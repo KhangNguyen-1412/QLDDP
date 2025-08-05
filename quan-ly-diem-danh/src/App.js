@@ -7564,7 +7564,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                   </button>
                 </div>
               </div>
-            </div>
 
               {/* Footer của Popup */}
               <div className="p-6 border-t border-gray-200 dark:border-gray-700">
