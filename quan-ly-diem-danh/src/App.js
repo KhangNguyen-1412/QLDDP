@@ -284,7 +284,7 @@ function App() {
         unsubscribe();
       };
     }
-  }, [selectedMemoryDetails, db, currentAppId, setComments]); // Chạy lại mỗi khi người dùng chọn một bài đăng khác
+  }, [selectedMemoryDetails?.id, db]); // Chạy lại mỗi khi người dùng chọn một bài đăng khác
 
   // States cho tiền bối
   const [formerResidents, setFormerResidents] = useState([]);
