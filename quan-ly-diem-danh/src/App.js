@@ -2852,10 +2852,15 @@ const handleUpdateFormerResident = async (e) => {
       }
       setIndividualCosts(individualCalculatedCostsLocal);
 
-      // Tính quỹ còn lại - sử dụng totalCost và totalRoundedIndividualCosts cục bộ
-      calculatedRemainingFund = totalCost - totalRoundedIndividualCosts; // Gán vào biến đã khai báo
-      setRemainingFund(calculatedRemainingFund);
+      // Lấy số tiền dư/thiếu của tháng hiện tại
+      const currentMonthSurplusOrDeficit = totalCost - totalRoundedIndividualCosts;
 
+      // Lấy số tiền quỹ hiện tại (đã có trong state) và cộng dồn
+      // Nếu chưa có lịch sử chia tiền, quỹ hiện tại là 0
+      const previousRemainingFund = costSharingHistory.length > 0 ? (costSharingHistory[0].remainingFund || 0) : 0;
+      calculatedRemainingFund = previousRemainingFund + currentMonthSurplusOrDeficit;
+
+      setRemainingFund(calculatedRemainingFund);
       // Lưu tóm tắt chia sẻ chi phí vào lịch sử bằng cách sử dụng các biến cục bộ
       const costSharingHistoryCollectionRef = collection(
         db,
