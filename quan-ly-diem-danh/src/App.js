@@ -4972,12 +4972,61 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                   </button>
                 </div>
 
-                {/* ===== DANH SÁCH THÔNG BÁO ĐÃ GỬI/NHẬN ===== */}
+                {/* ===== DANH SÁCH THÔNG BÁO ĐÃ GỬI/NHẬN (ĐÃ SỬA LẠI) ===== */}
                 <div className="mt-8 pt-6 border-t border-gray-300 dark:border-gray-600">
                   <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-5">
                     Danh sách thông báo đã gửi/nhận
                   </h3>
-                  {/* ... (Toàn bộ code hiển thị bảng danh sách thông báo của bạn nằm ở đây) ... */}
+                  {notificationError && <p className="text-red-500 text-sm text-center mb-4">{notificationError}</p>}
+                  {notifications.length === 0 ? (
+                    <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có thông báo nào.</p>
+                  ) : (
+                    <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                      <table className="min-w-full bg-white dark:bg-gray-800">
+                        <thead>
+                          <tr>
+                            <th className="py-3 px-4 text-left ...">Nội dung tóm tắt</th>
+                            <th className="py-3 px-4 text-left ...">Loại</th>
+                            <th className="py-3 px-4 text-left ...">Người nhận</th>
+                            <th className="py-3 px-4 text-left ...">Thời gian</th>
+                            <th className="py-3 px-4 text-center ...">Trạng thái</th>
+                            <th className="py-3 px-4 text-center ...">Hành động</th>
+                          </tr>
+                        </thead>
+                        <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
+                          {notifications.map((notification) => (
+                            <tr key={notification.id} className={`border-b ... ${!notification.isRead ? 'font-semibold' : ''}`}>
+                              <td className="py-3 px-4 max-w-xs overflow-hidden text-ellipsis whitespace-nowrap">{notification.message}</td>
+                              <td className="py-3 px-4 whitespace-nowrap">{notification.type}</td>
+                              <td className="py-3 px-4 whitespace-nowrap">
+                                {notification.recipientId === 'all'
+                                  ? 'Tất cả'
+                                  : allUsersData.find((u) => u.id === notification.recipientId)?.fullName || 'N/A'}
+                              </td>
+                              <td className="py-3 px-4 whitespace-nowrap">
+                                {notification.createdAt instanceof Date
+                                  ? notification.createdAt.toLocaleDateString('vi-VN')
+                                  : 'N/A'}
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                <span className={`px-2 py-1 rounded-full text-xs ...`}>
+                                  {notification.isRead ? 'Đã đọc' : 'Chưa đọc'}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                <button
+                                  onClick={() => deleteNotification(notification.id)}
+                                  className="px-3 py-1 bg-red-500 text-white text-xs rounded-lg shadow-sm hover:bg-red-600"
+                                >
+                                  Xóa
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
 
                 {/* ===== POPUP SOẠN THÔNG BÁO MỚI ===== */}
