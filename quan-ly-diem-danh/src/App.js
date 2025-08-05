@@ -638,6 +638,42 @@ function App() {
     }
   }, []); // Không cần userRole trong dependency array này vì nó được xử lý nội bộ
 
+  // Thêm vào cùng với các state khác ở đầu component App
+  const [fundInputValue, setFundInputValue] = useState('');
+
+  // Thêm hàm này vào file App.js
+  const handleUpdateFundManually = async () => {
+    if (userRole !== 'admin') {
+      setAuthError('Bạn không có quyền thực hiện thao tác này.');
+      return;
+    }
+    const newFundValue = parseFloat(fundInputValue);
+    if (isNaN(newFundValue)) {
+      setBillingError('Vui lòng nhập một số tiền hợp lệ.');
+      return;
+    }
+    if (costSharingHistory.length === 0) {
+      setBillingError('Chưa có lịch sử chia tiền nào để cập nhật. Vui lòng tính tiền và chia tiền ít nhất một lần.');
+      return;
+    }
+
+    // Lấy bản ghi chia tiền gần nhất
+    const latestCostSharingRecord = costSharingHistory[0];
+    const recordRef = doc(db, `artifacts/${currentAppId}/public/data/costSharingHistory`, latestCostSharingRecord.id);
+
+    try {
+      await updateDoc(recordRef, {
+        remainingFund: newFundValue
+      });
+      setFundInputValue(''); // Xóa nội dung ô nhập
+      setBillingError(''); // Xóa thông báo lỗi nếu có
+      alert('Đã cập nhật quỹ phòng thành công!');
+    } catch (error) {
+      console.error("Lỗi khi cập nhật quỹ phòng:", error);
+      setBillingError('Đã xảy ra lỗi khi cập nhật quỹ phòng.');
+    }
+  };
+
   // States for Avatar Upload
   const [newAvatarFile, setNewAvatarFile] = useState(null);
   const [avatarUploadProgress, setAvatarUploadProgress] = useState(0);
@@ -4018,57 +4054,29 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                       </span>
                     </p>
 
-                    {/* Tích hợp Gemini API: Nhắc nhở thanh toán */}
-                    <div className="mt-8 pt-3 border-t border-orange-300 dark:border-gray-600">
-                      <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200 mb-4">
-                        ✨ Tạo nhắc nhở thanh toán
-                      </h3>
-                      <div className="flex flex-col sm:flex-row items-center gap-3 mb-4">
-                        <label
-                          htmlFor="selectResidentReminder"
-                          className="font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap"
-                        >
-                          Chọn người:
-                        </label>
-                        <select
-                          id="selectResidentReminder"
-                          value={selectedResidentForReminder}
-                          onChange={(e) => setSelectedResidentForReminder(e.target.value)}
-                          className="flex-1 shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700"
-                          disabled={residents.length === 0}
-                        >
-                          <option value="">-- Chọn người --</option>
-                          {residents.map((resident) => (
-                            <option key={resident.id} value={resident.id}>
-                              {resident.name}
-                            </option>
-                          ))}
-                        </select>
+                    {/* ===== KHỐI CẬP NHẬT QUỸ PHÒNG - BẮT ĐẦU ===== */}
+                    <div className="mt-6 pt-4 border-t border-dashed border-orange-300 dark:border-gray-600">
+                      <h4 className="text-lg font-bold text-orange-800 dark:text-orange-200 mb-2">
+                        Cập nhật lại số tiền quỹ
+                      </h4>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="number"
+                          value={fundInputValue}
+                          onChange={(e) => setFundInputValue(e.target.value)}
+                          className="flex-1 shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-gray-700"
+                          placeholder="Nhập số tiền quỹ mới..."
+                        />
                         <button
-                          onClick={generatePaymentReminder}
-                          className="px-6 py-2 bg-purple-600 text-white font-semibold rounded-xl shadow-md hover:bg-purple-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75"
-                          disabled={isGeneratingReminder || !selectedResidentForReminder || totalCost === 0}
+                          onClick={handleUpdateFundManually}
+                          className="px-4 py-2 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all duration-300"
                         >
-                          {isGeneratingReminder ? (
-                            <i className="fas fa-spinner fa-spin mr-2"></i>
-                          ) : (
-                            <i className="fas fa-magic mr-2"></i>
-                          )}
-                          Tạo nhắc nhở
+                          Cập nhật
                         </button>
                       </div>
-                      {generatedReminder && (
-                        <div className="mt-4 bg-white dark:bg-gray-800 p-4 rounded-xl shadow-inner border border-gray-200 dark:border-gray-700">
-                          <p className="font-semibold text-gray-800 dark:text-gray-200 mb-2">Tin nhắn gợi ý:</p>
-                          <textarea
-                            readOnly
-                            value={generatedReminder}
-                            rows="6"
-                            className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 resize-y focus:outline-none"
-                          ></textarea>
-                        </div>
-                      )}
+                      {billingError && <p className="text-red-500 text-sm mt-2">{billingError}</p>}
                     </div>
+                    {/* ===== KHỐI CẬP NHẬT QUỸ PHÒNG - KẾT THÚC ===== */}
                   </>
                 </div>
               )}
