@@ -203,8 +203,58 @@ function App() {
 
   const [showAddMemoryModal, setShowAddMemoryModal] = useState(false);
 
-  // States for Former Residents <-- KHAI BÁO CHÍNH XÁC VÀ DUY NHẤT Ở ĐÂY
-  const [formerResidents, setFormerResidents] = useState([]); // <-- Đảm bảo dòng này tồn tại và không bị xóa
+  //State bình luận và thả cảm xúc cho bài đăng kỷ niệm
+  const [comments, setComments] = useState({}); // Lưu bình luận cho mỗi bài đăng
+  const [newComment, setNewComment] = useState(''); // Quản lý nội dung bình luận mới
+
+  // Hàm để xử lý việc thêm/xóa cảm xúc
+  const handleReaction = async (memoryId, reactionType) => {
+    if (!db || !userId) return;
+
+    const memoryRef = doc(db, `artifacts/${currentAppId}/public/data/memories`, memoryId);
+    const memorySnap = await getDoc(memoryRef);
+    
+    if (memorySnap.exists()) {
+      const memoryData = memorySnap.data();
+      const reactions = memoryData.reactions || {};
+      
+      // Tạo mảng cho loại reaction nếu chưa có
+      if (!reactions[reactionType]) {
+        reactions[reactionType] = [];
+      }
+      
+      const userIndex = reactions[reactionType].indexOf(userId);
+
+      if (userIndex > -1) {
+        // Nếu người dùng đã reaction, xóa reaction đó đi
+        reactions[reactionType].splice(userIndex, 1);
+      } else {
+        // Nếu chưa, thêm userId vào
+        reactions[reactionType].push(userId);
+      }
+
+      await updateDoc(memoryRef, { reactions: reactions });
+    }
+  };
+
+  // Hàm để thêm bình luận mới
+  const handleAddComment = async (memoryId) => {
+    if (!db || !userId || !newComment.trim()) return;
+
+    const commentsRef = collection(db, `artifacts/${currentAppId}/public/data/memories`, memoryId, 'comments');
+    
+    await addDoc(commentsRef, {
+      text: newComment.trim(),
+      commentedBy: userId,
+      commentedByName: fullName, // Lấy từ state fullName hiện tại
+      commentedAt: serverTimestamp(),
+    });
+
+    setNewComment(''); // Xóa nội dung ô nhập
+  };
+
+  // States cho tiền bối
+  const [formerResidents, setFormerResidents] = useState([]);
   const [newFormerResidentName, setNewFormerResidentName] = useState('');
   const [newFormerResidentEmail, setNewFormerResidentEmail] = useState('');
   const [newFormerResidentPhone, setNewFormerResidentPhone] = useState('');
@@ -7474,6 +7524,47 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                   ))}
                 </div>
               </div>
+
+              {/* ===== PHẦN CẢM XÚC VÀ BÌNH LUẬN MỚI ===== */}
+              <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                {/* Nút bày tỏ cảm xúc */}
+                <div className="flex items-center space-x-4 mb-4">
+                  <button onClick={() => handleReaction(selectedMemoryDetails.id, 'like')} className="text-2xl hover:scale-125 transition-transform">👍</button>
+                  <button onClick={() => handleReaction(selectedMemoryDetails.id, 'love')} className="text-2xl hover:scale-125 transition-transform">❤️</button>
+                  <button onClick={() => handleReaction(selectedMemoryDetails.id, 'haha')} className="text-2xl hover:scale-125 transition-transform">😂</button>
+                </div>
+
+                {/* Hiển thị số lượng cảm xúc */}
+                <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  {selectedMemoryDetails.reactions?.like?.length > 0 && <span>{selectedMemoryDetails.reactions.like.length} 👍</span>}
+                  {selectedMemoryDetails.reactions?.love?.length > 0 && <span>{selectedMemoryDetails.reactions.love.length} ❤️</span>}
+                  {selectedMemoryDetails.reactions?.haha?.length > 0 && <span>{selectedMemoryDetails.reactions.haha.length} 😂</span>}
+                </div>
+
+                {/* Danh sách bình luận */}
+                <div className="space-y-4">
+                  {/* Bạn cần một useEffect để tải bình luận cho bài đăng này và lưu vào state 'comments' */}
+                  {/* Ví dụ: comments[selectedMemoryDetails.id]?.map(...) */}
+                </div>
+
+                {/* Form thêm bình luận */}
+                <div className="mt-4 flex items-center space-x-2">
+                  <input
+                    type="text"
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Viết bình luận..."
+                    className="flex-1 shadow-sm border rounded-full py-2 px-4 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button 
+                    onClick={() => handleAddComment(selectedMemoryDetails.id)}
+                    className="bg-blue-500 text-white rounded-full w-10 h-10 flex items-center justify-center hover:bg-blue-600"
+                  >
+                    <i className="fas fa-paper-plane"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
 
               {/* Footer của Popup */}
               <div className="p-6 border-t border-gray-200 dark:border-gray-700">
