@@ -674,6 +674,79 @@ function App() {
     }
   };
 
+  // State thêm chi tiêu tiền quỹ
+  const [fundExpenses, setFundExpenses] = useState([]); // Để lưu danh sách chi tiêu
+  const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
+  const [newExpenseDescription, setNewExpenseDescription] = useState('');
+  const [newExpenseAmount, setNewExpenseAmount] = useState('');
+
+  // Hàm chi tiêu tiền 
+  const handleAddFundExpense = async (e) => {
+    e.preventDefault();
+    if (userRole !== 'admin') {
+      setAuthError('Bạn không có quyền thực hiện thao tác này.');
+      return;
+    }
+    const amount = parseFloat(newExpenseAmount);
+    if (isNaN(amount) || amount <= 0 || !newExpenseDescription.trim()) {
+      setBillingError('Vui lòng nhập mô tả và số tiền hợp lệ.');
+      return;
+    }
+    if (costSharingHistory.length === 0) {
+      setBillingError('Chưa có lịch sử chia tiền nào để ghi nhận chi tiêu. Vui lòng tính tiền và chia tiền ít nhất một lần.');
+      return;
+    }
+
+    // Lấy bản ghi chia tiền gần nhất để cập nhật quỹ
+    const latestCostSharingRecord = costSharingHistory[0];
+    const recordRef = doc(db, `artifacts/${currentAppId}/public/data/costSharingHistory`, latestCostSharingRecord.id);
+    const newRemainingFund = (latestCostSharingRecord.remainingFund || 0) - amount;
+
+    const expensesCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/fundExpenses`);
+
+    try {
+      // Thêm bản ghi chi tiêu mới
+      await addDoc(expensesCollectionRef, {
+        description: newExpenseDescription.trim(),
+        amount: amount,
+        spentBy: userId,
+        spentAt: serverTimestamp(),
+        relatedCostSharingId: latestCostSharingRecord.id
+      });
+
+      // Cập nhật lại quỹ phòng
+      await updateDoc(recordRef, {
+        remainingFund: newRemainingFund
+      });
+
+      // Reset form và đóng modal
+      setNewExpenseDescription('');
+      setNewExpenseAmount('');
+      setBillingError('');
+      setShowAddExpenseModal(false);
+      alert('Đã ghi nhận chi tiêu thành công!');
+    } catch (error) {
+      console.error("Lỗi khi ghi nhận chi tiêu:", error);
+      setBillingError('Đã xảy ra lỗi khi ghi nhận chi tiêu.');
+    }
+  };
+
+  // useEffect chi tiêu tiền 
+  useEffect(() => {
+    if (!db || userRole !== 'admin') {
+      setFundExpenses([]);
+      return;
+    }
+    const expensesQuery = query(collection(db, `artifacts/${currentAppId}/public/data/fundExpenses`), orderBy('spentAt', 'desc'));
+    
+    const unsubscribe = onSnapshot(expensesQuery, (snapshot) => {
+      const expenses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setFundExpenses(expenses);
+    });
+
+    return () => unsubscribe();
+  }, [db, userRole]);
+
   // States for Avatar Upload
   const [newAvatarFile, setNewAvatarFile] = useState(null);
   const [avatarUploadProgress, setAvatarUploadProgress] = useState(0);
@@ -4077,6 +4150,101 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                       {billingError && <p className="text-red-500 text-sm mt-2">{billingError}</p>}
                     </div>
                     {/* ===== KHỐI CẬP NHẬT QUỸ PHÒNG - KẾT THÚC ===== */}
+
+                    {/* ===== KHỐC GHI NHẬN CHI TIÊU QUỸ - BẮT ĐẦU ===== */}
+                    <div className="mt-8 pt-6 border-t border-orange-300 dark:border-gray-600">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200">
+                          Lịch sử chi tiêu quỹ phòng
+                        </h3>
+                        <button
+                          onClick={() => setShowAddExpenseModal(true)}
+                          className="bg-orange-500 text-white rounded-full w-10 h-10 flex items-center justify-center shadow-md hover:bg-orange-600 transition"
+                          title="Thêm chi tiêu mới"
+                        >
+                          <i className="fas fa-plus"></i>
+                        </button>
+                      </div>
+
+                      <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                        {fundExpenses.length > 0 ? (
+                          fundExpenses.map(expense => (
+                            <div key={expense.id} className="bg-white dark:bg-gray-800 p-3 rounded-lg flex justify-between items-center text-sm">
+                              <div>
+                                <p className="font-semibold text-gray-800 dark:text-gray-200">{expense.description}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                  {expense.spentAt?.toDate().toLocaleDateString('vi-VN')}
+                                </p>
+                              </div>
+                              <p className="font-bold text-red-600">
+                                - {expense.amount.toLocaleString('vi-VN')} VND
+                              </p>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-gray-500 dark:text-gray-400 italic text-center">Chưa có chi tiêu nào được ghi nhận.</p>
+                        )}
+                      </div>
+                    </div>
+                    {/* ===== KHỐI GHI NHẬN CHI TIÊU QUỸ - KẾT THÚC ===== */}
+
+
+                    {/* ===== POPUP THÊM CHI TIÊU MỚI ===== */}
+                    {showAddExpenseModal && (
+                      <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md">
+                          <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
+                            Thêm chi tiêu từ quỹ
+                          </h3>
+                          <form onSubmit={handleAddFundExpense} className="space-y-4">
+                            <div>
+                              <label htmlFor="expenseDesc" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                                Nội dung chi tiêu:
+                              </label>
+                              <input
+                                type="text"
+                                id="expenseDesc"
+                                value={newExpenseDescription}
+                                onChange={(e) => setNewExpenseDescription(e.target.value)}
+                                className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4"
+                                required
+                                placeholder="Ví dụ: Mua nước rửa chén, giấy vệ sinh..."
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor="expenseAmount" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                                Số tiền:
+                              </label>
+                              <input
+                                type="number"
+                                id="expenseAmount"
+                                value={newExpenseAmount}
+                                onChange={(e) => setNewExpenseAmount(e.target.value)}
+                                className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4"
+                                required
+                                placeholder="Nhập số tiền đã chi..."
+                              />
+                            </div>
+                            {billingError && <p className="text-red-500 text-sm text-center">{billingError}</p>}
+                            <div className="flex space-x-4 mt-6">
+                              <button
+                                type="button"
+                                onClick={() => { setShowAddExpenseModal(false); setBillingError(''); }}
+                                className="w-1/2 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400"
+                              >
+                                Hủy
+                              </button>
+                              <button
+                                type="submit"
+                                className="w-1/2 px-6 py-3 bg-orange-600 text-white font-semibold rounded-xl shadow-md hover:bg-orange-700"
+                              >
+                                Thêm
+                              </button>
+                            </div>
+                          </form>
+                        </div>
+                      </div>
+                    )}
                   </>
                 </div>
               )}
