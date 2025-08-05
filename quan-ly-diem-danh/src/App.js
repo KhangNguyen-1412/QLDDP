@@ -253,6 +253,39 @@ function App() {
     setNewComment(''); // Xóa nội dung ô nhập
   };
 
+  // useEffect cho bình luận
+  useEffect(() => {
+    // Chỉ thực thi khi có một bài đăng được chọn để xem chi tiết
+    if (selectedMemoryDetails && selectedMemoryDetails.id && db) {
+      const memoryId = selectedMemoryDetails.id;
+
+      // Tạo một truy vấn đến subcollection 'comments' của bài đăng đó
+      const commentsQuery = query(
+        collection(db, `artifacts/${currentAppId}/public/data/memories`, memoryId, 'comments'),
+        orderBy('commentedAt', 'asc') // Sắp xếp bình luận từ cũ nhất đến mới nhất
+      );
+
+      // Lắng nghe sự thay đổi của các bình luận theo thời gian thực
+      const unsubscribe = onSnapshot(commentsQuery, (snapshot) => {
+        const fetchedComments = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+
+        // Cập nhật state 'comments', lưu danh sách bình luận theo ID của bài đăng
+        setComments(prevComments => ({
+          ...prevComments,
+          [memoryId]: fetchedComments
+        }));
+      });
+
+      // Dọn dẹp listener khi người dùng đóng popup hoặc chuyển sang bài đăng khác
+      return () => {
+        unsubscribe();
+      };
+    }
+  }, [selectedMemoryDetails, db]); // Chạy lại mỗi khi người dùng chọn một bài đăng khác
+
   // States cho tiền bối
   const [formerResidents, setFormerResidents] = useState([]);
   const [newFormerResidentName, setNewFormerResidentName] = useState('');
@@ -7525,26 +7558,55 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 </div>
               </div>
 
-              {/* ===== PHẦN CẢM XÚC VÀ BÌNH LUẬN MỚI ===== */}
+              {/* ===== PHẦN CẢM XÚC VÀ BÌNH LUẬN ===== */}
               <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-                {/* Nút bày tỏ cảm xúc */}
-                <div className="flex items-center space-x-4 mb-4">
-                  <button onClick={() => handleReaction(selectedMemoryDetails.id, 'like')} className="text-2xl hover:scale-125 transition-transform">👍</button>
-                  <button onClick={() => handleReaction(selectedMemoryDetails.id, 'love')} className="text-2xl hover:scale-125 transition-transform">❤️</button>
-                  <button onClick={() => handleReaction(selectedMemoryDetails.id, 'haha')} className="text-2xl hover:scale-125 transition-transform">😂</button>
-                </div>
+                <div className="relative flex items-center justify-between">
+                  {/* --- Nút "Thích" và Popover Cảm xúc --- */}
+                  <div className="relative group">
+                    {/* Popover chứa các icon cảm xúc */}
+                    <div className="absolute bottom-full mb-2 flex items-center space-x-2 bg-white dark:bg-gray-700 shadow-lg rounded-full p-2 
+                                    opacity-0 invisible group-hover:opacity-100 group-hover:visible 
+                                    transition-all duration-300 transform group-hover:-translate-y-2">
+                      <button onClick={() => handleReaction(selectedMemoryDetails.id, 'like')} className="text-3xl hover:scale-125 transition-transform p-1">👍</button>
+                      <button onClick={() => handleReaction(selectedMemoryDetails.id, 'love')} className="text-3xl hover:scale-125 transition-transform p-1">❤️</button>
+                      <button onClick={() => handleReaction(selectedMemoryDetails.id, 'haha')} className="text-3xl hover:scale-125 transition-transform p-1">😂</button>
+                      <button onClick={() => handleReaction(selectedMemoryDetails.id, 'wow')} className="text-3xl hover:scale-125 transition-transform p-1">😮</button>
+                      <button onClick={() => handleReaction(selectedMemoryDetails.id, 'sad')} className="text-3xl hover:scale-125 transition-transform p-1">😢</button>
+                    </div>
 
-                {/* Hiển thị số lượng cảm xúc */}
-                <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400 mb-4">
-                  {selectedMemoryDetails.reactions?.like?.length > 0 && <span>{selectedMemoryDetails.reactions.like.length} 👍</span>}
-                  {selectedMemoryDetails.reactions?.love?.length > 0 && <span>{selectedMemoryDetails.reactions.love.length} ❤️</span>}
-                  {selectedMemoryDetails.reactions?.haha?.length > 0 && <span>{selectedMemoryDetails.reactions.haha.length} 😂</span>}
+                    {/* Nút "Thích" chính */}
+                    <button className="px-4 py-2 font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                      <i className="fas fa-thumbs-up mr-2"></i> Thích
+                    </button>
+                  </div>
+
+                  {/* --- Hiển thị tổng số lượng cảm xúc --- */}
+                  <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
+                    {selectedMemoryDetails.reactions?.like?.length > 0 && <span>{selectedMemoryDetails.reactions.like.length} 👍</span>}
+                    {selectedMemoryDetails.reactions?.love?.length > 0 && <span>{selectedMemoryDetails.reactions.love.length} ❤️</span>}
+                    {selectedMemoryDetails.reactions?.haha?.length > 0 && <span>{selectedMemoryDetails.reactions.haha.length} 😂</span>}
+                    {selectedMemoryDetails.reactions?.wow?.length > 0 && <span>{selectedMemoryDetails.reactions.wow.length} 😮</span>}
+                    {selectedMemoryDetails.reactions?.sad?.length > 0 && <span>{selectedMemoryDetails.reactions.sad.length} 😢</span>}
+                  </div>
                 </div>
 
                 {/* Danh sách bình luận */}
                 <div className="space-y-4">
-                  {/* Bạn cần một useEffect để tải bình luận cho bài đăng này và lưu vào state 'comments' */}
-                  {/* Ví dụ: comments[selectedMemoryDetails.id]?.map(...) */}
+                  {comments[selectedMemoryDetails.id] && comments[selectedMemoryDetails.id].map(comment => (
+                    <div key={comment.id} className="flex items-start space-x-3">
+                      {/* Avatar người bình luận (tùy chọn) */}
+                      <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 flex-shrink-0"></div>
+                      <div>
+                        <div className="bg-gray-100 dark:bg-gray-700 rounded-xl p-3">
+                          <p className="font-semibold text-sm text-gray-800 dark:text-gray-200">{comment.commentedByName}</p>
+                          <p className="text-sm text-gray-700 dark:text-gray-300">{comment.text}</p>
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 pl-3">
+                          {comment.commentedAt?.toDate().toLocaleTimeString('vi-VN')}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
 
                 {/* Form thêm bình luận */}
