@@ -8104,54 +8104,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                   className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
                 />
               </div>
-              <div>
-                <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                Ảnh đại diện:
-                </label>
-                <div className="flex items-center space-x-4 mb-2">
-                <div className="relative w-20 h-20 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
-                  {tempAvatarUrl ? (
-                  <img src={tempAvatarUrl} alt="Avatar Preview" className="w-full h-full object-cover" />
-                  ) : (
-                  <svg className="mx-auto my-auto h-12 w-12 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
-                    <path fillRule="evenodd" d="M18.675 13.5a.75.75 0 00-.75-.75h-7.5a.75.75 0 000 1.5h7.5a.75.75 0 00.75-.75zM12 16a.75.75 0 01-.75-.75V9.75a.75.75 0 011.5 0v5.5a.75.75 0 01-.75.75z" clipRule="evenodd" />
-                    <path d="M12 22.75c-5.962 0-10.75-4.788-10.75-10.75S6.038 1.25 12 1.25s10.75 4.788 10.75 10.75-4.788 10.75-10.75 10.75zM12 2.75a9.25 9.25 0 00-9.25 9.25c0 4.142 2.684 7.709 6.36 9.088a.75.75 0 01-.724.868h-.008c-.398.11-.83.174-1.296.174-.23 0-.46-.01-.688-.03a.75.75 0 01-.495-.664c-1.462-3.48-1.214-7.44.705-10.66a.75.75 0 011.198.603 7.75 7.75 0 01-.012 9.395c-.862 1.75-1.393 3.727-1.55 5.812a.75.75 0 01-.757.693h-.005a.75.75 0 01-.688-.74c.155-2.168.67-4.18 1.517-5.967a9.25 9.25 0 009.25-9.25z" />
-                  </svg>
-                  )}
-                </div>
-                <label htmlFor="avatarUpload" className="cursor-pointer text-blue-600 hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-400">
-                  Chọn ảnh
-                </label>
-                <input
-                  type="file"
-                  id="avatarUpload"
-                  accept="image/*"
-                  className="sr-only"
-                  onChange={handleAvatarFileChange}
-                />
-                {selectedAvatarFile && (
-                  <button
-                  type="button"
-                  onClick={() => { setSelectedAvatarFile(null); setTempAvatarUrl(editingCommonResidentUserLinkedData?.avatarUrl || ''); }}
-                  className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-500 text-xs"
-                  >
-                  Hủy chọn
-                  </button>
-                )}
-                </div>
-                {isUploadingAvatar && (
-                <div className="relative pt-1">
-                  <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-blue-200 dark:bg-blue-900">
-                  <div
-                    style={{ width: `${avatarUploadProgress}%` }}
-                    className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500 dark:bg-blue-500 transition-all duration-500"
-                  ></div>
-                  </div>
-                  <p className="text-gray-500 dark:text-gray-400 text-xs text-right">{Math.round(avatarUploadProgress)}%</p>
-                </div>
-                )}
-              </div>
-
               {/* Thông báo lỗi */}
               {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
               {/* Thông báo thành công */}
