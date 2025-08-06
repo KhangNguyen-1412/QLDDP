@@ -238,7 +238,7 @@ function App() {
   const [selectedNotificationDetails, setSelectedNotificationDetails] = useState(null); // Để hiển thị chi tiết thông báo
 
   //State cập nhật điện nước
-  const [electricityRate, setElectricityRate] = useState(0); // Giá mặc định ban đầu
+  const [electricityRate, setElectricityRate] = useState(2580); // Giá mặc định ban đầu
   const [waterRate, setWaterRate] = useState(4000); // Giá mặc định ban đầu
   const [newElectricityRate, setNewElectricityRate] = useState('');
   const [newWaterRate, setNewWaterRate] = useState('');
