@@ -2815,7 +2815,7 @@ const handleUpdateFormerResident = async (e) => {
       return;
     }
 
-    const electricityRate = 2550; // VND/KW
+    const electricityRate = 2580; // VND/KW
     const waterRate = 4000; // VND/m3
 
     const electricityConsumption = elecCurrent - lastElectricityReading;
