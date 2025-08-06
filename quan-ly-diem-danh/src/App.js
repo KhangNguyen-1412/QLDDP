@@ -7664,6 +7664,26 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                           </span>
                         </p>
                       </div>
+                      {/* ===== KHỐI NÚT BẤM MỚI - BẮT ĐẦU ===== */}
+                      <div className="mt-6 flex-shrink-0 flex flex-col space-y-2">
+                        {/* Nút Thanh toán Online */}
+                        <button
+                          onClick={() => window.open('https://tracuu.hcmue.edu.vn/ktx', '_blank')} // <-- THAY ĐỔI LINK Ở ĐÂY
+                          className="w-full px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all"
+                        >
+                          <i className="fas fa-external-link-alt mr-2"></i>
+                          Đi đến trang Thanh toán
+                        </button>
+
+                        {/* Nút Đóng */}
+                        <button
+                          onClick={() => setSelectedCostSharingDetails(null)}
+                          className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700"
+                        >
+                          Đóng
+                        </button>
+                      </div>
+                      {/* ===== KHỐI NÚT BẤM MỚI - KẾT THÚC ===== */}
                     </div>
                   </>
                 );
