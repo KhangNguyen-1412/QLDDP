@@ -7627,7 +7627,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                     <div className="flex-grow overflow-y-auto">
                       <div className="space-y-3 text-gray-700 dark:text-gray-300">
                         <p><strong>Kỳ tính:</strong> {selectedCostSharingDetails.periodStart} đến {selectedCostSharingDetails.periodEnd}</p>
-                        <p><strong>Ngày tính:</strong> {selectedCostSharingDetails.calculatedDate?.toDate().toLocaleDateString('vi-VN') || 'N/A'}</p>
+                        <p><strong>Ngày tính:</strong> {selectedCostSharingDetails.calculatedDate?.toLocaleDateString('vi-VN') || 'N/A'}</p>
                         <p><strong>Tổng ngày có mặt:</strong> {selectedCostSharingDetails.totalCalculatedDaysAllResidents} ngày</p>
                         <p><strong>Chi phí TB 1 ngày/người:</strong> {selectedCostSharingDetails.costPerDayPerPerson?.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} VND</p>
                         
