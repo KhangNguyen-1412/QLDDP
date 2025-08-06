@@ -7674,14 +7674,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                           <i className="fas fa-external-link-alt mr-2"></i>
                           Đi đến trang Thanh toán
                         </button>
-
-                        {/* Nút Đóng */}
-                        <button
-                          onClick={() => setSelectedCostSharingDetails(null)}
-                          className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700"
-                        >
-                          Đóng
-                        </button>
                       </div>
                       {/* ===== KHỐI NÚT BẤM MỚI - KẾT THÚC ===== */}
                     </div>
