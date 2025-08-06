@@ -7623,6 +7623,25 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                     })}
                   </ul>
                 </div> {/* KẾT THÚC CONTAINER CUỘN */}
+                {/* ===== KHỐI TIẾN ĐỘ THANH TOÁN MỚI - BẮT ĐẦU ===== */}
+                <div className="mb-4 border-b pb-4 border-gray-200 dark:border-gray-700">
+                  <h4 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    Tiến độ thanh toán
+                  </h4>
+                  <div className="w-full bg-gray-200 rounded-full h-4 dark:bg-gray-600 relative overflow-hidden">
+                    <div
+                      className="bg-green-500 h-4 rounded-full text-center text-white text-xs leading-4 flex items-center justify-center transition-all duration-500"
+                      style={{ width: `${paidPercentage}%` }}
+                    >
+                      {Math.round(paidPercentage)}%
+                    </div>
+                  </div>
+                  <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mt-2">
+                    <span>Đã đóng: <strong>{totalPaidAmount.toLocaleString('vi-VN')} VND</strong></span>
+                    <span>Còn lại: <strong>{amountRemaining.toLocaleString('vi-VN')} VND</strong></span>
+                  </div>
+                </div>
+                {/* ===== KHỐI TIẾN ĐỘ THANH TOÁN MỚI - KẾT THÚC ===== */}
 
                 <p className="text-lg font-bold border-t pt-3 mt-3 border-gray-300 dark:border-gray-600">
                   Quỹ phòng còn lại: <span className={`font-bold ${selectedCostSharingDetails.remainingFund >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
