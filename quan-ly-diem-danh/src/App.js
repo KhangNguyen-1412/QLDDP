@@ -237,6 +237,61 @@ function App() {
 
   const [selectedNotificationDetails, setSelectedNotificationDetails] = useState(null); // Để hiển thị chi tiết thông báo
 
+  //State cập nhật điện nước
+  const [electricityRate, setElectricityRate] = useState(0); // Giá mặc định ban đầu
+  const [waterRate, setWaterRate] = useState(4000); // Giá mặc định ban đầu
+  const [newElectricityRate, setNewElectricityRate] = useState('');
+  const [newWaterRate, setNewWaterRate] = useState('');
+
+  //useEffect cập nhật điện nước
+  useEffect(() => {
+    if (db && userRole === 'admin') {
+      const configDocRef = doc(db, `artifacts/${currentAppId}/public/data/config`, 'pricing');
+      
+      const unsubscribe = onSnapshot(configDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setElectricityRate(data.electricityRate || 2580);
+          setWaterRate(data.waterRate || 4000);
+        }
+      });
+
+      return () => unsubscribe();
+    }
+  }, [db, userRole]);
+
+  //Hàm cập nhật giá
+  const handleUpdateRates = async () => {
+    if (userRole !== 'admin') {
+      setBillingError('Bạn không có quyền thực hiện thao tác này.');
+      return;
+    }
+    const newElecRate = parseFloat(newElectricityRate);
+    const newWatRate = parseFloat(newWaterRate);
+
+    if (isNaN(newElecRate) || isNaN(newWatRate) || newElecRate <= 0 || newWatRate <= 0) {
+      setBillingError('Vui lòng nhập giá điện và nước hợp lệ.');
+      return;
+    }
+
+    const configDocRef = doc(db, `artifacts/${currentAppId}/public/data/config`, 'pricing');
+    try {
+      await setDoc(configDocRef, {
+        electricityRate: newElecRate,
+        waterRate: newWatRate,
+        lastUpdated: serverTimestamp()
+      }, { merge: true });
+
+      setNewElectricityRate('');
+      setNewWaterRate('');
+      setBillingError('');
+      alert('Đã cập nhật giá điện nước thành công!');
+    } catch (error) {
+      console.error("Lỗi khi cập nhật giá:", error);
+      setBillingError('Đã xảy ra lỗi khi cập nhật giá.');
+    }
+  };
+
   // New state for Image Lightbox/Zoom
   const [selectedImageToZoom, setSelectedImageToZoom] = useState(null); // Lưu URL của ảnh muốn phóng to
 
@@ -2815,9 +2870,6 @@ const handleUpdateFormerResident = async (e) => {
       return;
     }
 
-    const electricityRate = 2580; // VND/KW
-    const waterRate = 4000; // VND/m3
-
     const electricityConsumption = elecCurrent - lastElectricityReading;
     const waterConsumption = currentWaterReading - lastWaterReading; // Sửa lỗi ở đây: dùng waterCurrent
 
@@ -3910,115 +3962,155 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 </div>
               </div>
             );
-        case 'billing':
-          return (
-            <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">Tính tiền điện nước</h2>
+            case 'billing':
+              return (
+                // Container chính cho toàn bộ mục, dùng space-y để tạo khoảng cách giữa các khối
+                <div className="space-y-8">
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                {/* Electricity */}
-                <div>
-                  <label
-                    htmlFor="lastElectricityReading"
-                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                  >
-                    Chỉ số điện cuối cùng được ghi nhận (KW):
-                  </label>
-                  <input
-                    type="number"
-                    id="lastElectricityReading"
-                    value={lastElectricityReading}
-                    readOnly
-                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="currentElectricityReading"
-                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                  >
-                    Chỉ số điện hiện tại (KW):
-                  </label>
-                  <input
-                    type="number"
-                    id="currentElectricityReading"
-                    value={currentElectricityReading}
-                    onChange={(e) => {
-                      setCurrentElectricityReading(e.target.value);
-                      setBillingError('');
-                    }}
-                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    placeholder="Nhập chỉ số hiện tại"
-                  />
-                </div>
+                  {/* ===== KHỐI 1: TÍNH TIỀN ĐIỆN NƯỚC ===== */}
+                  <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+                    <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">Tính tiền điện nước</h2>
 
-                {/* Water */}
-                <div>
-                  <label
-                    htmlFor="lastWaterReading"
-                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                  >
-                    Chỉ số nước cuối cùng được ghi nhận (m³):
-                  </label>
-                  <input
-                    type="number"
-                    id="lastWaterReading"
-                    value={lastWaterReading}
-                    readOnly
-                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="currentWaterReading"
-                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                  >
-                    Chỉ số nước hiện tại (m³):
-                  </label>
-                  <input
-                    type="number"
-                    id="currentWaterReading"
-                    value={currentWaterReading}
-                    onChange={(e) => {
-                      setCurrentWaterReading(e.target.value);
-                      setBillingError('');
-                    }}
-                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    placeholder="Nhập chỉ số hiện tại"
-                  />
-                </div>
-              </div>
-              {billingError && (
-                <p className="text-red-500 dark:text-red-400 text-sm text-center mb-4">{billingError}</p>
-              )}
-              <button
-                onClick={calculateBill}
-                className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 mb-6"
-                disabled={isNaN(parseFloat(currentElectricityReading)) || isNaN(parseFloat(currentWaterReading))}
-              >
-                <i className="fas fa-calculator mr-2"></i> Tính toán chi phí
-              </button>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                      {/* Electricity */}
+                      <div>
+                        <label htmlFor="lastElectricityReading" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                          Chỉ số điện cuối cùng (KW):
+                        </label>
+                        <input
+                          type="number"
+                          id="lastElectricityReading"
+                          value={lastElectricityReading}
+                          readOnly
+                          className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 bg-gray-100 dark:bg-gray-600 cursor-not-allowed"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="currentElectricityReading" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                          Chỉ số điện hiện tại (KW):
+                        </label>
+                        <input
+                          type="number"
+                          id="currentElectricityReading"
+                          value={currentElectricityReading}
+                          onChange={(e) => { setCurrentElectricityReading(e.target.value); setBillingError(''); }}
+                          className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 bg-white dark:bg-gray-700"
+                          placeholder="Nhập chỉ số hiện tại"
+                        />
+                      </div>
 
-              {totalCost > 0 && (
-                <div className="bg-blue-100 dark:bg-gray-700 p-4 rounded-xl shadow-inner text-lg font-semibold text-blue-900 dark:text-blue-100 border border-blue-200 dark:border-gray-600">
-                  <p className="mb-2">
-                    Tiền điện:{' '}
-                    <span className="text-blue-700 dark:text-blue-300">
-                      {electricityCost.toLocaleString('vi-VN')} VND
-                    </span>
-                  </p>
-                  <p className="mb-2">
-                    Tiền nước:{' '}
-                    <span className="text-blue-700 dark:text-blue-300">{waterCost.toLocaleString('vi-VN')} VND</span>
-                  </p>
-                  <p className="border-t pt-3 mt-3 border-blue-300 dark:border-gray-600 text-xl font-bold">
-                    Tổng cộng:{' '}
-                    <span className="text-blue-800 dark:text-blue-200">{totalCost.toLocaleString('vi-VN')} VND</span>
-                  </p>
+                      {/* Water */}
+                      <div>
+                        <label htmlFor="lastWaterReading" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                          Chỉ số nước cuối cùng (m³):
+                        </label>
+                        <input
+                          type="number"
+                          id="lastWaterReading"
+                          value={lastWaterReading}
+                          readOnly
+                          className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 bg-gray-100 dark:bg-gray-600 cursor-not-allowed"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="currentWaterReading" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                          Chỉ số nước hiện tại (m³):
+                        </label>
+                        <input
+                          type="number"
+                          id="currentWaterReading"
+                          value={currentWaterReading}
+                          onChange={(e) => { setCurrentWaterReading(e.target.value); setBillingError(''); }}
+                          className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 bg-white dark:bg-gray-700"
+                          placeholder="Nhập chỉ số hiện tại"
+                        />
+                      </div>
+                    </div>
+                    
+                    <button
+                      onClick={calculateBill}
+                      className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all"
+                    >
+                      <i className="fas fa-calculator mr-2"></i> Tính toán chi phí
+                    </button>
+
+                    {totalCost > 0 && (
+                      <div className="mt-6 bg-blue-100 dark:bg-gray-800 p-4 rounded-xl text-lg font-semibold">
+                        <p>Tiền điện: <span className="text-blue-700 dark:text-blue-300">{electricityCost.toLocaleString('vi-VN')} VND</span></p>
+                        <p>Tiền nước: <span className="text-blue-700 dark:text-blue-300">{waterCost.toLocaleString('vi-VN')} VND</span></p>
+                        <p className="border-t pt-3 mt-3 text-xl font-bold">
+                          Tổng cộng: <span className="text-blue-800 dark:text-blue-200">{totalCost.toLocaleString('vi-VN')} VND</span>
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ===== KHỐI 2: CÀI ĐẶT GIÁ ĐIỆN & NƯỚC ===== */}
+                  <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+                    <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">
+                      Cài đặt giá điện & nước
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                      <div>
+                        <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                          Giá điện hiện tại (VND/KW):
+                        </label>
+                        <input
+                          type="text"
+                          value={`${electricityRate.toLocaleString('vi-VN')} VND`}
+                          readOnly
+                          className="shadow-sm border rounded-xl w-full py-2 px-4 bg-gray-100 dark:bg-gray-600 cursor-not-allowed"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                          Giá nước hiện tại (VND/m³):
+                        </label>
+                        <input
+                          type="text"
+                          value={`${waterRate.toLocaleString('vi-VN')} VND`}
+                          readOnly
+                          className="shadow-sm border rounded-xl w-full py-2 px-4 bg-gray-100 dark:bg-gray-600 cursor-not-allowed"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="newElecRate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                          Nhập giá điện mới:
+                        </label>
+                        <input
+                          type="number"
+                          id="newElecRate"
+                          value={newElectricityRate}
+                          onChange={(e) => setNewElectricityRate(e.target.value)}
+                          className="shadow-sm border rounded-xl w-full py-2 px-4 bg-white dark:bg-gray-700"
+                          placeholder="Ví dụ: 2600"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="newWatRate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                          Nhập giá nước mới:
+                        </label>
+                        <input
+                          type="number"
+                          id="newWatRate"
+                          value={newWaterRate}
+                          onChange={(e) => setNewWaterRate(e.target.value)}
+                          className="shadow-sm border rounded-xl w-full py-2 px-4 bg-white dark:bg-gray-700"
+                          placeholder="Ví dụ: 4500"
+                        />
+                      </div>
+                    </div>
+                    {billingError && <p className="text-red-500 text-sm text-center mb-4">{billingError}</p>}
+                    <button
+                      onClick={handleUpdateRates}
+                      className="w-full px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all"
+                    >
+                      Lưu thay đổi giá
+                    </button>
+                  </div>
+
                 </div>
-              )}
-            </div>
-          );
+              );
         case 'costSharing':
           return (
             <div className="p-6 bg-orange-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
