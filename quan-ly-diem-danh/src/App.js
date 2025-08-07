@@ -6090,43 +6090,78 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                         Thanh toán bằng mã QR
                       </button>
                     )}
-                    {/* ===== POPUP HIỂN THỊ QR ĐỘNG (ĐÃ SỬA LỖI) ===== */}
+                    {/* ===== POPUP THANH TOÁN QR (HIỂN THỊ QR & QUÉT MÃ) ===== */}
                     {showQrCodeModal && latestCostSharingRecord && loggedInResidentProfile && (
-                      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowQrCodeModal(false)}>
-                        {(() => {
-                          // --- Bắt đầu khối tạo URL hình ảnh VietQR ---
-                          const amountToPay = latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.cost || 0;
+                      <div 
+                        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" 
+                        onClick={() => { setShowQrCodeModal(false); setShowScanner(false); setScannedData(null); }} // Đóng và reset khi bấm ra ngoài
+                      >
+                        <div className="bg-white p-6 rounded-lg text-center" onClick={(e) => e.stopPropagation()}>
                           
-                          const bankId = "970415"; // Vietinbank
-                          const accountNumber = "101877135020"; // THAY BẰNG SỐ TÀI KHOẢN CỦA BẠN
-                          const accountName = "NGUYEN HUYNH PHUC KHANG"; // THAY BẰNG TÊN CỦA BẠN (KHÔNG DẤU)
-
-                          const billPeriod = latestCostSharingRecord.periodStart || new Date().toISOString().slice(0, 7);
-                          const billMonth = billPeriod.split('-')[1];
-                          const billYear = billPeriod.split('-')[0];
-                          const description = `CK ${fullName.split(' ').slice(-1).join('')} KTX T${billMonth}-${billYear}`;
-                          
-                          // Đây là URL của tấm hình QR, không phải chuỗi để tạo QR
-                          const vietQR_imageUrl = `https://img.vietqr.io/image/${bankId}-${accountNumber}-print.png?amount=${amountToPay}&addInfo=${encodeURIComponent(description)}&accountName=${encodeURIComponent(accountName)}`;
-                          // --- Kết thúc khối tạo URL ---
-
-                          return (
-                            <div className="bg-white p-6 rounded-lg text-center" onClick={(e) => e.stopPropagation()}>
-                              <h3 className="text-xl font-bold mb-2">Quét mã để thanh toán</h3>
-                              <p className="text-gray-700 mb-4">
-                                Số tiền cần thanh toán: <strong className="text-red-600">{amountToPay.toLocaleString('vi-VN')} VND</strong>
-                              </p>
-                              
-                              {/* ===== SỬA LẠI THÀNH THẺ <img> ===== */}
-                              <div className="p-2 border rounded-lg inline-block">
-                                <img 
-                                  src={vietQR_imageUrl} 
-                                  alt="VietQR Code"
-                                  width="256"
-                                  height="256"
+                          {/* Giao diện camera sẽ hiển thị ở đây KHI showScanner là true */}
+                          {showScanner ? (
+                            <div>
+                              <h3 className="text-xl font-bold mb-4">Đưa mã QR vào khung quét</h3>
+                              <div className="w-full sm:w-80 mx-auto border-2 border-gray-300 rounded-lg overflow-hidden">
+                                <QrScanner
+                                  onScanSuccess={handleScanSuccess}
+                                  onScanError={handleScanError}
                                 />
                               </div>
-                              {/* ===== NÚT QUÉT MÃ MỚI ===== */}
+                              {scannedData && (
+                                  <div className="mt-4 p-2 bg-green-100 rounded-lg text-left text-xs break-all">
+                                    <p className="font-semibold">Đã quét:</p>
+                                    <p>{scannedData}</p>
+                                  </div>
+                              )}
+                              <button 
+                                onClick={() => setShowScanner(false)} 
+                                className="w-full mt-4 p-2 bg-gray-200 rounded-lg hover:bg-gray-300 font-semibold"
+                              >
+                                Hủy quét
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              {/* Giao diện hiển thị mã QR mặc định */}
+                              {(() => {
+                                // --- Bắt đầu khối tạo URL hình ảnh VietQR ---
+                                const amountToPay = latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.cost || 0;
+                                
+                                // THÔNG TIN CỦA BẠN (ADMIN) - HÃY THAY ĐỔI CHO ĐÚNG
+                                const bankId = "970415"; // Vietinbank
+                                const accountNumber = "101877135020"; // THAY BẰNG SỐ TÀI KHOẢN CỦA BẠN
+                                const accountName = "NGUYEN HUYNH PHUC KHANG"; // THAY BẰNG TÊN CỦA BẠN (KHÔNG DẤU)
+
+                                const billPeriod = latestCostSharingRecord.periodStart || new Date().toISOString().slice(0, 7);
+                                const billMonth = billPeriod.split('-')[1];
+                                const billYear = billPeriod.split('-')[0];
+                                const description = `CK ${fullName.split(' ').slice(-1).join('')} KTX T${billMonth}-${billYear}`;
+                                
+                                const vietQR_imageUrl = `https://img.vietqr.io/image/${bankId}-${accountNumber}-print.png?amount=${amountToPay}&addInfo=${encodeURIComponent(description)}&accountName=${encodeURIComponent(accountName)}`;
+                                // --- Kết thúc khối tạo URL ---
+
+                                return (
+                                  <div>
+                                    <h3 className="text-xl font-bold mb-2">Quét mã để thanh toán</h3>
+                                    <p className="text-gray-700 mb-4">
+                                      Số tiền cần thanh toán: <strong className="text-red-600">{amountToPay.toLocaleString('vi-VN')} VND</strong>
+                                    </p>
+                                    
+                                    <div className="p-2 border rounded-lg inline-block">
+                                      <img 
+                                        src={vietQR_imageUrl} 
+                                        alt="VietQR Code"
+                                        width="256"
+                                        height="256"
+                                      />
+                                    </div>
+                                    <p className="text-sm text-gray-500 mt-2">Nội dung: {description}</p>
+                                  </div>
+                                );
+                              })()}
+
+                              {/* ===== NÚT QUÉT MÃ ===== */}
                               <div className="my-4 py-4 border-t border-b border-gray-200">
                                 <p className="text-sm text-gray-500 mb-2">Hoặc, bạn cần thanh toán cho người khác?</p>
                                 <button 
@@ -6138,12 +6173,15 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                                 </button>
                               </div>
 
-                              <button onClick={() => setShowQrCodeModal(false)} className="w-full mt-4 p-2 bg-gray-200 rounded-lg hover:bg-gray-300">
+                              <button 
+                                onClick={() => { setShowQrCodeModal(false); setShowScanner(false); setScannedData(null); }} 
+                                className="w-full p-2 bg-gray-200 rounded-lg hover:bg-gray-300 font-semibold"
+                              >
                                 Đóng
                               </button>
-                            </div>
-                          );
-                        })()}
+                            </>
+                          )}
+                        </div>
                       </div>
                     )}
                     {isQrCodeZoomed && (
