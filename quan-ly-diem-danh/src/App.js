@@ -5874,31 +5874,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 </div>
               );
             }
-            
-            // Giao diện cho Member: Gửi góp ý
-            return (
-              <div className="p-6 bg-gray-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-                <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-5">Gửi góp ý cho chúng mình</h2>
-                <p className="text-gray-600 dark:text-gray-400 mb-4">
-                  Mọi ý kiến đóng góp của bạn đều rất quý giá để giúp ứng dụng ngày càng tốt hơn. Cảm ơn bạn!
-                </p>
-                <form onSubmit={handleSendFeedback}>
-                  <textarea
-                    value={feedbackContent}
-                    onChange={(e) => setFeedbackContent(e.target.value)}
-                    rows="6"
-                    className="w-full p-3 border rounded-lg dark:bg-gray-800 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Nhập nội dung góp ý của bạn ở đây..."
-                  ></textarea>
-                  <button
-                    type="submit"
-                    className="w-full mt-4 p-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700"
-                  >
-                    Gửi góp ý
-                  </button>
-                </form>
-              </div>
-            );
       }
     }
     // Logic cho Thành viên
@@ -7044,6 +7019,33 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               </div>
             </div>
           );
+
+          case 'feedback':
+            if (userRole === 'member') {
+              return (
+              <div className="p-6 bg-gray-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+                <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-5">Gửi góp ý cho chúng mình</h2>
+                <p className="text-gray-600 dark:text-gray-400 mb-4">
+                  Mọi ý kiến đóng góp của bạn đều rất quý giá để giúp ứng dụng ngày càng tốt hơn. Cảm ơn bạn!
+                </p>
+                <form onSubmit={handleSendFeedback}>
+                  <textarea
+                    value={feedbackContent}
+                    onChange={(e) => setFeedbackContent(e.target.value)}
+                    rows="6"
+                    className="w-full p-3 border rounded-lg dark:bg-gray-800 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Nhập nội dung góp ý của bạn ở đây..."
+                  ></textarea>
+                  <button
+                    type="submit"
+                    className="w-full mt-4 p-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700"
+                  >
+                    Gửi góp ý
+                  </button>
+                </form>
+              </div>
+            );
+          }
       }
     }
 
