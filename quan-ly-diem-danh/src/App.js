@@ -53,6 +53,52 @@ const CLOUDINARY_API_URL_AUTO_UPLOAD = `https://api.cloudinary.com/v1_1/${CLOUDI
 // KẾT THÚC KHAI BÁO CLOUDINARY
 
 function App() {
+  //State show mã qr thanh 
+  const [showQrCodeModal, setShowQrCodeModal] = useState(false);
+  //State tải mã qr
+  const [qrCodeUrl, setQrCodeUrl] = useState(null); // Lưu URL của mã QR
+  const [newQrCodeFile, setNewQrCodeFile] = useState(null);
+  const [isUploadingQrCode, setIsUploadingQrCode] = useState(false);
+  //useEffect tải mã qr lên web
+  useEffect(() => {
+    if (db) {
+      const configDocRef = doc(db, `artifacts/${currentAppId}/public/data/config`, 'payment');
+      const unsubscribe = onSnapshot(configDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+          setQrCodeUrl(docSnap.data().qrCodeUrl || null);
+        }
+      });
+      return () => unsubscribe();
+    }
+  }, [db]);
+  //Hàm xử lý việc tải ảnh QR lên Cloudinary và lưu URL lại.
+  const handleUploadQrCode = async () => {
+    if (!newQrCodeFile || userRole !== 'admin') {
+      setBillingError('Vui lòng chọn một file ảnh hoặc bạn không có quyền.');
+      return;
+    }
+    setIsUploadingQrCode(true);
+
+    const formData = new FormData();
+    formData.append('file', newQrCodeFile);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET_AVATAR); // Có thể dùng chung preset
+
+    try {
+      const response = await axios.post(CLOUDINARY_API_URL_IMAGE_UPLOAD, formData);
+      const downloadURL = response.data.secure_url;
+
+      const configDocRef = doc(db, `artifacts/${currentAppId}/public/data/config`, 'payment');
+      await setDoc(configDocRef, { qrCodeUrl: downloadURL }, { merge: true });
+
+      setNewQrCodeFile(null);
+      alert('Đã cập nhật mã QR thanh toán thành công!');
+    } catch (error) {
+      console.error("Lỗi khi tải lên mã QR:", error);
+      setBillingError('Đã xảy ra lỗi khi tải lên mã QR.');
+    } finally {
+      setIsUploadingQrCode(false);
+    }
+  };
   // Thêm vào cùng với các state khác ở đầu component App
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [storage, setStorage] = useState(null);
@@ -4108,6 +4154,45 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                       Lưu thay đổi giá
                     </button>
                   </div>
+                  {/* ===== KHỐI 3: CÀI ĐẶT MÃ QR THANH TOÁN ===== */}
+                  <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+                    <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">
+                      Cài đặt QR Thanh toán
+                    </h2>
+                    <div className="flex flex-col md:flex-row items-center gap-6">
+                      {/* Phần xem trước QR */}
+                      <div className="flex-shrink-0">
+                        <p className="text-center text-sm font-semibold mb-2">Mã QR hiện tại:</p>
+                        {qrCodeUrl ? (
+                          <img src={qrCodeUrl} alt="Mã QR thanh toán" className="w-40 h-40 object-contain border rounded-lg bg-white"/>
+                        ) : (
+                          <div className="w-40 h-40 border rounded-lg bg-gray-100 flex items-center justify-center text-gray-400">
+                            Chưa có mã QR
+                          </div>
+                        )}
+                      </div>
+                      {/* Phần tải lên */}
+                      <div className="flex-1 w-full">
+                        <label htmlFor="qrCodeFile" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                          Tải lên mã QR mới:
+                        </label>
+                        <input
+                          type="file"
+                          id="qrCodeFile"
+                          accept="image/*"
+                          onChange={(e) => setNewQrCodeFile(e.target.files[0])}
+                          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                        />
+                        <button
+                          onClick={handleUploadQrCode}
+                          className="w-full mt-4 px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700"
+                          disabled={isUploadingQrCode || !newQrCodeFile}
+                        >
+                          {isUploadingQrCode ? 'Đang tải lên...' : 'Lưu mã QR mới'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
 
                 </div>
               );
@@ -5913,68 +5998,83 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
             ); 
           }       
           case 'memberCostSummary': // Chi phí của tôi
-          // Hiển thị tóm tắt chi phí mới nhất và nút đánh dấu đã đóng
-          const latestCostSharingRecord = costSharingHistory[0];
-          return (
-            <div className="p-6 bg-orange-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-orange-800 dark:text-orange-200 mb-5">Chi phí của tôi</h2>
-              {!loggedInResidentProfile ? (
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
-                  Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.
-                </p>
-              ) : !latestCostSharingRecord ||
-                !latestCostSharingRecord.individualCosts ||
-                !latestCostSharingRecord.individualCosts[loggedInResidentProfile.id] ? (
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
-                  Chưa có thông tin chi phí nào cho bạn.
-                </p>
-              ) : (
-                <div className="bg-orange-100 dark:bg-gray-700 p-4 rounded-xl shadow-inner text-lg font-semibold text-orange-900 dark:text-orange-100 border border-orange-200 dark:border-gray-600">
-                  <p className="mb-2">
-                    <strong>Kỳ tính:</strong> {latestCostSharingRecord.periodStart} đến{' '}
-                    {latestCostSharingRecord.periodEnd}
+            // Hiển thị tóm tắt chi phí mới nhất và các nút hành động
+            const latestCostSharingRecord = costSharingHistory[0];
+            return (
+              <div className="p-6 bg-orange-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+                <h2 className="text-2xl font-bold text-orange-800 dark:text-orange-200 mb-5">Chi phí của tôi</h2>
+                {!loggedInResidentProfile ? (
+                  <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
+                    Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.
                   </p>
-                  <p className="mb-2">
-                    <strong>Số ngày có mặt:</strong>{' '}
-                    {latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.daysPresent || 0} ngày
+                ) : !latestCostSharingRecord ||
+                  !latestCostSharingRecord.individualCosts ||
+                  !latestCostSharingRecord.individualCosts[loggedInResidentProfile.id] ? (
+                  <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
+                    Chưa có thông tin chi phí nào cho bạn.
                   </p>
-                  <p className="mb-2 text-xl font-bold border-t pt-3 mt-3 border-orange-300 dark:border-gray-600">
-                    Số tiền cần đóng:{' '}
-                    <span className="text-orange-800 dark:text-orange-200">
-                      {(latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.cost || 0).toLocaleString(
-                        'vi-VN',
-                      )}{' '}
-                      VND
-                    </span>
-                  </p>
-                  <p className="text-lg font-bold">
-                    Trạng thái:{' '}
-                    <span
-                      className={
-                        latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.isPaid
-                          ? 'text-green-600 dark:text-green-400'
-                          : 'text-red-500 dark:text-red-400'
-                      }
-                    >
-                      {latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.isPaid
-                        ? 'Đã đóng'
-                        : 'Chưa đóng'}
-                    </span>
-                  </p>
-                  {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
-                  {!latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.isPaid && (
-                    <button
-                      onClick={handleMarkMyPaymentAsPaid}
-                      className="w-full mt-4 px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all duration-300"
-                    >
-                      <i className="fas fa-check-circle mr-2"></i> Đánh dấu đã đóng
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        case 'memberCleaningSchedule': // Lịch trực của tôi
+                ) : (
+                  <div>
+                    <div className="bg-orange-100 dark:bg-gray-800 p-6 rounded-xl shadow-inner text-lg font-semibold text-orange-900 dark:text-orange-100 border border-orange-200 dark:border-gray-600">
+                      <p className="mb-2">
+                        <strong>Kỳ tính:</strong> {latestCostSharingRecord.periodStart} đến{' '}
+                        {latestCostSharingRecord.periodEnd}
+                      </p>
+                      <p className="mb-2">
+                        <strong>Số ngày có mặt:</strong>{' '}
+                        {latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.daysPresent || 0} ngày
+                      </p>
+                      <p className="mb-2 text-xl font-bold border-t pt-3 mt-3 border-orange-300 dark:border-gray-600">
+                        Số tiền cần đóng:{' '}
+                        <span className="text-orange-800 dark:text-orange-200">
+                          {(latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.cost || 0).toLocaleString(
+                            'vi-VN',
+                          )}{' '}
+                          VND
+                        </span>
+                      </p>
+                      <p className="text-lg font-bold">
+                        Trạng thái:{' '}
+                        <span
+                          className={
+                            latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.isPaid
+                              ? 'text-green-600 dark:text-green-400'
+                              : 'text-red-500 dark:text-red-400'
+                          }
+                        >
+                          {latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.isPaid
+                            ? 'Đã đóng'
+                            : 'Chưa đóng'}
+                        </span>
+                      </p>
+                      {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
+                      
+                      {/* Nút "Đánh dấu đã đóng" chỉ hiện khi chưa đóng */}
+                      {!latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.isPaid && (
+                        <button
+                          onClick={handleMarkMyPaymentAsPaid}
+                          className="w-full mt-4 px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+                        >
+                          <i className="fas fa-check-circle mr-2"></i> Đánh dấu đã đóng
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Nút "Thanh toán bằng mã QR" */}
+                    {qrCodeUrl && (
+                      <button
+                        onClick={() => setShowQrCodeModal(true)}
+                        className="w-full mt-4 px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all"
+                      >
+                        <i className="fas fa-qrcode mr-2"></i>
+                        Thanh toán bằng mã QR
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          case 'memberCleaningSchedule': // Lịch trực của tôi
           // Hiển thị lịch trực nhưng chỉ những nhiệm vụ được giao cho thành viên đó
           const myCleaningTasks = cleaningSchedule.filter(
             (task) => loggedInResidentProfile && task.assignedToResidentId === loggedInResidentProfile.id,
