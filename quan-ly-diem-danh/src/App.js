@@ -29,7 +29,7 @@ import {
 import { getStorage, ref, uploadBytesResumable, getDownloadURL} from 'firebase/storage'; // Thêm imports cho Firebase Storage
 import axios from 'axios';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { QRCodeCanvas } from 'qrcode.react';
+import QrScanner from './QrScanner'; 
 
 // Firebase Config - Moved outside the component to be a constant
 const firebaseConfig = {
@@ -239,6 +239,22 @@ function App() {
   }, [db]);
   //State zoom mã qr
   const [isQrCodeZoomed, setIsQrCodeZoomed] = useState(false);
+
+  const [showScanner, setShowScanner] = useState(false); // Để bật/tắt camera
+  const [scannedData, setScannedData] = useState(null);   // Để lưu kết quả quét
+
+  //Hàm quét mã qr
+  const handleScanSuccess = (decodedText, decodedResult) => {
+    console.log(`Scan result: ${decodedText}`, decodedResult);
+    setScannedData(decodedText);
+    setShowScanner(false); // Tự động tắt camera sau khi quét thành công
+    alert(`Đã quét thành công! Dữ liệu: ${decodedText}`);
+  };
+
+  const handleScanError = (errorMessage) => {
+    // Bạn có thể bỏ qua lỗi này nếu không muốn hiển thị gì
+    // console.warn(`Scan error: ${errorMessage}`);
+  };
 
   // State for Room Memories
   const [memories, setMemories] = useState([]);
@@ -3810,7 +3826,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 {/* Các biểu đồ/thống kê trực quan (placeholder) */}
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md col-span-full text-center text-gray-500 dark:text-gray-400">
                   <h3 className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-3">
-                    Biểu đồ tiêu thụ điện nước (Cần thư viện biểu đồ)
+                    Biểu đồ tiêu thụ điện nước
                   </h3>
                   {Object.keys(monthlyConsumptionStats).length > 0 ? (
                     <ResponsiveContainer width="100%" height={300}>
@@ -6109,6 +6125,17 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                                   width="256"
                                   height="256"
                                 />
+                              </div>
+                              {/* ===== NÚT QUÉT MÃ MỚI ===== */}
+                              <div className="my-4 py-4 border-t border-b border-gray-200">
+                                <p className="text-sm text-gray-500 mb-2">Hoặc, bạn cần thanh toán cho người khác?</p>
+                                <button 
+                                  onClick={() => setShowScanner(true)}
+                                  className="w-full p-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-all"
+                                >
+                                  <i className="fas fa-camera mr-2"></i>
+                                  Quét mã QR khác
+                                </button>
                               </div>
 
                               <button onClick={() => setShowQrCodeModal(false)} className="w-full mt-4 p-2 bg-gray-200 rounded-lg hover:bg-gray-300">
