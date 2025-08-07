@@ -218,6 +218,48 @@ function App() {
     return localStorage.getItem('theme') || 'light';
   });
 
+  //State cho feedback
+  const [feedbackContent, setFeedbackContent] = useState('');
+  const [allFeedback, setAllFeedback] = useState([]); // Chỉ dành cho admin
+
+  // Hàm gửi góp ý
+  const handleSendFeedback = async (e) => {
+    e.preventDefault();
+    if (!db || !userId || !feedbackContent.trim()) {
+      alert('Nội dung góp ý không được để trống.');
+      return;
+    }
+
+    const feedbackCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/feedback`);
+    try {
+      await addDoc(feedbackCollectionRef, {
+        content: feedbackContent.trim(),
+        submittedBy: userId,
+        submittedByName: fullName,
+        submittedAt: serverTimestamp(),
+        status: 'new',
+      });
+      setFeedbackContent('');
+      alert('Cảm ơn bạn đã gửi góp ý! Chúng mình sẽ xem xét sớm nhất có thể.');
+    } catch (error) {
+      console.error("Lỗi khi gửi góp ý:", error);
+      alert('Đã xảy ra lỗi khi gửi góp ý.');
+    }
+  };
+  //useEffect cho gửi góp ý
+  useEffect(() => {
+    if (db && userRole === 'admin') {
+      const feedbackQuery = query(collection(db, `artifacts/${currentAppId}/public/data/feedback`), orderBy('submittedAt', 'desc'));
+      
+      const unsubscribe = onSnapshot(feedbackQuery, (snapshot) => {
+        const feedbackList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setAllFeedback(feedbackList);
+      });
+
+      return () => unsubscribe();
+    }
+  }, [db, userRole]);
+
   //State show mã qr thanh 
   const [showQrCodeModal, setShowQrCodeModal] = useState(false);
   //State tải mã qr
@@ -5808,6 +5850,55 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               )}
             </div>
           );
+          // Case gửi góp ý
+          case 'feedback':
+            // Giao diện cho Admin: Xem tất cả góp ý
+            if (userRole === 'admin') {
+              return (
+                <div className="p-6 bg-gray-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+                  <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-5">Hộp thư góp ý</h2>
+                  <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+                    {allFeedback.length > 0 ? (
+                      allFeedback.map(fb => (
+                        <div key={fb.id} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+                          <p className="text-gray-800 dark:text-gray-200">{fb.content}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                            Gửi bởi: {fb.submittedByName} - {fb.submittedAt?.toDate().toLocaleDateString('vi-VN')}
+                          </p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-gray-500 dark:text-gray-400 italic text-center">Chưa có góp ý nào.</p>
+                    )}
+                  </div>
+                </div>
+              );
+            }
+            
+            // Giao diện cho Member: Gửi góp ý
+            return (
+              <div className="p-6 bg-gray-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+                <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-5">Gửi góp ý cho chúng mình</h2>
+                <p className="text-gray-600 dark:text-gray-400 mb-4">
+                  Mọi ý kiến đóng góp của bạn đều rất quý giá để giúp ứng dụng ngày càng tốt hơn. Cảm ơn bạn!
+                </p>
+                <form onSubmit={handleSendFeedback}>
+                  <textarea
+                    value={feedbackContent}
+                    onChange={(e) => setFeedbackContent(e.target.value)}
+                    rows="6"
+                    className="w-full p-3 border rounded-lg dark:bg-gray-800 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Nhập nội dung góp ý của bạn ở đây..."
+                  ></textarea>
+                  <button
+                    type="submit"
+                    className="w-full mt-4 p-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700"
+                  >
+                    Gửi góp ý
+                  </button>
+                </form>
+              </div>
+            );
       }
     }
     // Logic cho Thành viên
@@ -7132,6 +7223,13 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                                 <i className="fas fa-bullhorn"></i>
                                 {!isSidebarCollapsed && <span className="ml-3">Quản lý Thông báo</span>}
                               </button>
+                              <button
+                                className={`w-full flex items-center py-2 px-4 ...`}
+                                onClick={() => { setActiveSection('feedback'); setIsSidebarOpen(false); }}
+                              >
+                                <i className="fas fa-lightbulb"></i>
+                                {!isSidebarCollapsed && <span className="ml-3">Hộp thư góp ý</span>}
+                              </button>
                             </div>
 
                             {/* --- Nhóm Quản Lý Chung --- */}
@@ -7343,6 +7441,13 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                               >
                                 <i className="fas fa-broom"></i>
                                 {!isSidebarCollapsed && <span className="ml-3">Lịch trực của tôi</span>}
+                              </button>
+                              <button
+                                className={`w-full flex items-center py-2 px-4 ...`}
+                                onClick={() => { setActiveSection('feedback'); setIsSidebarOpen(false); }}
+                              >
+                                <i className="fas fa-lightbulb"></i>
+                                {!isSidebarCollapsed && <span className="ml-3">Hộp thư góp ý</span>}
                               </button>
                             </div>
                             
