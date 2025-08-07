@@ -236,6 +236,8 @@ function App() {
       return () => unsubscribe();
     }
   }, [db]);
+  //State zoom mã qr
+  const [isQrCodeZoomed, setIsQrCodeZoomed] = useState(false);
 
   // State for Room Memories
   const [memories, setMemories] = useState([]);
@@ -6075,9 +6077,27 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowQrCodeModal(false)}>
                         <div className="bg-white p-6 rounded-lg" onClick={(e) => e.stopPropagation()}>
                           <h3 className="text-xl font-bold text-center mb-4">Quét mã để thanh toán</h3>
-                          <img src={qrCodeUrl} alt="Mã QR thanh toán" className="w-64 h-64 object-contain mx-auto"/>
+                          {/* Thêm onClick và cursor-pointer vào đây */}
+                          <img 
+                            src={qrCodeUrl} 
+                            alt="Mã QR thanh toán" 
+                            className="w-64 h-64 object-contain mx-auto cursor-pointer transition-transform hover:scale-105"
+                            onClick={() => setIsQrCodeZoomed(true)}
+                          />
                           <button onClick={() => setShowQrCodeModal(false)} className="w-full mt-4 p-2 bg-gray-200 rounded">Đóng</button>
                         </div>
+                      </div>
+                    )}
+                    {isQrCodeZoomed && (
+                      <div 
+                        className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4"
+                        onClick={() => setIsQrCodeZoomed(false)} // Đóng khi bấm ra ngoài
+                      >
+                        <img 
+                          src={qrCodeUrl} 
+                          alt="Mã QR thanh toán phóng to" 
+                          className="max-w-lg max-h-lg object-contain"
+                        />
                       </div>
                     )}
                   </div>
