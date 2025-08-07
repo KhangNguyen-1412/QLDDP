@@ -6156,7 +6156,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                                         height="256"
                                       />
                                     </div>
-                                    <p className="text-sm text-gray-500 mt-2">Nội dung: {description}</p>
                                   </div>
                                 );
                               })()}
