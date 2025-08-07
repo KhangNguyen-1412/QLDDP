@@ -29,6 +29,7 @@ import {
 import { getStorage, ref, uploadBytesResumable, getDownloadURL} from 'firebase/storage'; // Thêm imports cho Firebase Storage
 import axios from 'axios';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { QRCodeCanvas } from 'qrcode.react';
 
 // Firebase Config - Moved outside the component to be a constant
 const firebaseConfig = {
@@ -6073,19 +6074,48 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                         Thanh toán bằng mã QR
                       </button>
                     )}
-                    {showQrCodeModal && (
+                    {showQrCodeModal && latestCostSharingRecord && loggedInResidentProfile && (
                       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowQrCodeModal(false)}>
-                        <div className="bg-white p-6 rounded-lg" onClick={(e) => e.stopPropagation()}>
-                          <h3 className="text-xl font-bold text-center mb-4">Quét mã để thanh toán</h3>
-                          {/* Thêm onClick và cursor-pointer vào đây */}
-                          <img 
-                            src={qrCodeUrl} 
-                            alt="Mã QR thanh toán" 
-                            className="w-64 h-64 object-contain mx-auto cursor-pointer transition-transform hover:scale-105"
-                            onClick={() => setIsQrCodeZoomed(true)}
-                          />
-                          <button onClick={() => setShowQrCodeModal(false)} className="w-full mt-4 p-2 bg-gray-200 rounded">Đóng</button>
-                        </div>
+                        {(() => {
+                          // --- Bắt đầu khối tạo chuỗi VietQR ---
+                          const amountToPay = latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.cost || 0;
+                          
+                          // THÔNG TIN CỦA BẠN (ADMIN) - HÃY THAY ĐỔI CHO ĐÚNG
+                          const bankId = "970415"; // Ví dụ: Vietcombank
+                          const accountNumber = "101877135020"; // Ví dụ: Số tài khoản của bạn
+                          const accountName = "NGUYEN HUYNH PHUC "; // Tên chủ tài khoản không dấu
+
+                          // Tạo nội dung chuyển khoản động
+                          const description = `CK ${fullName.split(' ').slice(-1).join('')} KTX T${new Date().getMonth() + 1}`; // Ví dụ: "CK Khang KTX T8"
+                          const vietQRString = `https://img.vietqr.io/image/${bankId}-${accountNumber}-print.png?amount=${amountToPay}&addInfo=${encodeURIComponent(description)}&accountName=${encodeURIComponent(accountName)}`;
+                          // --- Kết thúc khối tạo chuỗi VietQR ---
+
+                          return (
+                            <div className="bg-white p-6 rounded-lg text-center" onClick={(e) => e.stopPropagation()}>
+                              <h3 className="text-xl font-bold mb-2">Quét mã để thanh toán</h3>
+                              <p className="text-gray-700 mb-4">
+                                Số tiền cần thanh toán: <strong className="text-red-600">{amountToPay.toLocaleString('vi-VN')} VND</strong>
+                              </p>
+                              
+                              {/* Component tạo mã QR động */}
+                              <div className="p-2 border rounded-lg inline-block">
+                                <QRCodeCanvas
+                                  value={vietQRString} // Sử dụng chuỗi VietQR đã tạo
+                                  size={256} // Kích thước của mã QR
+                                  bgColor={"#ffffff"}
+                                  fgColor={"#000000"}
+                                  level={"L"}
+                                  includeMargin={true}
+                                />
+                              </div>
+
+                              <p className="text-sm text-gray-500 mt-2">Nội dung: {description}</p>
+                              <button onClick={() => setShowQrCodeModal(false)} className="w-full mt-4 p-2 bg-gray-200 rounded-lg hover:bg-gray-300">
+                                Đóng
+                              </button>
+                            </div>
+                          );
+                        })()}
                       </div>
                     )}
                     {isQrCodeZoomed && (
