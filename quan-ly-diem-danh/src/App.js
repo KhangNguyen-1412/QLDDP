@@ -53,24 +53,6 @@ const CLOUDINARY_API_URL_AUTO_UPLOAD = `https://api.cloudinary.com/v1_1/${CLOUDI
 // KẾT THÚC KHAI BÁO CLOUDINARY
 
 function App() {
-  //State show mã qr thanh 
-  const [showQrCodeModal, setShowQrCodeModal] = useState(false);
-  //State tải mã qr
-  const [qrCodeUrl, setQrCodeUrl] = useState(null); // Lưu URL của mã QR
-  const [newQrCodeFile, setNewQrCodeFile] = useState(null);
-  const [isUploadingQrCode, setIsUploadingQrCode] = useState(false);
-  //useEffect tải mã qr lên web
-  useEffect(() => {
-    if (db) {
-      const configDocRef = doc(db, `artifacts/${currentAppId}/public/data/config`, 'payment');
-      const unsubscribe = onSnapshot(configDocRef, (docSnap) => {
-        if (docSnap.exists()) {
-          setQrCodeUrl(docSnap.data().qrCodeUrl || null);
-        }
-      });
-      return () => unsubscribe();
-    }
-  }, [db]);
   //Hàm xử lý việc tải ảnh QR lên Cloudinary và lưu URL lại.
   const handleUploadQrCode = async () => {
     if (!newQrCodeFile || userRole !== 'admin') {
@@ -235,6 +217,25 @@ function App() {
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('theme') || 'light';
   });
+
+  //State show mã qr thanh 
+  const [showQrCodeModal, setShowQrCodeModal] = useState(false);
+  //State tải mã qr
+  const [qrCodeUrl, setQrCodeUrl] = useState(null); // Lưu URL của mã QR
+  const [newQrCodeFile, setNewQrCodeFile] = useState(null);
+  const [isUploadingQrCode, setIsUploadingQrCode] = useState(false);
+  //useEffect tải mã qr lên web
+  useEffect(() => {
+    if (db) {
+      const configDocRef = doc(db, `artifacts/${currentAppId}/public/data/config`, 'payment');
+      const unsubscribe = onSnapshot(configDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+          setQrCodeUrl(docSnap.data().qrCodeUrl || null);
+        }
+      });
+      return () => unsubscribe();
+    }
+  }, [db]);
 
   // State for Room Memories
   const [memories, setMemories] = useState([]);
