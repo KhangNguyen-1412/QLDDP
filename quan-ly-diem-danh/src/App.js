@@ -5881,42 +5881,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 </div>
               );
             }
-            {/* ===== MODAL CHI TIẾT GÓP Ý (ADMIN) ===== */}
-            {selectedFeedbackDetails && (
-              <div 
-                className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-                onClick={() => setSelectedFeedbackDetails(null)} // Đóng khi bấm ra ngoài
-              >
-                <div 
-                  className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col"
-                  onClick={(e) => e.stopPropagation()} // Ngăn không cho popup tự đóng khi bấm vào bên trong
-                >
-                  <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 flex-shrink-0">
-                    Chi tiết góp ý
-                  </h3>
-                  
-                  {/* Khung nội dung có thể cuộn */}
-                  <div className="flex-1 overflow-y-auto pr-2 border-t border-b py-4 border-gray-200 dark:border-gray-700">
-                    <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                      {selectedFeedbackDetails.content}
-                    </p>
-                  </div>
-                  
-                  {/* Thông tin người gửi */}
-                  <div className="mt-4 pt-4 text-sm text-gray-500 dark:text-gray-400 flex-shrink-0">
-                    <p><strong>Người gửi:</strong> {selectedFeedbackDetails.submittedByName}</p>
-                    <p><strong>Thời gian:</strong> {selectedFeedbackDetails.submittedAt?.toDate().toLocaleString('vi-VN')}</p>
-                  </div>
-                  
-                  <button 
-                    onClick={() => setSelectedFeedbackDetails(null)}
-                    className="w-full mt-6 p-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 flex-shrink-0"
-                  >
-                    Đóng
-                  </button>
-                </div>
-              </div>
-            )}
       }
     }
     // Logic cho Thành viên
@@ -8785,6 +8749,42 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
           </div>
         </div>
       )}
+      {/* ===== MODAL CHI TIẾT GÓP Ý (ADMIN) ===== */}
+            {selectedFeedbackDetails && (
+              <div 
+                className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+                onClick={() => setSelectedFeedbackDetails(null)} // Đóng khi bấm ra ngoài
+              >
+                <div 
+                  className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col"
+                  onClick={(e) => e.stopPropagation()} // Ngăn không cho popup tự đóng khi bấm vào bên trong
+                >
+                  <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 flex-shrink-0">
+                    Chi tiết góp ý
+                  </h3>
+                  
+                  {/* Khung nội dung có thể cuộn */}
+                  <div className="flex-1 overflow-y-auto pr-2 border-t border-b py-4 border-gray-200 dark:border-gray-700">
+                    <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                      {selectedFeedbackDetails.content}
+                    </p>
+                  </div>
+                  
+                  {/* Thông tin người gửi */}
+                  <div className="mt-4 pt-4 text-sm text-gray-500 dark:text-gray-400 flex-shrink-0">
+                    <p><strong>Người gửi:</strong> {selectedFeedbackDetails.submittedByName}</p>
+                    <p><strong>Thời gian:</strong> {selectedFeedbackDetails.submittedAt?.toDate().toLocaleString('vi-VN')}</p>
+                  </div>
+                  
+                  <button 
+                    onClick={() => setSelectedFeedbackDetails(null)}
+                    className="w-full mt-6 p-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 flex-shrink-0"
+                  >
+                    Đóng
+                  </button>
+                </div>
+              </div>
+            )}
 
       {/* Font Awesome for icons */}
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
