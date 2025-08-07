@@ -6083,7 +6083,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                                 />
                               </div>
 
-                              <p className="text-sm text-gray-500 mt-2">Nội dung: {description}</p>
                               <button onClick={() => setShowQrCodeModal(false)} className="w-full mt-4 p-2 bg-gray-200 rounded-lg hover:bg-gray-300">
                                 Đóng
                               </button>
