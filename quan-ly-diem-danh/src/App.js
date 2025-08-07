@@ -6071,6 +6071,15 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                         Thanh toán bằng mã QR
                       </button>
                     )}
+                    {showQrCodeModal && (
+                      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowQrCodeModal(false)}>
+                        <div className="bg-white p-6 rounded-lg" onClick={(e) => e.stopPropagation()}>
+                          <h3 className="text-xl font-bold text-center mb-4">Quét mã để thanh toán</h3>
+                          <img src={qrCodeUrl} alt="Mã QR thanh toán" className="w-64 h-64 object-contain mx-auto"/>
+                          <button onClick={() => setShowQrCodeModal(false)} className="w-full mt-4 p-2 bg-gray-200 rounded">Đóng</button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
