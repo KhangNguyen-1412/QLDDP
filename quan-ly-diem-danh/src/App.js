@@ -6074,21 +6074,25 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                         Thanh toán bằng mã QR
                       </button>
                     )}
+                    {/* ===== POPUP HIỂN THỊ QR ĐỘNG (ĐÃ SỬA LỖI) ===== */}
                     {showQrCodeModal && latestCostSharingRecord && loggedInResidentProfile && (
                       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowQrCodeModal(false)}>
                         {(() => {
-                          // --- Bắt đầu khối tạo chuỗi VietQR ---
+                          // --- Bắt đầu khối tạo URL hình ảnh VietQR ---
                           const amountToPay = latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.cost || 0;
                           
-                          // THÔNG TIN CỦA BẠN (ADMIN) - HÃY THAY ĐỔI CHO ĐÚNG
-                          const bankId = "970415"; // Ví dụ: Vietcombank
-                          const accountNumber = "101877135020"; // Ví dụ: Số tài khoản của bạn
-                          const accountName = "NGUYEN HUYNH PHUC "; // Tên chủ tài khoản không dấu
+                          const bankId = "970415"; // Vietinbank
+                          const accountNumber = "101877135020"; // THAY BẰNG SỐ TÀI KHOẢN CỦA BẠN
+                          const accountName = "NGUYEN HUYNH PHUC KHANG"; // THAY BẰNG TÊN CỦA BẠN (KHÔNG DẤU)
 
-                          // Tạo nội dung chuyển khoản động
-                          const description = `CK ${fullName.split(' ').slice(-1).join('')} KTX T${new Date().getMonth() + 1}`; // Ví dụ: "CK Khang KTX T8"
-                          const vietQRString = `https://img.vietqr.io/image/${bankId}-${accountNumber}-print.png?amount=${amountToPay}&addInfo=${encodeURIComponent(description)}&accountName=${encodeURIComponent(accountName)}`;
-                          // --- Kết thúc khối tạo chuỗi VietQR ---
+                          const billPeriod = latestCostSharingRecord.periodStart || new Date().toISOString().slice(0, 7);
+                          const billMonth = billPeriod.split('-')[1];
+                          const billYear = billPeriod.split('-')[0];
+                          const description = `CK ${fullName.split(' ').slice(-1).join('')} KTX T${billMonth}-${billYear}`;
+                          
+                          // Đây là URL của tấm hình QR, không phải chuỗi để tạo QR
+                          const vietQR_imageUrl = `https://img.vietqr.io/image/${bankId}-${accountNumber}-print.png?amount=${amountToPay}&addInfo=${encodeURIComponent(description)}&accountName=${encodeURIComponent(accountName)}`;
+                          // --- Kết thúc khối tạo URL ---
 
                           return (
                             <div className="bg-white p-6 rounded-lg text-center" onClick={(e) => e.stopPropagation()}>
@@ -6097,15 +6101,13 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                                 Số tiền cần thanh toán: <strong className="text-red-600">{amountToPay.toLocaleString('vi-VN')} VND</strong>
                               </p>
                               
-                              {/* Component tạo mã QR động */}
+                              {/* ===== SỬA LẠI THÀNH THẺ <img> ===== */}
                               <div className="p-2 border rounded-lg inline-block">
-                                <QRCodeCanvas
-                                  value={vietQRString} // Sử dụng chuỗi VietQR đã tạo
-                                  size={256} // Kích thước của mã QR
-                                  bgColor={"#ffffff"}
-                                  fgColor={"#000000"}
-                                  level={"L"}
-                                  includeMargin={true}
+                                <img 
+                                  src={vietQR_imageUrl} 
+                                  alt="VietQR Code"
+                                  width="256"
+                                  height="256"
                                 />
                               </div>
 
