@@ -4869,8 +4869,14 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                                 )}
                               </div>
                               <div className="ml-4">
-                                <p className="font-bold text-lg text-gray-900 dark:text-white break-words">{linkedUser?.fullName || resident.name}</p>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">{linkedUser?.role === 'admin' ? 'Quản trị viên' : 'Thành viên'}</p>
+                                  <p className="font-bold text-lg text-gray-900 dark:text-white break-words">{linkedUser?.fullName || resident.name}</p>
+                                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                                      {
+                                          linkedUser?.role === 'admin' ? 'Quản trị viên' :
+                                          linkedUser?.role === 'developer' ? 'Developer' :
+                                          'Thành viên'
+                                      }
+                                  </p>
                               </div>
                             </div>
                             {/* Phần Thân của Thẻ - Chi tiết */}
@@ -7234,7 +7240,13 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                             <div className="ml-4">
                                 <p className="font-bold text-gray-800 dark:text-white break-words">{fullName}</p>
                                 {memberStudentId && (<p className="text-sm text-gray-600 dark:text-gray-400">{memberStudentId}</p>)}
-                                <p className="text-xs text-gray-500 dark:text-gray-300 mt-1">{userRole === 'admin' ? 'Quản trị viên' : 'Thành viên'}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-300 mt-1">
+                                    {
+                                        userRole === 'admin' ? 'Quản trị viên' :
+                                        userRole === 'developer' ? 'Developer' :
+                                        'Thành viên'
+                                    }
+                                </p>
                             </div>
                         )}
                     </div>
