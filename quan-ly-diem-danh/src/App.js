@@ -2891,7 +2891,7 @@ const handleUpdateFormerResident = async (e) => {
     setAuthError('');
     setBillingError('');
     // Sửa lại điều kiện để bao gồm cả developer
-    if (!db || !userId || !(userRole === 'admin' || userRole === 'developer' || userId === 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) {
+    if (!db || !userId || !(userRole === 'admin' || userRole === 'developer')) {
       console.error('Hệ thống chưa sẵn sàng hoặc bạn không có quyền.');
       setAuthError('Bạn không có quyền thực hiện thao tác này.');
       return;
