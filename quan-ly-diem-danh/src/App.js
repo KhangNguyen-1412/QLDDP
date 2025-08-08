@@ -2890,25 +2890,24 @@ const handleUpdateFormerResident = async (e) => {
   const handleToggleResidentActiveStatus = async (residentId, residentName, currentStatus) => {
     setAuthError('');
     setBillingError('');
+    // Sửa lại điều kiện để bao gồm cả developer
     if (!db || !userId || !(userRole === 'admin' || userRole === 'developer' || userId === 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) {
-      // Chỉ admin mới có thể chuyển đổi trạng thái
       console.error('Hệ thống chưa sẵn sàng hoặc bạn không có quyền.');
       setAuthError('Bạn không có quyền thực hiện thao tác này.');
       return;
     }
-
-     const residentDocRef = doc(db, `artifacts/${currentAppId}/public/data/residents`, residentId);
-  const newStatus = !currentStatus;
+    
+    const residentDocRef = doc(db, `artifacts/${currentAppId}/public/data/residents`, residentId);
+    const newStatus = !currentStatus;
 
     try {
-      await setDoc(residentDocRef, { isActive: newStatus }, { merge: true });
+      await updateDoc(residentDocRef, { isActive: newStatus }); // Sử dụng updateDoc thay vì setDoc
       console.log(`Đã cập nhật trạng thái của "${residentName}" thành ${newStatus ? 'Hoạt động' : 'Vô hiệu hóa'}.`);
     } catch (error) {
       console.error('Lỗi khi cập nhật trạng thái cư dân:', error);
       setAuthError(`Lỗi khi cập nhật trạng thái của ${residentName}: ${error.message}`);
     }
   };
-
   // Xử lý việc chuyển đổi điểm danh hàng ngày cho một cư dân và ngày cụ thể
   const handleToggleDailyPresence = async (residentId, day) => {
     setAuthError('');
