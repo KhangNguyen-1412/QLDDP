@@ -218,6 +218,30 @@ function App() {
     return localStorage.getItem('theme') || 'light';
   });
 
+  //Hàm Nâng cấp/Hạ cấp tài khoản:
+  const handleToggleUserRole = async (targetUserId, currentRole) => {
+    if (userRole !== 'developer') {
+      alert('Chỉ Developer mới có quyền thực hiện thao tác này.');
+      return;
+    }
+    
+    const newRole = currentRole === 'admin' ? 'member' : 'admin';
+    const confirmMessage = `Bạn có chắc chắn muốn ${newRole === 'admin' ? 'nâng cấp' : 'hạ cấp'} tài khoản này thành ${newRole}?`;
+
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    const userDocRef = doc(db, `artifacts/${currentAppId}/public/data/users`, targetUserId);
+    try {
+      await updateDoc(userDocRef, { role: newRole });
+      alert('Đã cập nhật vai trò thành công!');
+    } catch (error) {
+      console.error("Lỗi khi cập nhật vai trò:", error);
+      alert('Đã xảy ra lỗi khi cập nhật vai trò.');
+    }
+  };
+
   //State cho feedback
   const [feedbackContent, setFeedbackContent] = useState('');
   const [allFeedback, setAllFeedback] = useState([]); // Chỉ dành cho admin
@@ -4804,7 +4828,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
           );
           case 'commonRoomInfo':
             // Phân quyền hiển thị ngay tại đây
-            if (userRole === 'admin') {
+            if (userRole === 'admin' || userRole === 'developer') {
               // ===== GIAO DIỆN "THẺ THÀNH VIÊN" CHO ADMIN =====
               return (
                 <div className="p-4 md:p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg w-full">
@@ -4886,6 +4910,19 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                               >
                                 <i className="fas fa-edit"></i>
                               </button>
+                              {userRole === 'developer' && linkedUser && (
+                                <button
+                                  onClick={() => handleToggleUserRole(linkedUser.id, linkedUser.role)}
+                                  className={`px-3 py-1 text-white text-xs rounded-lg shadow-sm mt-2 ${
+                                    linkedUser.role === 'admin' 
+                                    ? 'bg-yellow-500 hover:bg-yellow-600' 
+                                    : 'bg-purple-500 hover:bg-purple-600'
+                                  }`}
+                                  title={linkedUser.role === 'admin' ? 'Hạ cấp thành Member' : 'Nâng cấp thành Admin'}
+                                >
+                                  <i className={`fas ${linkedUser.role === 'admin' ? 'fa-arrow-down' : 'fa-arrow-up'}`}></i>
+                                </button>
+                              )}
                             </div>
                           </div>
                         );
@@ -5855,7 +5892,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
           // Case gửi góp ý
           case 'feedback':
             // Giao diện cho Admin: Xem tất cả góp ý
-            if (userRole === 'admin') {
+            if (userRole === 'admin' || userRole === 'developer') {
               return (
                 <div className="p-6 bg-gray-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
                   <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-5">Hộp thư góp ý</h2>
