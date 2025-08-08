@@ -274,16 +274,16 @@ function App() {
   };
   //useEffect cho gửi góp ý
   useEffect(() => {
-    if (db && userRole === 'admin') {
-      const feedbackQuery = query(collection(db, `artifacts/${currentAppId}/public/data/feedback`), orderBy('submittedAt', 'desc'));
-      
-      const unsubscribe = onSnapshot(feedbackQuery, (snapshot) => {
-        const feedbackList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setAllFeedback(feedbackList);
-      });
+      if (db && (userRole === 'admin' || userRole === 'developer')) {
+          const feedbackQuery = query(collection(db, `artifacts/${currentAppId}/public/data/feedback`), orderBy('submittedAt', 'desc'));
+          
+          const unsubscribe = onSnapshot(feedbackQuery, (snapshot) => {
+              const feedbackList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+              setAllFeedback(feedbackList);
+          });
 
-      return () => unsubscribe();
-    }
+          return () => unsubscribe();
+      }
   }, [db, userRole]);
 
   //State show mã qr thanh 
@@ -362,7 +362,7 @@ function App() {
 
   //useEffect cập nhật điện nước
   useEffect(() => {
-    if (db && userRole === 'admin') {
+    if (db && (userRole === 'admin' || userRole === 'developer')) {
       const configDocRef = doc(db, `artifacts/${currentAppId}/public/data/config`, 'pricing');
       
       const unsubscribe = onSnapshot(configDocRef, (docSnap) => {
@@ -1562,7 +1562,7 @@ const handleSaveUserProfile = async () => {
       return;
     }
 
-    const isAllowedToDelete = userRole === 'admin' || userId === uploadedByUserId;
+    const isAllowedToDelete = (userRole === 'admin' || userRole === 'developer') || userId === uploadedByUserId;
 
     if (!isAllowedToDelete) {
       setMemoryError('Bạn không có quyền xóa kỷ niệm này.');
@@ -2242,7 +2242,7 @@ const handleAvatarFileChange = (event) => {
     let q;
 
     // Cả Admin và Member đã đăng nhập đều cần truy vấn tất cả bản ghi điểm danh để hiển thị
-    if (userRole === 'member' || userRole === 'admin') { // Nếu là thành viên hoặc admin
+    if ((userRole === 'admin' || userRole === 'developer') || userId === 'BJHeKQkyE9VhWCpMfaONEf2N28H2') { // Nếu là thành viên hoặc admin
       q = query(dailyPresenceCollectionRef); // Truy vấn tất cả các bản ghi
     } else {
       // Nếu không có vai trò hoặc chưa đăng nhập, không truy vấn gì cả
@@ -3755,7 +3755,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
     }
 
     // Logic cho Admin
-    if (userRole === 'admin' || userId === 'BJHeKQkyE9VhWCpMfaONEf2N28H2' || userRole === 'developer') {
+    if ((userRole === 'admin' || userRole === 'developer') || userId === 'BJHeKQkyE9VhWCpMfaONEf2N28H2') {
       switch (activeSection) {
         case 'dashboard': // Dashboard cho Admin
           // Lọc các nhiệm vụ trực phòng sắp tới cho Admin (tất cả các nhiệm vụ chưa hoàn thành)
@@ -4003,7 +4003,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
             return (
               <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
                 <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">
-                  {userRole === 'admin' ? 'Điểm danh theo tháng' : 'Điểm danh của tôi'}
+                    {(userRole === 'admin' || userRole === 'developer') ? 'Điểm danh theo tháng' : 'Điểm danh của tôi'}
                 </h2>
                 <div className="mb-6 flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4">
                   <label htmlFor="monthSelector" className="font-semibold text-gray-700 dark:text-gray-300 text-lg">
@@ -4806,7 +4806,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                               className={`font-bold ${isMyShelf ? 'text-yellow-800 dark:text-yellow-200' : 'text-yellow-700 dark:text-yellow-300'}`}
                             >
                               {assignment.residentName}
-                              {userRole === 'admin' && ( // Chỉ hiển thị nút xóa cho admin
+                              {(userRole === 'admin' || userRole === 'developer') && ( // Chỉ hiển thị nút xóa cho admin
                                 <button
                                   onClick={() => handleClearShoeRackAssignment(shelfNum)}
                                   className="ml-3 px-2 py-1 bg-red-500 text-white text-xs rounded-lg shadow-sm hover:bg-red-600 transition-colors"
@@ -5083,7 +5083,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                                   'Người dùng ẩn danh'}
                               </span>
                             </p>
-                            {(userRole === 'admin' || userId === memory.uploadedBy) && (
+                            {(userRole === 'admin' || userRole === 'developer' || userId === memory.uploadedBy) && (
                               <div className="flex justify-end space-x-2">
                                 <button
                                   onClick={() => handleEditMemory(memory)}
@@ -5221,7 +5221,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                   {/* ===== TIÊU ĐỀ VÀ NÚT BẤM MỚI ===== */}
                   <div className="flex justify-between items-center mb-5">
                     <h2 className="text-2xl font-bold text-purple-800 dark:text-purple-200">Thông tin Tiền bối</h2>
-                    {userRole === 'admin' && (
+                    {(userRole === 'admin' || userRole === 'developer') && (
                       <button
                         onClick={() => setShowAddFormerResidentModal(true)}
                         className="bg-purple-500 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:bg-purple-600 transition-transform transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
@@ -5270,7 +5270,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                             {resident.notes && <p className="text-xs text-gray-500 dark:text-gray-300 mt-1">Ghi chú: {resident.notes}</p>}
                           </div>
                         </div>
-                        {userRole === 'admin' && (
+                        {(userRole === 'admin' || userRole === 'developer') && (
                           <div className="flex space-x-2">
                             <button
                               onClick={() => handleEditFormerResident (resident)}
@@ -6033,7 +6033,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
             return (
               <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
                 <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">
-                  {userRole === 'admin' ? 'Điểm danh theo tháng' : 'Điểm danh của tôi'}
+                  {(userRole === 'admin' || userRole === 'developer') ? 'Điểm danh theo tháng' : 'Điểm danh của tôi'}
                 </h2>
                 <div className="mb-6 flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4">
                   <label htmlFor="monthSelector" className="font-semibold text-gray-700 dark:text-gray-300 text-lg">
@@ -6694,7 +6694,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                                     'Người dùng ẩn danh'}
                                 </span>
                               </p>
-                              {(userRole === 'admin' || userId === memory.uploadedBy) && (
+                              {(userRole === 'admin' || userRole === 'developer' || userId === memory.uploadedBy) && (
                                 <div className="flex justify-end space-x-2">
                                   <button
                                     onClick={() => handleEditMemory(memory)}
@@ -7254,7 +7254,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                     {/* Nav */}
                     <nav className="space-y-1 px-4">
                         {/* ===== ĐIỀU HƯỚNG CỦA ADMIN ===== */}
-                        {userId && userRole === 'admin' && (
+                        {userId && (userRole === 'admin' || userRole === 'developer') && (
                           <>
                             {/* --- Nhóm Cá Nhân --- */}
                             <div>
@@ -7744,7 +7744,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
 
       {/* Modals - Giữ chúng ở phạm vi toàn cục để chồng lên nhau */}
       {selectedBillDetails &&
-        userRole === 'admin' && ( // Chỉ hiển thị chi tiết hóa đơn cho admin
+        (userRole === 'admin' || userRole === 'developer') && ( // Chỉ hiển thị chi tiết hóa đơn cho admin
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md">
               <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">Chi tiết hóa đơn</h3>
@@ -7865,7 +7865,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
         )}
 
         {/* ===== MODAL CHI TIẾT CHIA TIỀN (ĐÃ NÂNG CẤP) ===== */}
-        {selectedCostSharingDetails && (userRole === 'admin') && (
+        {selectedCostSharingDetails && (userRole === 'admin' || userRole === 'developer') && (
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[95vh]">
               <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center flex-shrink-0">
@@ -7976,7 +7976,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
         )}
 
       {/* Upload/thay đổi avatar cho thành viên */}
-      {selectedResidentForAvatarUpload && userRole === 'admin' && (
+      {selectedResidentForAvatarUpload && (userRole === 'admin' || userRole === 'developer') && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md">
             <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
@@ -8046,8 +8046,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
           </div>
         </div>
       )}
-      {showGenerateScheduleModal &&
-        userRole === 'admin' && ( // Chỉ hiển thị modal lịch trình cho admin
+      {showGenerateScheduleModal && (userRole === 'admin' || userRole === 'developer') && ( // Chỉ hiển thị modal lịch trình cho admin
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-lg">
               <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
@@ -8148,16 +8147,16 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Loại: {notification.type}</p>
                     </div>
-                    {userRole === 'admin' && ( // Chỉ admin mới có nút xóa
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteNotification(notification.id);
-                        }} // Ngăn chặn sự kiện nổi bọt
-                        className="ml-4 p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-800 rounded-full transition-colors"
-                      >
-                        <i className="fas fa-times"></i>
-                      </button>
+                    {(userRole === 'admin' || userRole === 'developer') && ( // Admin hoặc Developer mới có nút xóa
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                deleteNotification(notification.id);
+                            }}
+                            className="ml-4 p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-800 rounded-full transition-colors"
+                        >
+                            <i className="fas fa-times"></i>
+                        </button>
                     )}
                   </li>
                 ))}
