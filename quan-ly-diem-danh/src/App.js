@@ -3755,7 +3755,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
     }
 
     // Logic cho Admin
-    if (userRole === 'admin' || userId === 'BJHeKQkyE9VhWCpMfaONEf2N28H2') {
+    if (userRole === 'admin' || userId === 'BJHeKQkyE9VhWCpMfaONEf2N28H2' || userRole === 'developer') {
       switch (activeSection) {
         case 'dashboard': // Dashboard cho Admin
           // Lọc các nhiệm vụ trực phòng sắp tới cho Admin (tất cả các nhiệm vụ chưa hoàn thành)
