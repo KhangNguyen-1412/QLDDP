@@ -2890,15 +2890,15 @@ const handleUpdateFormerResident = async (e) => {
   const handleToggleResidentActiveStatus = async (residentId, residentName, currentStatus) => {
     setAuthError('');
     setBillingError('');
-    if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) {
+    if (!db || !userId || !(userRole === 'admin' || userRole === 'developer' || userId === 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) {
       // Chỉ admin mới có thể chuyển đổi trạng thái
       console.error('Hệ thống chưa sẵn sàng hoặc bạn không có quyền.');
       setAuthError('Bạn không có quyền thực hiện thao tác này.');
       return;
     }
 
-    const residentDocRef = doc(db, `artifacts/${currentAppId}/public/data/residents`, residentId);
-    const newStatus = !currentStatus;
+     const residentDocRef = doc(db, `artifacts/${currentAppId}/public/data/residents`, residentId);
+  const newStatus = !currentStatus;
 
     try {
       await setDoc(residentDocRef, { isActive: newStatus }, { merge: true });
