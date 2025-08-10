@@ -5890,7 +5890,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
             if (userRole === 'admin') {
               return (
                 <div className="p-6 bg-gray-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-                  <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-5">Hộp thư góp ý</h2>
+                  <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200">Hộp thư góp ý</h2>
                   <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
                     {allFeedback.length > 0 ? (
                       allFeedback.map(fb => (
