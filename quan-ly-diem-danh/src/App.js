@@ -29,6 +29,7 @@ import {
 import { getStorage, ref, uploadBytesResumable, getDownloadURL} from 'firebase/storage'; // Thêm imports cho Firebase Storage
 import axios from 'axios';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import UAParser from 'ua-parser-js';
 
 // Firebase Config - Moved outside the component to be a constant
 const firebaseConfig = {
@@ -217,6 +218,69 @@ function App() {
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('theme') || 'light';
   });
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        // ... (code hiện tại của bạn để lấy user profile và role)
+        const userDocRef = doc(db, `artifacts/${currentAppId}/public/data/users`, user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        
+        if (userDocSnap.exists()) {
+          const userData = userDocSnap.data();
+          setCurrentUser(userData);
+          setUserRole(userData.role || 'member');
+
+          // --- PHẦN THÊM MỚI ---
+          // 2. Lấy thông tin thiết bị
+          const parser = new UAParser();
+          const result = parser.getResult();
+          const currentDevice = {
+            // Tạo một ID độc nhất cho thiết bị dựa trên thông tin của nó
+            id: `${result.browser.name}-${result.os.name}-${result.device.vendor || 'Unknown'}`.replace(/\s+/g, ''),
+            browser: `${result.browser.name} ${result.browser.version || ''}`.trim(),
+            os: `${result.os.name} ${result.os.version || ''}`.trim(),
+            device: result.device.vendor ? `${result.device.vendor} ${result.device.model}` : 'Desktop',
+            lastLoginAt: new Date() // Ghi lại thời gian đăng nhập lần cuối
+          };
+
+          // 3. Cập nhật thông tin thiết bị vào Firestore
+          const existingDevices = userData.devices || [];
+          const deviceIndex = existingDevices.findIndex(d => d.id === currentDevice.id);
+
+          let updatedDevices = [];
+          if (deviceIndex > -1) {
+            // Nếu thiết bị đã tồn tại, chỉ cập nhật thời gian đăng nhập
+            existingDevices[deviceIndex].lastLoginAt = currentDevice.lastLoginAt;
+            updatedDevices = [...existingDevices];
+          } else {
+            // Nếu là thiết bị mới, thêm vào danh sách
+            updatedDevices = [...existingDevices, currentDevice];
+          }
+
+          // Giới hạn chỉ lưu 5 thiết bị gần nhất để tránh danh sách quá dài
+          if (updatedDevices.length > 5) {
+            updatedDevices = updatedDevices.sort((a, b) => b.lastLoginAt - a.lastLoginAt).slice(0, 5);
+          }
+
+          await updateDoc(userDocRef, {
+            devices: updatedDevices
+          });
+          // --- KẾT THÚC PHẦN THÊM MỚI ---
+
+        } else {
+          // ... (xử lý khi không tìm thấy user doc)
+        }
+
+      } else {
+        setCurrentUser(null);
+        setUserRole(null);
+      }
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [currentAppId]); // Thêm currentAppId vào dependency array nếu cần
 
   //State cho feedback
   const [feedbackContent, setFeedbackContent] = useState('');
@@ -4918,6 +4982,36 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                                     <i className="fas fa-user-shield"></i>
                                   </button>
                               )}
+                              {/* PHẦN 2: DANH SÁCH THIẾT BỊ ĐĂNG NHẬP */}
+                              {/* === ĐOẠN CODE CỦA BẠN ĐẶT Ở ĐÂY === */}
+                              {selectedResident.devices && selectedResident.devices.length > 0 && (
+                                <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                                  <h4 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-3">
+                                    Lịch sử đăng nhập gần đây
+                                  </h4>
+                                  <ul className="space-y-3 max-h-48 overflow-y-auto">
+                                    {selectedResident.devices
+                                      .sort((a, b) => (b.lastLoginAt?.seconds || 0) - (a.lastLoginAt?.seconds || 0))
+                                      .map((device, index) => (
+                                        <li key={index} className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg flex items-center space-x-3">
+                                          <i className="fas fa-laptop-code text-gray-500"></i>
+                                          <div className="flex-1">
+                                            <p className="font-semibold text-sm text-gray-800 dark:text-gray-200">
+                                              {device.browser} trên {device.os}
+                                            </p>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                              Thiết bị: {device.device}
+                                            </p>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                              Lần cuối: {new Date(device.lastLoginAt.seconds * 1000).toLocaleString('vi-VN')}
+                                            </p>
+                                          </div>
+                                        </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                              {/* ======================================= */}
                             </div>
                           </div>
                         );
