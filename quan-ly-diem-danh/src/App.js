@@ -262,6 +262,28 @@ function App() {
     }
   }, [db, userRole]);
 
+  //Hàm nâng cấp vai trò cho Admin
+  const handleUpgradeToAdmin = async (targetUserId) => {
+    if (userRole !== 'admin') {
+      setAuthError('Bạn không có quyền thực hiện thao tác này.');
+      return;
+    }
+    if (!window.confirm(`Bạn có chắc chắn muốn nâng cấp người này lên vai trò quản trị viên không?`)) {
+      return;
+    }
+
+    const userDocRef = doc(db, `artifacts/${currentAppId}/public/data/users`, targetUserId);
+    try {
+      await updateDoc(userDocRef, {
+        role: 'admin'
+      });
+      alert(`Đã nâng cấp vai trò thành công!`);
+    } catch (error) {
+      console.error("Lỗi khi nâng cấp vai trò:", error);
+      setAuthError('Đã xảy ra lỗi khi nâng cấp vai trò.');
+    }
+  };
+
   //State show mã qr thanh 
   const [showQrCodeModal, setShowQrCodeModal] = useState(false);
   //State tải mã qr
@@ -4886,6 +4908,16 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                               >
                                 <i className="fas fa-edit"></i>
                               </button>
+                              {/* NÚT NÂNG CẤP VAI TRÒ */}
+                              {linkedUser && linkedUser.role === 'member' && (
+                                  <button
+                                    onClick={() => handleUpgradeToAdmin(linkedUser.id)}
+                                    className="px-3 py-1 bg-green-500 text-white text-xs rounded-lg shadow-sm hover:bg-green-600"
+                                    title="Nâng cấp vai trò"
+                                  >
+                                    <i className="fas fa-user-shield"></i>
+                                  </button>
+                              )}
                             </div>
                           </div>
                         );
