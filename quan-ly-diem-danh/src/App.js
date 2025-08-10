@@ -2242,7 +2242,7 @@ const handleAvatarFileChange = (event) => {
     let q;
 
     // Cả Admin và Member đã đăng nhập đều cần truy vấn tất cả bản ghi điểm danh để hiển thị
-    if ((userRole === 'admin' || userRole === 'developer') || userId === 'BJHeKQkyE9VhWCpMfaONEf2N28H2') { // Nếu là thành viên hoặc admin
+    if (userRole === 'admin' || userRole === 'developer' || userRole === 'member' || userId === 'BJHeKQkyE9VhWCpMfaONEf2N28H2') { // Nếu là thành viên hoặc admin
       q = query(dailyPresenceCollectionRef); // Truy vấn tất cả các bản ghi
     } else {
       // Nếu không có vai trò hoặc chưa đăng nhập, không truy vấn gì cả
@@ -3754,7 +3754,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
     }
 
     // Logic cho Admin
-    if ((userRole === 'admin' || userRole === 'developer') || userId === 'BJHeKQkyE9VhWCpMfaONEf2N28H2') {
+    if (userRole === 'admin' || userRole === 'developer' || userRole === 'member' || userId === 'BJHeKQkyE9VhWCpMfaONEf2N28H2') {
       switch (activeSection) {
         case 'dashboard': // Dashboard cho Admin
           // Lọc các nhiệm vụ trực phòng sắp tới cho Admin (tất cả các nhiệm vụ chưa hoàn thành)
