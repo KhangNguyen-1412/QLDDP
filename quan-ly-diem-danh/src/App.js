@@ -5886,33 +5886,54 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
           );
           // Case gửi góp ý
           case 'feedback':
-            // Giao diện cho Admin: Xem tất cả góp ý
-            if (userRole === 'admin') {
-              return (
-                <div className="p-6 bg-gray-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-                  <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200">Hộp thư góp ý</h2>
-                  <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
-                    {allFeedback.length > 0 ? (
-                      allFeedback.map(fb => (
-                        <div 
-                          key={fb.id} 
-                          className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                          onClick={() => setSelectedFeedbackDetails(fb)}
-                        >
-                          {/* Dùng truncate để rút gọn nội dung dài */}
-                          <p className="text-gray-800 dark:text-gray-200 truncate">{fb.content}</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                            Gửi bởi: {fb.submittedByName} - {fb.submittedAt?.toDate().toLocaleDateString('vi-VN')}
+          // Giao diện cho Admin: Xem tất cả góp ý
+          if (userRole === 'admin') {
+            return (
+              // Container chính, bỏ các style riêng để dùng chung layout
+              <div className="p-4 md:p-6">
+                <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6">
+                  Hộp thư góp ý
+                </h2>
+                {allFeedback.length > 0 ? (
+                  // Sử dụng grid layout để hiển thị các thẻ góp ý
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {allFeedback.map(fb => (
+                      <div
+                        key={fb.id}
+                        // CSS cho thẻ góp ý, đồng bộ với các thẻ khác và thêm hiệu ứng
+                        className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between"
+                        onClick={() => setSelectedFeedbackDetails(fb)}
+                      >
+                        <div>
+                          {/* Nội dung góp ý, giới hạn 3 dòng để không làm vỡ layout */}
+                          <p className="text-gray-700 dark:text-gray-300 line-clamp-3">
+                            {fb.content}
                           </p>
                         </div>
-                      ))
-                    ) : (
-                      <p className="text-gray-500 dark:text-gray-400 italic text-center">Chưa có góp ý nào.</p>
-                    )}
+                        {/* Thông tin người gửi ở dưới cùng */}
+                        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            Gửi bởi: <span className="font-medium text-gray-600 dark:text-gray-300">{fb.submittedByName}</span>
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Ngày: {fb.submittedAt?.toDate().toLocaleDateString('vi-VN')}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
-              );
-            }
+                ) : (
+                  // Giao diện khi không có góp ý nào
+                  <div className="flex flex-col items-center justify-center h-64 bg-gray-50 dark:bg-gray-800 rounded-xl shadow-md">
+                    <svg className="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+                    <p className="text-gray-500 dark:text-gray-400 italic text-center mt-4">
+                      Chưa có góp ý nào trong hộp thư.
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          }
       }
     }
     // Logic cho Thành viên
