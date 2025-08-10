@@ -218,30 +218,6 @@ function App() {
     return localStorage.getItem('theme') || 'light';
   });
 
-  //Hàm Nâng cấp/Hạ cấp tài khoản:
-  const handleToggleUserRole = async (targetUserId, currentRole) => {
-    if (userRole !== 'developer') {
-      alert('Chỉ Developer mới có quyền thực hiện thao tác này.');
-      return;
-    }
-    
-    const newRole = currentRole === 'admin' ? 'member' : 'admin';
-    const confirmMessage = `Bạn có chắc chắn muốn ${newRole === 'admin' ? 'nâng cấp' : 'hạ cấp'} tài khoản này thành ${newRole}?`;
-
-    if (!window.confirm(confirmMessage)) {
-      return;
-    }
-
-    const userDocRef = doc(db, `artifacts/${currentAppId}/public/data/users`, targetUserId);
-    try {
-      await updateDoc(userDocRef, { role: newRole });
-      alert('Đã cập nhật vai trò thành công!');
-    } catch (error) {
-      console.error("Lỗi khi cập nhật vai trò:", error);
-      alert('Đã xảy ra lỗi khi cập nhật vai trò.');
-    }
-  };
-
   //State cho feedback
   const [feedbackContent, setFeedbackContent] = useState('');
   const [allFeedback, setAllFeedback] = useState([]); // Chỉ dành cho admin
@@ -274,16 +250,16 @@ function App() {
   };
   //useEffect cho gửi góp ý
   useEffect(() => {
-      if (db && (userRole === 'admin' || userRole === 'developer')) {
-          const feedbackQuery = query(collection(db, `artifacts/${currentAppId}/public/data/feedback`), orderBy('submittedAt', 'desc'));
-          
-          const unsubscribe = onSnapshot(feedbackQuery, (snapshot) => {
-              const feedbackList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-              setAllFeedback(feedbackList);
-          });
+    if (db && userRole === 'admin') {
+      const feedbackQuery = query(collection(db, `artifacts/${currentAppId}/public/data/feedback`), orderBy('submittedAt', 'desc'));
+      
+      const unsubscribe = onSnapshot(feedbackQuery, (snapshot) => {
+        const feedbackList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setAllFeedback(feedbackList);
+      });
 
-          return () => unsubscribe();
-      }
+      return () => unsubscribe();
+    }
   }, [db, userRole]);
 
   //State show mã qr thanh 
@@ -362,7 +338,7 @@ function App() {
 
   //useEffect cập nhật điện nước
   useEffect(() => {
-    if (db && (userRole === 'admin' || userRole === 'developer')) {
+    if (db && userRole === 'admin') {
       const configDocRef = doc(db, `artifacts/${currentAppId}/public/data/config`, 'pricing');
       
       const unsubscribe = onSnapshot(configDocRef, (docSnap) => {
@@ -1562,7 +1538,7 @@ const handleSaveUserProfile = async () => {
       return;
     }
 
-    const isAllowedToDelete = (userRole === 'admin' || userRole === 'developer') || userId === uploadedByUserId;
+    const isAllowedToDelete = userRole === 'admin' || userId === uploadedByUserId;
 
     if (!isAllowedToDelete) {
       setMemoryError('Bạn không có quyền xóa kỷ niệm này.');
@@ -2242,7 +2218,7 @@ const handleAvatarFileChange = (event) => {
     let q;
 
     // Cả Admin và Member đã đăng nhập đều cần truy vấn tất cả bản ghi điểm danh để hiển thị
-    if (userRole === 'admin' || userRole === 'developer' || userRole === 'member' || userId === 'BJHeKQkyE9VhWCpMfaONEf2N28H2') { // Nếu là thành viên hoặc admin
+    if (userRole === 'member' || userRole === 'admin') { // Nếu là thành viên hoặc admin
       q = query(dailyPresenceCollectionRef); // Truy vấn tất cả các bản ghi
     } else {
       // Nếu không có vai trò hoặc chưa đăng nhập, không truy vấn gì cả
@@ -2890,24 +2866,25 @@ const handleUpdateFormerResident = async (e) => {
   const handleToggleResidentActiveStatus = async (residentId, residentName, currentStatus) => {
     setAuthError('');
     setBillingError('');
-    // Sửa lại điều kiện để bao gồm cả developer
-    if (!db || !userId || !(userRole === 'admin' || userRole === 'developer')) {
+    if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) {
+      // Chỉ admin mới có thể chuyển đổi trạng thái
       console.error('Hệ thống chưa sẵn sàng hoặc bạn không có quyền.');
       setAuthError('Bạn không có quyền thực hiện thao tác này.');
       return;
     }
-    
+
     const residentDocRef = doc(db, `artifacts/${currentAppId}/public/data/residents`, residentId);
     const newStatus = !currentStatus;
 
     try {
-      await updateDoc(residentDocRef, { isActive: newStatus }); // Sử dụng updateDoc thay vì setDoc
+      await setDoc(residentDocRef, { isActive: newStatus }, { merge: true });
       console.log(`Đã cập nhật trạng thái của "${residentName}" thành ${newStatus ? 'Hoạt động' : 'Vô hiệu hóa'}.`);
     } catch (error) {
       console.error('Lỗi khi cập nhật trạng thái cư dân:', error);
       setAuthError(`Lỗi khi cập nhật trạng thái của ${residentName}: ${error.message}`);
     }
   };
+
   // Xử lý việc chuyển đổi điểm danh hàng ngày cho một cư dân và ngày cụ thể
   const handleToggleDailyPresence = async (residentId, day) => {
     setAuthError('');
@@ -3754,7 +3731,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
     }
 
     // Logic cho Admin
-    if (userRole === 'admin' || userRole === 'developer' || userRole === 'member' || userId === 'BJHeKQkyE9VhWCpMfaONEf2N28H2') {
+    if (userRole === 'admin' || userId === 'BJHeKQkyE9VhWCpMfaONEf2N28H2') {
       switch (activeSection) {
         case 'dashboard': // Dashboard cho Admin
           // Lọc các nhiệm vụ trực phòng sắp tới cho Admin (tất cả các nhiệm vụ chưa hoàn thành)
@@ -4002,7 +3979,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
             return (
               <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
                 <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">
-                    {(userRole === 'admin' || userRole === 'developer') ? 'Điểm danh theo tháng' : 'Điểm danh của tôi'}
+                  {userRole === 'admin' ? 'Điểm danh theo tháng' : 'Điểm danh của tôi'}
                 </h2>
                 <div className="mb-6 flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4">
                   <label htmlFor="monthSelector" className="font-semibold text-gray-700 dark:text-gray-300 text-lg">
@@ -4805,7 +4782,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                               className={`font-bold ${isMyShelf ? 'text-yellow-800 dark:text-yellow-200' : 'text-yellow-700 dark:text-yellow-300'}`}
                             >
                               {assignment.residentName}
-                              {(userRole === 'admin' || userRole === 'developer') && ( // Chỉ hiển thị nút xóa cho admin
+                              {userRole === 'admin' && ( // Chỉ hiển thị nút xóa cho admin
                                 <button
                                   onClick={() => handleClearShoeRackAssignment(shelfNum)}
                                   className="ml-3 px-2 py-1 bg-red-500 text-white text-xs rounded-lg shadow-sm hover:bg-red-600 transition-colors"
@@ -4827,7 +4804,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
           );
           case 'commonRoomInfo':
             // Phân quyền hiển thị ngay tại đây
-            if (userRole === 'admin' || userRole === 'developer') {
+            if (userRole === 'admin') {
               // ===== GIAO DIỆN "THẺ THÀNH VIÊN" CHO ADMIN =====
               return (
                 <div className="p-4 md:p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg w-full">
@@ -4868,14 +4845,8 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                                 )}
                               </div>
                               <div className="ml-4">
-                                  <p className="font-bold text-lg text-gray-900 dark:text-white break-words">{linkedUser?.fullName || resident.name}</p>
-                                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                                      {
-                                          linkedUser?.role === 'admin' ? 'Quản trị viên' :
-                                          linkedUser?.role === 'developer' ? 'Developer' :
-                                          'Thành viên'
-                                      }
-                                  </p>
+                                <p className="font-bold text-lg text-gray-900 dark:text-white break-words">{linkedUser?.fullName || resident.name}</p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">{linkedUser?.role === 'admin' ? 'Quản trị viên' : 'Thành viên'}</p>
                               </div>
                             </div>
                             {/* Phần Thân của Thẻ - Chi tiết */}
@@ -4915,19 +4886,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                               >
                                 <i className="fas fa-edit"></i>
                               </button>
-                              {userRole === 'developer' && linkedUser && (
-                                <button
-                                  onClick={() => handleToggleUserRole(linkedUser.id, linkedUser.role)}
-                                  className={`px-3 py-1 text-white text-xs rounded-lg shadow-sm mt-2 ${
-                                    linkedUser.role === 'admin' 
-                                    ? 'bg-yellow-500 hover:bg-yellow-600' 
-                                    : 'bg-purple-500 hover:bg-purple-600'
-                                  }`}
-                                  title={linkedUser.role === 'admin' ? 'Hạ cấp thành Member' : 'Nâng cấp thành Admin'}
-                                >
-                                  <i className={`fas ${linkedUser.role === 'admin' ? 'fa-arrow-down' : 'fa-arrow-up'}`}></i>
-                                </button>
-                              )}
                             </div>
                           </div>
                         );
@@ -5082,7 +5040,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                                   'Người dùng ẩn danh'}
                               </span>
                             </p>
-                            {(userRole === 'admin' || userRole === 'developer' || userId === memory.uploadedBy) && (
+                            {(userRole === 'admin' || userId === memory.uploadedBy) && (
                               <div className="flex justify-end space-x-2">
                                 <button
                                   onClick={() => handleEditMemory(memory)}
@@ -5220,7 +5178,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                   {/* ===== TIÊU ĐỀ VÀ NÚT BẤM MỚI ===== */}
                   <div className="flex justify-between items-center mb-5">
                     <h2 className="text-2xl font-bold text-purple-800 dark:text-purple-200">Thông tin Tiền bối</h2>
-                    {(userRole === 'admin' || userRole === 'developer') && (
+                    {userRole === 'admin' && (
                       <button
                         onClick={() => setShowAddFormerResidentModal(true)}
                         className="bg-purple-500 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:bg-purple-600 transition-transform transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
@@ -5269,7 +5227,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                             {resident.notes && <p className="text-xs text-gray-500 dark:text-gray-300 mt-1">Ghi chú: {resident.notes}</p>}
                           </div>
                         </div>
-                        {(userRole === 'admin' || userRole === 'developer') && (
+                        {userRole === 'admin' && (
                           <div className="flex space-x-2">
                             <button
                               onClick={() => handleEditFormerResident (resident)}
@@ -5897,7 +5855,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
           // Case gửi góp ý
           case 'feedback':
             // Giao diện cho Admin: Xem tất cả góp ý
-            if (userRole === 'admin' || userRole === 'developer') {
+            if (userRole === 'admin') {
               return (
                 <div className="p-6 bg-gray-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
                   <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-5">Hộp thư góp ý</h2>
@@ -6032,7 +5990,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
             return (
               <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
                 <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">
-                  {(userRole === 'admin' || userRole === 'developer') ? 'Điểm danh theo tháng' : 'Điểm danh của tôi'}
+                  {userRole === 'admin' ? 'Điểm danh theo tháng' : 'Điểm danh của tôi'}
                 </h2>
                 <div className="mb-6 flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4">
                   <label htmlFor="monthSelector" className="font-semibold text-gray-700 dark:text-gray-300 text-lg">
@@ -6693,7 +6651,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                                     'Người dùng ẩn danh'}
                                 </span>
                               </p>
-                              {(userRole === 'admin' || userRole === 'developer' || userId === memory.uploadedBy) && (
+                              {(userRole === 'admin' || userId === memory.uploadedBy) && (
                                 <div className="flex justify-end space-x-2">
                                   <button
                                     onClick={() => handleEditMemory(memory)}
@@ -7239,13 +7197,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                             <div className="ml-4">
                                 <p className="font-bold text-gray-800 dark:text-white break-words">{fullName}</p>
                                 {memberStudentId && (<p className="text-sm text-gray-600 dark:text-gray-400">{memberStudentId}</p>)}
-                                <p className="text-xs text-gray-500 dark:text-gray-300 mt-1">
-                                    {
-                                        userRole === 'admin' ? 'Quản trị viên' :
-                                        userRole === 'developer' ? 'Developer' :
-                                        'Thành viên'
-                                    }
-                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-300 mt-1">{userRole === 'admin' ? 'Quản trị viên' : 'Thành viên'}</p>
                             </div>
                         )}
                     </div>
@@ -7253,7 +7205,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                     {/* Nav */}
                     <nav className="space-y-1 px-4">
                         {/* ===== ĐIỀU HƯỚNG CỦA ADMIN ===== */}
-                        {userId && (userRole === 'admin' || userRole === 'developer') && (
+                        {userId && userRole === 'admin' && (
                           <>
                             {/* --- Nhóm Cá Nhân --- */}
                             <div>
@@ -7743,7 +7695,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
 
       {/* Modals - Giữ chúng ở phạm vi toàn cục để chồng lên nhau */}
       {selectedBillDetails &&
-        (userRole === 'admin' || userRole === 'developer') && ( // Chỉ hiển thị chi tiết hóa đơn cho admin
+        userRole === 'admin' && ( // Chỉ hiển thị chi tiết hóa đơn cho admin
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md">
               <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">Chi tiết hóa đơn</h3>
@@ -7864,7 +7816,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
         )}
 
         {/* ===== MODAL CHI TIẾT CHIA TIỀN (ĐÃ NÂNG CẤP) ===== */}
-        {selectedCostSharingDetails && (userRole === 'admin' || userRole === 'developer') && (
+        {selectedCostSharingDetails && (userRole === 'admin') && (
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[95vh]">
               <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center flex-shrink-0">
@@ -7975,7 +7927,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
         )}
 
       {/* Upload/thay đổi avatar cho thành viên */}
-      {selectedResidentForAvatarUpload && (userRole === 'admin' || userRole === 'developer') && (
+      {selectedResidentForAvatarUpload && userRole === 'admin' && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md">
             <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
@@ -8045,7 +7997,8 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
           </div>
         </div>
       )}
-      {showGenerateScheduleModal && (userRole === 'admin' || userRole === 'developer') && ( // Chỉ hiển thị modal lịch trình cho admin
+      {showGenerateScheduleModal &&
+        userRole === 'admin' && ( // Chỉ hiển thị modal lịch trình cho admin
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-lg">
               <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
@@ -8146,16 +8099,16 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Loại: {notification.type}</p>
                     </div>
-                    {(userRole === 'admin' || userRole === 'developer') && ( // Admin hoặc Developer mới có nút xóa
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                deleteNotification(notification.id);
-                            }}
-                            className="ml-4 p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-800 rounded-full transition-colors"
-                        >
-                            <i className="fas fa-times"></i>
-                        </button>
+                    {userRole === 'admin' && ( // Chỉ admin mới có nút xóa
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteNotification(notification.id);
+                        }} // Ngăn chặn sự kiện nổi bọt
+                        className="ml-4 p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-800 rounded-full transition-colors"
+                      >
+                        <i className="fas fa-times"></i>
+                      </button>
                     )}
                   </li>
                 ))}
