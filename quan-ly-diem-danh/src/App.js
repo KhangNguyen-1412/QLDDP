@@ -220,6 +220,7 @@ function App() {
   });
 
   useEffect(() => {
+    if (!auth) return; 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         // ... (code hiện tại của bạn để lấy user profile và role)
