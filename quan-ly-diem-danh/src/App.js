@@ -4987,7 +4987,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                               )}
                               {/* PHẦN 2: DANH SÁCH THIẾT BỊ ĐĂNG NHẬP */}
                               {/* === ĐOẠN CODE CỦA BẠN ĐẶT Ở ĐÂY === */}
-                              {selectedResident.devices && selectedResident.devices.length > 0 && (
+                              {selectedResident?.devices && selectedResident.devices.length > 0 && (
                                 <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
                                   <h4 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-3">
                                     Lịch sử đăng nhập gần đây
