@@ -139,6 +139,7 @@ function App() {
   const [loggedInResidentProfile, setLoggedInResidentProfile] = useState(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [residents, setResidents] = useState([]);
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [newResidentName, setNewResidentName] = useState('');
   const [showInactiveResidents, setShowInactiveResidents] = useState(false);
   // Thêm vào danh sách useState của bạn
@@ -219,6 +220,7 @@ function App() {
     return localStorage.getItem('theme') || 'light';
   });
 
+  const [selectedResident, setSelectedResident] = useState(null);
   useEffect(() => {
     if (!auth) return; 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
