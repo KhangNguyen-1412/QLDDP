@@ -1830,88 +1830,66 @@ useEffect(() => {
  };
 
   // Hàm để chuyển một người dùng/cư dân sang danh sách tiền bối (chỉ admin)
-  const handleMoveToFormerResidents = async (residentId, userIdToDeactivate) => {
-    setAuthError(''); // Reset authError
-    if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) {
-      setAuthError('Bạn không có quyền thực hiện thao tác này.');
+  const handleMoveToFormerResidents = async () => {
+    if (!selectedResidentToMove) {
+      alert('Vui lòng chọn một thành viên để chuyển.');
+      return;
+    }
+    if (!window.confirm('Bạn có chắc chắn muốn chuyển người này sang danh sách tiền bối không? Hành động này sẽ vô hiệu hóa tài khoản của họ.')) {
       return;
     }
 
-    if (!window.confirm('Bạn có chắc chắn muốn vô hiệu hóa người này và chuyển họ vào danh sách tiền bối không?')) {
+    const residentId = selectedResidentToMove;
+    const residentToMove = residents.find(r => r.id === residentId);
+    const userToMove = allUsersData.find(u => u.linkedResidentId === residentId);
+
+    if (!residentToMove) {
+      alert('Không tìm thấy thông tin người ở.');
       return;
     }
 
     try {
-      // Lấy thông tin người dùng và cư dân
-      const userDocRef = userIdToDeactivate
-        ? doc(db, `artifacts/${currentAppId}/public/data/users`, userIdToDeactivate)
-        : null;
+      // 1. Vô hiệu hóa hồ sơ resident hiện tại
       const residentDocRef = doc(db, `artifacts/${currentAppId}/public/data/residents`, residentId);
+      await updateDoc(residentDocRef, { isActive: false });
 
-      let residentData = null;
-      const residentSnap = await getDoc(residentDocRef);
-      if (residentSnap.exists()) {
-        residentData = residentSnap.data();
-      } else {
-        setAuthError('Không tìm thấy hồ sơ cư dân để chuyển đổi.');
-        return;
-      }
-
-      let userData = null;
-      if (userDocRef) {
-        const userSnap = await getDoc(userDocRef);
-        if (userSnap.exists()) {
-          userData = userSnap.data();
-        }
-      }
-
-      // 1. Vô hiệu hóa tài khoản người dùng (nếu có)
-      // Lưu ý: Vô hiệu hóa tài khoản người dùng Firebase Auth trực tiếp từ client là không thể
-      // Bạn cần một Cloud Function để làm điều này một cách an toàn.
-      // Tạm thời, chúng ta sẽ chỉ cập nhật vai trò/trạng thái trong Firestore.
-      if (userDocRef && userData) {
-        await updateDoc(userDocRef, {
-          role: 'inactive', // Đặt vai trò là 'inactive'
-          linkedResidentId: null, // Hủy liên kết cư dân
-          deactivatedAt: serverTimestamp(),
-        });
-        console.log(`Đã vô hiệu hóa tài khoản người dùng ${userData.email}`);
-      }
-
-      // 2. Vô hiệu hóa hồ sơ cư dân hiện tại
-      await updateDoc(residentDocRef, {
-        isActive: false,
-        linkedUserId: null, // Hủy liên kết người dùng
-      });
-      console.log(`Đã vô hiệu hóa hồ sơ cư dân ${residentData.name}`);
-
-      // 3. Chuyển thông tin vào collection 'formerResidents'
+      // 2. Tạo bản ghi mới trong formerResidents
       const formerResidentsCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/formerResidents`);
-      await setDoc(
-        doc(formerResidentsCollectionRef, residentId),
-        {
-          // Dùng residentId làm doc ID
-          name: residentData.name,
-          email: userData?.email || null, // Lấy email từ user data nếu có
-          phoneNumber: userData?.phoneNumber || null,
-          studentId: userData?.studentId || null,
-          birthday: userData?.birthday || null,
-          dormEntryDate: userData?.dormEntryDate || null,
-          academicLevel: userData?.academicLevel || null,
-          originalUserId: userIdToDeactivate,
-          deactivatedAt: serverTimestamp(),
-          reasonForDeparture: 'Đã chuyển đi', // Có thể thêm input cho lý do
-        },
-        { merge: true },
-      ); // Dùng merge để không ghi đè nếu đã tồn tại
+      const newFormerResidentData = {
+        name: residentToMove.name,
+        deactivatedAt: serverTimestamp(),
+        // Lấy thông tin từ user nếu có
+        email: userToMove?.email || null,
+        phoneNumber: userToMove?.phoneNumber || null,
+        studentId: userToMove?.studentId || null,
+        birthday: userToMove?.birthday || null,
+        dormEntryDate: userToMove?.dormEntryDate || null,
+        academicLevel: userToMove?.academicLevel || null,
+        photoURL: userToMove?.photoURL || null,
+        originalUserId: userToMove?.id || null,
+      };
+      await addDoc(formerResidentsCollectionRef, newFormerResidentData);
 
-      setAuthError(`Đã chuyển ${residentData.name} sang danh sách tiền bối.`);
-      console.log(`Đã chuyển ${residentData.name} sang danh sách tiền bối.`);
+      // 3. Vô hiệu hóa tài khoản user (nếu có)
+      if (userToMove) {
+        const userDocRef = doc(db, `artifacts/${currentAppId}/public/data/users`, userToMove.id);
+        await updateDoc(userDocRef, {
+          role: 'inactive', // Đổi vai trò thành inactive
+          linkedResidentId: null, // Hủy liên kết
+        });
+      }
+
+      alert(`Đã chuyển ${residentToMove.name} sang danh sách tiền bối thành công.`);
+      setShowMoveToFormerModal(false);
+      setSelectedResidentToMove('');
     } catch (error) {
-      console.error('Lỗi khi chuyển người dùng sang tiền bối:', error);
-      setAuthError(`Lỗi: ${error.message}`);
+      console.error("Lỗi khi chuyển thành viên sang tiền bối:", error);
+      alert('Đã xảy ra lỗi.');
     }
   };
+
+  const [showMoveToFormerModal, setShowMoveToFormerModal] = useState(false);
+  const [selectedResidentToMove, setSelectedResidentToMove] = useState('');
 
   // Hàm để thêm tiền bối thủ công (KHÔNG CÒN XỬ LÝ HÌNH ẢNH)
   const handleAddFormerResidentManually = async (e) => {
@@ -5511,6 +5489,58 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                           </button>
                         </div>
                       </form>
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  onClick={() => setShowMoveToFormerModal(true)}
+                  className="bg-blue-500 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:bg-blue-600 transition-transform transform hover:scale-110"
+                  title="Chuyển thành viên hiện tại sang tiền bối"
+                >
+                  <i className="fas fa-exchange-alt text-xl"></i>
+                </button>
+                {/* ===== POPUP CHUYỂN THÀNH VIÊN SANG TIỀN BỐI ===== */}
+                {showMoveToFormerModal && (
+                  <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md">
+                      <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
+                        Chuyển thành viên sang Tiền bối
+                      </h3>
+                      <div className="space-y-4">
+                        <div>
+                          <label htmlFor="residentToMove" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                            Chọn thành viên đang hoạt động:
+                          </label>
+                          <select
+                            id="residentToMove"
+                            value={selectedResidentToMove}
+                            onChange={(e) => setSelectedResidentToMove(e.target.value)}
+                            className="shadow-sm appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500"
+                          >
+                            <option value="">-- Chọn một người --</option>
+                            {residents.filter(r => r.isActive).map(r => (
+                              <option key={r.id} value={r.id}>{r.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="flex space-x-4 mt-6">
+                          <button
+                            type="button"
+                            onClick={() => setShowMoveToFormerModal(false)}
+                            className="w-1/2 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400"
+                          >
+                            Hủy
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleMoveToFormerResidents}
+                            className="w-1/2 px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700"
+                          >
+                            Xác nhận
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
