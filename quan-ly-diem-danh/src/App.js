@@ -2905,24 +2905,29 @@ useEffect(() => {
 
   // Vô hiệu hóa hoặc kích hoạt lại một cư dân
   const handleToggleResidentActiveStatus = async (residentId, residentName, currentStatus) => {
-    setAuthError('');
-    setBillingError('');
-    if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) {
-      // Chỉ admin mới có thể chuyển đổi trạng thái
-      console.error('Hệ thống chưa sẵn sàng hoặc bạn không có quyền.');
-      setAuthError('Bạn không có quyền thực hiện thao tác này.');
+    if (userRole !== 'admin' && userRole !== 'developer') {
+      alert('Bạn không có quyền thực hiện thao tác này.');
       return;
     }
-
+    
+    const actionText = currentStatus ? 'bắt đầu quy trình rời phòng' : 'khôi phục lại trạng thái hoạt động';
+    if (!window.confirm(`Bạn có chắc chắn muốn ${actionText} cho "${residentName}" không?`)) {
+      return;
+    }
+    
     const residentDocRef = doc(db, `artifacts/${currentAppId}/public/data/residents`, residentId);
-    const newStatus = !currentStatus;
-
     try {
-      await setDoc(residentDocRef, { isActive: newStatus }, { merge: true });
-      console.log(`Đã cập nhật trạng thái của "${residentName}" thành ${newStatus ? 'Hoạt động' : 'Vô hiệu hóa'}.`);
+      // Nếu đang active, chuyển thành pending_departure. Nếu không, chuyển lại thành active.
+      const newStatus = currentStatus ? 'pending_departure' : 'active';
+      await updateDoc(residentDocRef, {
+        status: newStatus,
+        // Ghi lại ngày yêu cầu nếu bắt đầu rời đi
+        ...(newStatus === 'pending_departure' && { departureRequestedAt: serverTimestamp() })
+      });
+      alert(`Đã cập nhật trạng thái cho ${residentName}.`);
     } catch (error) {
-      console.error('Lỗi khi cập nhật trạng thái cư dân:', error);
-      setAuthError(`Lỗi khi cập nhật trạng thái của ${residentName}: ${error.message}`);
+      console.error("Lỗi khi cập nhật trạng thái:", error);
+      alert('Đã xảy ra lỗi khi cập nhật trạng thái.');
     }
   };
 
@@ -3725,10 +3730,54 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
   const currentMonth = parseInt(selectedMonth.split('-')[1]);
   const daysInSelectedMonth = getDaysInMonth(currentYear, currentMonth);
 
+  //Hàm hoàn tất thủ tục
+  const [showFinalizeDepartureModal, setShowFinalizeDepartureModal] = useState(false);
+  const [residentToFinalize, setResidentToFinalize] = useState(null);
+
+  const handleFinalizeDeparture = async () => {
+    if (!residentToFinalize || (userRole !== 'admin' && userRole !== 'developer')) {
+      alert('Không có thành viên nào được chọn hoặc bạn không có quyền.');
+      return;
+    }
+
+    const { resident, user } = residentToFinalize;
+
+    try {
+      // 1. Cập nhật trạng thái resident thành 'inactive'
+      const residentDocRef = doc(db, `artifacts/${currentAppId}/public/data/residents`, resident.id);
+      await updateDoc(residentDocRef, { status: 'inactive' });
+
+      // 2. Tạo bản ghi mới trong formerResidents
+      const formerResidentsCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/formerResidents`);
+      await addDoc(formerResidentsCollectionRef, {
+        name: resident.name,
+        deactivatedAt: serverTimestamp(),
+        email: user?.email || null,
+        phoneNumber: user?.phoneNumber || null,
+        studentId: user?.studentId || null,
+        photoURL: user?.photoURL || null,
+        originalUserId: user?.id || null,
+      });
+      
+      // 3. Cập nhật tài khoản user: VẪN GIỮ LÀ 'member', chỉ hủy liên kết
+      if (user) {
+        const userDocRef = doc(db, `artifacts/${currentAppId}/public/data/users`, user.id);
+        await updateDoc(userDocRef, { linkedResidentId: null });
+      }
+      
+      alert(`Đã hoàn tất thủ tục rời phòng cho ${resident.name}.`);
+      setShowFinalizeDepartureModal(false);
+      setResidentToFinalize(null);
+    } catch (error) {
+      console.error("Lỗi khi hoàn tất thủ tục:", error);
+      alert('Đã xảy ra lỗi khi hoàn tất thủ tục.');
+    }
+  };
+
   // Lọc cư dân dựa trên showInactiveResidents và loggedInResidentProfile
-  const displayedResidents = showInactiveResidents // Lọc theo trạng thái vô hiệu hóa (chỉ admin dùng)
-    ? residents
-    : residents.filter((res) => res.isActive !== false);
+  const displayedResidents = residents.filter(res => 
+    showInactiveResidents ? true : (res.status !== 'inactive')
+  );
 
   // Hàm renderSection để hiển thị các phần giao diện dựa trên vai trò người dùng
   const renderSection = () => {
@@ -4046,49 +4095,48 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                     </label>
                   </div>
                   <ul className="space-y-3">
-                    {/* ===== SỬA LẠI THÀNH `displayedResidents` Ở ĐÂY ===== */}
-                    {displayedResidents.map((resident) => (
-                      <li
-                        key={resident.id}
-                        className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-600"
-                      >
-                        <div className="flex flex-col items-start">
-                          <span className="font-medium text-gray-700 dark:text-gray-300 text-base">
-                            {resident.name}
-                          </span>
-                          {resident.createdAt && typeof resident.createdAt.toDate === 'function' && (
-                            <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              Thêm vào: {resident.createdAt.toDate().toLocaleDateString('vi-VN')}
-                            </span>
-                          )}
-                          {resident.isActive === false && (
-                            <span className="text-xs text-red-500 dark:text-red-400 mt-1 font-semibold">
-                              (Đã vô hiệu hóa)
-                            </span>
-                          )}
-                          {resident.linkedUserId && (
-                            <span className="text-xs text-blue-500 dark:text-blue-400 mt-1">
-                              (Đã liên kết với Người dùng)
-                            </span>
-                          )}
-                        </div>
-                        {resident.isActive ? (
-                          <button
-                            onClick={() => handleToggleResidentActiveStatus(resident.id, resident.name, true)}
-                            className="ml-4 px-3 py-1 bg-red-500 text-white text-sm rounded-lg shadow-sm hover:bg-red-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-400"
-                          >
-                            Vô hiệu hóa
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleToggleResidentActiveStatus(resident.id, resident.name, false)}
-                            className="ml-4 px-3 py-1 bg-green-500 text-white text-sm rounded-lg shadow-sm hover:bg-green-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-400"
-                          >
-                            Kích hoạt lại
-                          </button>
-                        )}
-                      </li>
-                    ))}
+                    {displayedResidents.map((resident) => {
+                      const isPending = resident.status === 'pending_departure';
+                      const isActive = resident.status === 'active'; // Trạng thái hoạt động bình thường
+                      const linkedUser = allUsersData.find(u => u.linkedResidentId === resident.id);
+
+                      return (
+                        <li key={resident.id} className="...">
+                          <div>
+                            <span className="font-medium ...">{resident.name}</span>
+                            {/* Hiển thị trạng thái "Chờ thanh toán" */}
+                            {isPending && (
+                              <span className="text-xs text-yellow-600 dark:text-yellow-400 mt-1 font-semibold block">
+                                (Chờ thanh toán)
+                              </span>
+                            )}
+                          </div>
+                          
+                          <div className="flex items-center space-x-2">
+                            {/* Nút Hoàn tất thủ tục, chỉ hiện khi đang chờ */}
+                            {isPending && (
+                              <button
+                                onClick={() => {
+                                  setResidentToFinalize({ resident: resident, user: linkedUser });
+                                  setShowFinalizeDepartureModal(true);
+                                }}
+                                className="px-3 py-1 bg-green-500 text-white text-sm rounded-lg"
+                              >
+                                Hoàn tất
+                              </button>
+                            )}
+
+                            {/* Nút Vô hiệu hóa / Kích hoạt lại */}
+                            <button
+                              onClick={() => handleToggleResidentActiveStatus(resident.id, resident.name, isActive)}
+                              className={`px-3 py-1 text-white text-sm rounded-lg ${isActive ? 'bg-red-500' : 'bg-gray-500'}`}
+                            >
+                              {isActive ? 'Vô hiệu hóa' : 'Kích hoạt lại'}
+                            </button>
+                          </div>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               )}
@@ -9048,6 +9096,33 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
             >
               Đóng
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* POPUP XÁC NHẬN HOÀN TẤT THỦ TỤC */}
+      {showFinalizeDepartureModal && residentToFinalize && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md">
+            <h3 className="text-2xl font-bold text-center mb-2">Xác nhận</h3>
+            <p className="text-center text-gray-600 dark:text-gray-400 mb-4">
+              Bạn có chắc chắn muốn hoàn tất thủ tục rời phòng cho <strong>{residentToFinalize.resident.name}</strong>? <br/>
+              Hành động này sẽ chuyển họ thành tiền bối và không thể hoàn tác.
+            </p>
+            <div className="flex space-x-4 mt-6">
+              <button
+                onClick={() => setShowFinalizeDepartureModal(false)}
+                className="w-1/2 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleFinalizeDeparture}
+                className="w-1/2 px-6 py-3 bg-green-600 text-white font-semibold rounded-xl"
+              >
+                Xác nhận
+              </button>
+            </div>
           </div>
         </div>
       )}
