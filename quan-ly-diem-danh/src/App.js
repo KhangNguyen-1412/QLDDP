@@ -28,7 +28,10 @@ import {
 } from 'firebase/firestore';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL} from 'firebase/storage'; // Thêm imports cho Firebase Storage
 import axios from 'axios';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { 
+  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  PieChart, Pie, Cell 
+} from 'recharts';
 import { QRCodeCanvas } from 'qrcode.react';
 
 // Firebase Config - Moved outside the component to be a constant
@@ -3804,6 +3807,26 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
           }));
           // KẾT THÚC: CHUẨN BỊ DỮ LIỆU CHO BIỂU ĐỒ
 
+          // --- Chuẩn bị dữ liệu cho Biểu đồ tròn Phân bổ Khóa học ---
+          const activeResidents = residents.filter(res => res.isActive);
+          const courseDistribution = activeResidents.reduce((acc, resident) => {
+              const linkedUser = allUsersData.find(user => user.linkedResidentId === resident.id);
+              if (linkedUser && linkedUser.studentId && linkedUser.studentId.length >= 2) {
+                  // Lấy 2 ký tự đầu của MSSV để xác định khóa
+                  const course = `K${linkedUser.studentId.substring(0, 2)}`;
+                  acc[course] = (acc[course] || 0) + 1;
+              }
+              return acc;
+          }, {});
+
+          const pieChartData = Object.keys(courseDistribution).map(key => ({
+              name: key,
+              value: courseDistribution[key]
+          }));
+
+          const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF4560'];
+
+
           return (
             <div className="p-6 bg-gray-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
               <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-5">Dashboard Tổng quan</h2>
@@ -3962,6 +3985,40 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                     <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
                       Chưa có dữ liệu thống kê để tạo biểu đồ.
                     </p>
+                  )}
+                </div>
+
+                {/* ===== BIỂU ĐỒ TRÒN MỚI ===== */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                  <h3 className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-4 text-center">
+                    Phân bổ SV theo khóa
+                  </h3>
+                  {pieChartData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart>
+                        <Pie
+                          data={pieChartData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          outerRadius={100}
+                          fill="#8884d8"
+                          dataKey="value"
+                          nameKey="name"
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        >
+                          {pieChartData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-[300px] flex items-center justify-center">
+                        <p className="text-gray-500 dark:text-gray-400 italic">Không có dữ liệu MSSV.</p>
+                    </div>
                   )}
                 </div>
               </div>
