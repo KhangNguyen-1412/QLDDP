@@ -7536,7 +7536,11 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                               {!isSidebarCollapsed && <span className="ml-3">Thống kê tiêu thụ</span>}
                             </button>
                             <button
-                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium ...`}
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'loginHistory'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
                               onClick={() => { setActiveSection('loginHistory'); setIsSidebarOpen(false); }}
                             >
                               <i className="fas fa-history"></i>
