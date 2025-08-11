@@ -28,7 +28,7 @@ import {
 } from 'firebase/firestore';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL} from 'firebase/storage'; // Thêm imports cho Firebase Storage
 import axios from 'axios';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { QRCodeCanvas } from 'qrcode.react';
 
 // Firebase Config - Moved outside the component to be a constant
@@ -3737,6 +3737,9 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
     return new Date(year, month, 0).getDate();
   };
 
+  // Hàm quản lý loại biểu đồ
+  const [chartType, setChartType] = useState('line'); // 'line' hoặc 'bar'
+
   const currentYear = parseInt(selectedMonth.split('-')[0]);
   const currentMonth = parseInt(selectedMonth.split('-')[1]);
   const daysInSelectedMonth = getDaysInMonth(currentYear, currentMonth);
@@ -5871,56 +5874,95 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
               );
         //Case thống kê tiêu thụ
         case 'consumptionStats':
-        return (
-          <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-            <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Thống kê tiêu thụ theo tháng</h2>
-            {Object.keys(monthlyConsumptionStats).length === 0 ? (
-              <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
-                Chưa có dữ liệu thống kê nào. Vui lòng tính toán hóa đơn.
-              </p>
-            ) : (
-              <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-                <table className="min-w-full bg-white dark:bg-gray-800">
-                  <thead>
-                    <tr>
-                      <th className="py-3 px-6 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">
-                        Tháng
-                      </th>
-                      <th className="py-3 px-6 text-right text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">
-                        Điện (KW)
-                      </th>
-                      <th className="py-3 px-6 text-right text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">
-                        Nước (m³)
-                      </th>
-                      <th className="py-3 px-6 text-right text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">
-                        Tổng tiền (VND)
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
-                    {Object.entries(monthlyConsumptionStats).map(([month, stats]) => (
-                      <tr
-                        key={month}
-                        className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
-                      >
-                        <td className="py-3 px-6 text-left whitespace-nowrap">{month}</td>
-                        <td className="py-3 px-6 text-right whitespace-nowrap">
-                          {stats.electricity.toLocaleString('vi-VN')}
-                        </td>
-                        <td className="py-3 px-6 text-right whitespace-nowrap">
-                          {stats.water.toLocaleString('vi-VN')}
-                        </td>
-                        <td className="py-3 px-6 text-right whitespace-nowrap font-bold text-blue-700 dark:text-blue-300">
-                          {stats.total.toLocaleString('vi-VN')}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+  return (
+    <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-center">
+        <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200">
+          Thống kê tiêu thụ
+        </h2>
+        {/* Nút chuyển đổi biểu đồ */}
+        <div className="flex items-center bg-gray-200 dark:bg-gray-800 rounded-lg p-1 space-x-1 mt-3 sm:mt-0">
+          <button
+            onClick={() => setChartType('line')}
+            className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${
+              chartType === 'line' ? 'bg-white dark:bg-gray-600 text-blue-600 shadow' : 'text-gray-600 dark:text-gray-400'
+            }`}
+          >
+            <i className="fas fa-chart-line mr-2"></i>Đường
+          </button>
+          <button
+            onClick={() => setChartType('bar')}
+            className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${
+              chartType === 'bar' ? 'bg-white dark:bg-gray-600 text-blue-600 shadow' : 'text-gray-600 dark:text-gray-400'
+            }`}
+          >
+            <i className="fas fa-chart-bar mr-2"></i>Cột
+          </button>
+        </div>
+      </div>
+
+      {/* Kiểm tra dữ liệu một lần duy nhất */}
+      {Object.keys(monthlyConsumptionStats).length === 0 ? (
+        <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
+          Chưa có dữ liệu thống kê nào. Vui lòng tính toán hóa đơn trước.
+        </p>
+      ) : (
+        // Nếu có dữ liệu, hiển thị cả biểu đồ và bảng
+        <>
+          {/* Biểu đồ */}
+          <div className="w-full h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              {chartType === 'line' ? (
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="điện" stroke="#8884d8" name="Điện (KW)" />
+                  <Line type="monotone" dataKey="nước" stroke="#82ca9d" name="Nước (m³)" />
+                </LineChart>
+              ) : (
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="điện" fill="#8884d8" name="Điện (KW)" />
+                  <Bar dataKey="nước" fill="#82ca9d" name="Nước (m³)" />
+                </BarChart>
+              )}
+            </ResponsiveContainer>
           </div>
-        );
+
+          {/* Bảng dữ liệu chi tiết */}
+          <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+            <table className="min-w-full bg-white dark:bg-gray-800">
+              <thead>
+                <tr>
+                  <th className="py-3 px-6 text-left ...">Tháng</th>
+                  <th className="py-3 px-6 text-right ...">Điện (KW)</th>
+                  <th className="py-3 px-6 text-right ...">Nước (m³)</th>
+                  <th className="py-3 px-6 text-right ...">Tổng tiền (VND)</th>
+                </tr>
+              </thead>
+              <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
+                {Object.entries(monthlyConsumptionStats).map(([month, stats]) => (
+                  <tr key={month} className="border-b ...">
+                    <td className="py-3 px-6 text-left">{month}</td>
+                    <td className="py-3 px-6 text-right">{stats.electricity.toLocaleString('vi-VN')}</td>
+                    <td className="py-3 px-6 text-right">{stats.water.toLocaleString('vi-VN')}</td>
+                    <td className="py-3 px-6 text-right font-bold ...">{stats.total.toLocaleString('vi-VN')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </div>
+  );
         // Case gửi góp ý
         case 'feedback':
         // Giao diện cho Admin: Xem tất cả góp ý
