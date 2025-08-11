@@ -1879,6 +1879,9 @@ useEffect(() => {
         });
       }
 
+      // 4. Xóa hồ sơ gốc ra khỏi residents
+      await deleteDoc(residentDocRef);
+
       alert(`Đã chuyển ${residentToMove.name} sang danh sách tiền bối thành công.`);
       setShowMoveToFormerModal(false);
       setSelectedResidentToMove('');
