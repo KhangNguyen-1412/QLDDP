@@ -3906,27 +3906,61 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                   )}
                 </div>
 
-                {/* Các biểu đồ/thống kê trực quan (placeholder) */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md col-span-full text-center text-gray-500 dark:text-gray-400">
-                  <h3 className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-3">
-                    Biểu đồ tiêu thụ điện nước
-                  </h3>
+                {/* ===== KHỐI BIỂU ĐỒ ĐÃ NÂNG CẤP ===== */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md col-span-full">
+                  <div className="flex flex-col sm:flex-row justify-between items-center mb-4">
+                    <h3 className="text-xl font-bold text-gray-700 dark:text-gray-300">
+                      Biểu đồ tiêu thụ điện nước
+                    </h3>
+                    {/* Nút chuyển đổi đã được chuyển vào đây */}
+                    <div className="flex items-center bg-gray-200 dark:bg-gray-700 rounded-lg p-1 space-x-1 mt-3 sm:mt-0">
+                      <button
+                        onClick={() => setChartType('line')}
+                        className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${
+                          chartType === 'line' ? 'bg-white dark:bg-gray-600 text-blue-600 shadow' : 'text-gray-600 dark:text-gray-400'
+                        }`}
+                      >
+                        <i className="fas fa-chart-line mr-2"></i>Đường
+                      </button>
+                      <button
+                        onClick={() => setChartType('bar')}
+                        className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${
+                          chartType === 'bar' ? 'bg-white dark:bg-gray-600 text-blue-600 shadow' : 'text-gray-600 dark:text-gray-400'
+                        }`}
+                      >
+                        <i className="fas fa-chart-bar mr-2"></i>Cột
+                      </button>
+                    </div>
+                  </div>
                   {Object.keys(monthlyConsumptionStats).length > 0 ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#444' : '#ccc'} />
-                        <XAxis dataKey="month" stroke={theme === 'dark' ? '#ddd' : '#333'} />
-                        <YAxis stroke={theme === 'dark' ? '#ddd' : '#333'} />
-                        <Tooltip />
-                        <Legend />
-                        <Line type="monotone" dataKey="điện" stroke="#8884d8" name="Điện (KW)" />
-                        <Line type="monotone" dataKey="nước" stroke="#82ca9d" name="Nước (m³)" />
-                        <Line type="monotone" dataKey="tổng" stroke="#ffc658" name="Tổng tiền (VND)" />
-                      </LineChart>
-                    </ResponsiveContainer>
+                    <div className="w-full h-80">
+                      <ResponsiveContainer width="100%" height="100%">
+                        {chartType === 'line' ? (
+                          <LineChart data={chartData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="month" />
+                            <YAxis />
+                            <Tooltip />
+                            <Legend />
+                            <Line type="monotone" dataKey="điện" stroke="#8884d8" name="Điện (KW)" />
+                            <Line type="monotone" dataKey="nước" stroke="#82ca9d" name="Nước (m³)" />
+                          </LineChart>
+                        ) : (
+                          <BarChart data={chartData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="month" />
+                            <YAxis />
+                            <Tooltip />
+                            <Legend />
+                            <Bar dataKey="điện" fill="#8884d8" name="Điện (KW)" />
+                            <Bar dataKey="nước" fill="#82ca9d" name="Nước (m³)" />
+                          </BarChart>
+                        )}
+                      </ResponsiveContainer>
+                    </div>
                   ) : (
                     <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
-                      Chưa có dữ liệu thống kê nào để tạo biểu đồ. Vui lòng tính toán hóa đơn.
+                      Chưa có dữ liệu thống kê để tạo biểu đồ.
                     </p>
                   )}
                 </div>
@@ -5874,95 +5908,42 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
               );
         //Case thống kê tiêu thụ
         case 'consumptionStats':
-  return (
-    <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-center">
-        <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200">
-          Thống kê tiêu thụ
-        </h2>
-        {/* Nút chuyển đổi biểu đồ */}
-        <div className="flex items-center bg-gray-200 dark:bg-gray-800 rounded-lg p-1 space-x-1 mt-3 sm:mt-0">
-          <button
-            onClick={() => setChartType('line')}
-            className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${
-              chartType === 'line' ? 'bg-white dark:bg-gray-600 text-blue-600 shadow' : 'text-gray-600 dark:text-gray-400'
-            }`}
-          >
-            <i className="fas fa-chart-line mr-2"></i>Đường
-          </button>
-          <button
-            onClick={() => setChartType('bar')}
-            className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${
-              chartType === 'bar' ? 'bg-white dark:bg-gray-600 text-blue-600 shadow' : 'text-gray-600 dark:text-gray-400'
-            }`}
-          >
-            <i className="fas fa-chart-bar mr-2"></i>Cột
-          </button>
-        </div>
-      </div>
-
-      {/* Kiểm tra dữ liệu một lần duy nhất */}
-      {Object.keys(monthlyConsumptionStats).length === 0 ? (
-        <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
-          Chưa có dữ liệu thống kê nào. Vui lòng tính toán hóa đơn trước.
-        </p>
-      ) : (
-        // Nếu có dữ liệu, hiển thị cả biểu đồ và bảng
-        <>
-          {/* Biểu đồ */}
-          <div className="w-full h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              {chartType === 'line' ? (
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey="điện" stroke="#8884d8" name="Điện (KW)" />
-                  <Line type="monotone" dataKey="nước" stroke="#82ca9d" name="Nước (m³)" />
-                </LineChart>
-              ) : (
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="điện" fill="#8884d8" name="Điện (KW)" />
-                  <Bar dataKey="nước" fill="#82ca9d" name="Nước (m³)" />
-                </BarChart>
-              )}
-            </ResponsiveContainer>
+        return (
+          <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+            <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">
+              Thống kê tiêu thụ chi tiết
+            </h2>
+            
+            {Object.keys(monthlyConsumptionStats).length === 0 ? (
+              <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
+                Chưa có dữ liệu thống kê nào. Vui lòng tính toán hóa đơn trước.
+              </p>
+            ) : (
+              <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                <table className="min-w-full bg-white dark:bg-gray-800">
+                  <thead>
+                    <tr>
+                      <th className="py-3 px-6 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Tháng</th>
+                      <th className="py-3 px-6 text-right text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Điện (KW)</th>
+                      <th className="py-3 px-6 text-right text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Nước (m³)</th>
+                      <th className="py-3 px-6 text-right text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Tổng tiền (VND)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
+                    {Object.entries(monthlyConsumptionStats).map(([month, stats]) => (
+                      <tr key={month} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                        <td className="py-3 px-6 text-left whitespace-nowrap">{month}</td>
+                        <td className="py-3 px-6 text-right whitespace-nowrap">{stats.electricity.toLocaleString('vi-VN')}</td>
+                        <td className="py-3 px-6 text-right whitespace-nowrap">{stats.water.toLocaleString('vi-VN')}</td>
+                        <td className="py-3 px-6 text-right whitespace-nowrap font-bold text-blue-700 dark:text-blue-300">{stats.total.toLocaleString('vi-VN')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
-
-          {/* Bảng dữ liệu chi tiết */}
-          <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-            <table className="min-w-full bg-white dark:bg-gray-800">
-              <thead>
-                <tr>
-                  <th className="py-3 px-6 text-left ...">Tháng</th>
-                  <th className="py-3 px-6 text-right ...">Điện (KW)</th>
-                  <th className="py-3 px-6 text-right ...">Nước (m³)</th>
-                  <th className="py-3 px-6 text-right ...">Tổng tiền (VND)</th>
-                </tr>
-              </thead>
-              <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
-                {Object.entries(monthlyConsumptionStats).map(([month, stats]) => (
-                  <tr key={month} className="border-b ...">
-                    <td className="py-3 px-6 text-left">{month}</td>
-                    <td className="py-3 px-6 text-right">{stats.electricity.toLocaleString('vi-VN')}</td>
-                    <td className="py-3 px-6 text-right">{stats.water.toLocaleString('vi-VN')}</td>
-                    <td className="py-3 px-6 text-right font-bold ...">{stats.total.toLocaleString('vi-VN')}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
-    </div>
-  );
+        );
         // Case gửi góp ý
         case 'feedback':
         // Giao diện cho Admin: Xem tất cả góp ý
