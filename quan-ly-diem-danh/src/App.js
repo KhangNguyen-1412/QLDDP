@@ -5018,6 +5018,16 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                                   <i className="fas fa-camera text-xl"></i>
                                 </button>
                               )}
+                              <span 
+                                className={`absolute bottom-0 right-0 block h-4 w-4 rounded-full border-2 border-white dark:border-gray-800 ${
+                                  resident.status === 'active' ? 'bg-green-500' : 
+                                  resident.status === 'pending_departure' ? 'bg-yellow-500' : 'bg-gray-400'
+                                }`}
+                                title={
+                                  resident.status === 'active' ? 'Đang hoạt động' : 
+                                  resident.status === 'pending_departure' ? 'Chờ thanh toán' : 'Không hoạt động'
+                                }
+                              ></span>
                             </div>
                             <div className="ml-4">
                               <p className="font-bold text-lg text-gray-900 dark:text-white break-words">{linkedUser?.fullName || resident.name}</p>
