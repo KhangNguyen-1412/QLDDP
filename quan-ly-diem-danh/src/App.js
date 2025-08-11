@@ -81,13 +81,14 @@ function App() {
       setIsUploadingQrCode(false);
     }
   };
-  // Thêm vào cùng với các state khác ở đầu component App
+  // Hàm cho thu gọn sidebar
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  //Hàm set csdl
   const [storage, setStorage] = useState(null);
   // Các state liên quan tới theme mùa
   const [seasonalEffectElements, setSeasonalEffectElements] = useState([]);
 
-  // Thêm các state và hàm này vào đầu component App
+  // Hàm hiện popover thông tin và nút đăng xuất
   const [profilePopoverAnchor, setProfilePopoverAnchor] = useState(null);
 
   const handleProfileClick = (event) => {
@@ -140,21 +141,25 @@ function App() {
   const [residents, setResidents] = useState([]);
   const [newResidentName, setNewResidentName] = useState('');
   const [showInactiveResidents, setShowInactiveResidents] = useState(false);
-  // Thêm vào danh sách useState của bạn
+  // Hàm kiểm tra đăng nhập
   const [authMode, setAuthMode] = useState('login'); // 'login' hoặc 'register'
   const [studentIdForLogin, setStudentIdForLogin] = useState('');
   const [newStudentIdForAuth, setNewStudentIdForAuth] = useState('');
 
+  //Hàm ghi số ký điện và số khối nước mới
   const [currentElectricityReading, setCurrentElectricityReading] = useState('');
   const [currentWaterReading, setCurrentWaterReading] = useState('');
 
+  //Hàm ghi số ký điện và số khối nước cũ
   const [lastElectricityReading, setLastElectricityReading] = useState(0);
   const [lastWaterReading, setLastWaterReading] = useState(0);
 
+  //Hàm giá tiền điện, nước & tổng tiền
   const [electricityCost, setElectricityCost] = useState(0);
   const [waterCost, setWaterCost] = useState(0);
   const [totalCost, setTotalCost] = useState(0);
 
+  //Hàm dành cho mục điểm danh
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().substring(0, 7));
   const [monthlyAttendanceData, setMonthlyAttendanceData] = useState({});
   const [startDate, setStartDate] = useState('');
@@ -217,6 +222,26 @@ function App() {
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('theme') || 'light';
   });
+
+  //Hàm kiểm tra lượt đăng nhập 
+  const [loginHistory, setLoginHistory] = useState([]);
+
+  // useEffect tải lịch sử đăng nhập cho admin
+  useEffect(() => {
+    if (db && (userRole === 'admin' || userRole === 'developer')) {
+      const historyQuery = query(
+        collection(db, `artifacts/${currentAppId}/public/data/loginHistory`), 
+        orderBy('loginAt', 'desc')
+      );
+      
+      const unsubscribe = onSnapshot(historyQuery, (snapshot) => {
+        const historyList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setLoginHistory(historyList);
+      });
+
+      return () => unsubscribe();
+    }
+  }, [db, userRole]);
 
   //State cho feedback
   const [feedbackContent, setFeedbackContent] = useState('');
@@ -1226,224 +1251,236 @@ useEffect(() => {
 }, [db, isAuthReady, userId, searchTermMemory, filterUploaderMemory, currentPageMemories, itemsPerPageMemories]); // THÊM currentPageMemories và itemsPerPageMemories vào dependencies
 
   // --- Các hàm xác thực ---
-// NEW: Hàm để Admin tạo tài khoản mới cho thành viên
-const handleAdminCreateAccount = async () => {
-  setAuthError('');
-  if (!auth || !db) {
-    setAuthError("Hệ thống xác thực chưa sẵn sàng.");
-    return;
-  }
-  // Chỉ admin mới được tạo tài khoản
-  if (userRole !== 'admin') {
-    setAuthError("Bạn không có quyền tạo tài khoản mới.");
-    return;
-  }
-  if (newAccountFullName.trim() === '' || newAccountStudentId.trim() === '' || newAccountPassword.trim() === '') {
-    setAuthError("Vui lòng nhập Họ tên, Mã số sinh viên và Mật khẩu.");
-    return;
-  }
-  if (newAccountPassword.length < 6) {
-    setAuthError("Mật khẩu phải có ít nhất 6 ký tự.");
-    return;
-  }
-
-  const studentIdToRegister = newAccountStudentId.trim();
-  const personalEmailToUse = newAccountPersonalEmail.trim() || `${studentIdToRegister}@dormapp.com`; // Email cá nhân hoặc email nội bộ nếu trống
-
-  try {
-    // 1. KIỂM TRA MSSV CÓ DUY NHẤT CHƯA
-    const usersRef = collection(db, `artifacts/${currentAppId}/public/data/users`);
-    const qStudentId = query(usersRef, where("studentId", "==", studentIdToRegister));
-    const snapshotStudentId = await getDocs(qStudentId);
-    if (!snapshotStudentId.empty) {
-      setAuthError("Mã số sinh viên này đã được đăng ký. Vui lòng sử dụng mã khác.");
-      return;
-    }
-
-    // 2. TẠO TÀI KHOẢN TRONG FIREBASE AUTH BẰNG EMAIL (có thể là email thật hoặc nội bộ)
-    const userCredential = await createUserWithEmailAndPassword(auth, personalEmailToUse, newAccountPassword);
-    const user = userCredential.user;
-    console.log("Admin đã tạo tài khoản Auth thành công! UID:", user.uid);
-
-    // KHÔNG GỬI EMAIL XÁC MINH NGAY LẬP TỨC. Để thành viên tự xác minh sau.
-    // Firebase Auth sẽ tự động set emailVerified là false ban đầu.
-
-    // 3. TẠO TÀI LIỆU NGƯỜI DÙNG TRONG FIRESTORE
-    await setDoc(doc(db, `artifacts/${currentAppId}/public/data/users`, user.uid), {
-      email: personalEmailToUse,
-      fullName: newAccountFullName.trim(),
-      studentId: studentIdToRegister,
-      role: 'member', // Luôn tạo là member
-      createdAt: serverTimestamp(),
-      emailVerified: false // Mặc định là false, người dùng phải tự xác minh
-    });
-    console.log("Admin đã tạo tài liệu user trong Firestore.");
-
-    // Admin có thể liên kết resident profile sau hoặc hệ thống tự động liên kết theo tên
-    // Tùy chọn: Bạn có thể thêm logic để Admin chọn residentId để liên kết ngay tại đây.
-    // Để đơn giản, phần liên kết resident profile sẽ vẫn dựa vào `onAuthStateChanged` hoặc Admin tự làm.
-
-    alert(`Đã tạo tài khoản cho ${newAccountFullName.trim()} (MSSV: ${studentIdToRegister}) thành công! Người dùng cần đăng nhập và xác minh email cá nhân.`);
-
-    // Reset form
-    setNewAccountStudentId('');
-    setNewAccountPassword('');
-    setNewAccountFullName('');
-    setNewAccountPersonalEmail('');
-    setAuthError(''); // Xóa lỗi
-  } catch (error) {
-    console.error("Lỗi khi Admin tạo tài khoản:", error.code, error.message);
-    if (error.code === 'auth/email-already-in-use') {
-      setAuthError("Email này đã được sử dụng bởi một tài khoản khác. Vui lòng dùng email khác.");
-    } else {
-      setAuthError(`Lỗi khi tạo tài khoản: ${error.message}`);
-    }
-  }
-};
-
-const handleSignIn = async () => {
-  setAuthError('');
-  if (!auth || !db) {
+  // Hàm để Admin tạo tài khoản mới cho thành viên
+  const handleAdminCreateAccount = async () => {
+    setAuthError('');
+    if (!auth || !db) {
       setAuthError("Hệ thống xác thực chưa sẵn sàng.");
       return;
-  }
-  if (studentIdForLogin.trim() === '' || password.trim() === '') {
-      setAuthError("Vui lòng nhập Mã số sinh viên và Mật khẩu.");
+    }
+    // Chỉ admin mới được tạo tài khoản
+    if (userRole !== 'admin') {
+      setAuthError("Bạn không có quyền tạo tài khoản mới.");
       return;
-  }
+    }
+    if (newAccountFullName.trim() === '' || newAccountStudentId.trim() === '' || newAccountPassword.trim() === '') {
+      setAuthError("Vui lòng nhập Họ tên, Mã số sinh viên và Mật khẩu.");
+      return;
+    }
+    if (newAccountPassword.length < 6) {
+      setAuthError("Mật khẩu phải có ít nhất 6 ký tự.");
+      return;
+    }
 
-  const studentIdToLogin = studentIdForLogin.trim();
+    const studentIdToRegister = newAccountStudentId.trim();
+    const personalEmailToUse = newAccountPersonalEmail.trim() || `${studentIdToRegister}@dormapp.com`; // Email cá nhân hoặc email nội bộ nếu trống
 
-  try {
-      // 1. TÌM EMAIL LIÊN KẾT VỚI MSSV TỪ FIRESTORE
+    try {
+      // 1. KIỂM TRA MSSV CÓ DUY NHẤT CHƯA
       const usersRef = collection(db, `artifacts/${currentAppId}/public/data/users`);
-      const qStudentId = query(usersRef, where("studentId", "==", studentIdToLogin));
-      const snapshot = await getDocs(qStudentId);
-
-      if (snapshot.empty) {
-          setAuthError("Mã số sinh viên không tồn tại hoặc mật khẩu không đúng."); // Thông báo chung để tránh lộ thông tin
-          return;
+      const qStudentId = query(usersRef, where("studentId", "==", studentIdToRegister));
+      const snapshotStudentId = await getDocs(qStudentId);
+      if (!snapshotStudentId.empty) {
+        setAuthError("Mã số sinh viên này đã được đăng ký. Vui lòng sử dụng mã khác.");
+        return;
       }
 
-      const userDoc = snapshot.docs[0];
-      const userData = userDoc.data();
-      const personalEmail = userData.email;
+      // 2. TẠO TÀI KHOẢN TRONG FIREBASE AUTH BẰNG EMAIL (có thể là email thật hoặc nội bộ)
+      const userCredential = await createUserWithEmailAndPassword(auth, personalEmailToUse, newAccountPassword);
+      const user = userCredential.user;
+      console.log("Admin đã tạo tài khoản Auth thành công! UID:", user.uid);
 
-      if (!personalEmail) {
-          setAuthError("Tài khoản không có email liên kết. Vui lòng liên hệ quản trị viên.");
-          return;
-      }
-      if (userData.role === 'inactive') { // Kiểm tra trạng thái vô hiệu hóa
-          setAuthError("Tài khoản này đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.");
-          return;
-      }
+      // KHÔNG GỬI EMAIL XÁC MINH NGAY LẬP TỨC. Để thành viên tự xác minh sau.
+      // Firebase Auth sẽ tự động set emailVerified là false ban đầu.
 
-      // 2. ĐĂNG NHẬP VỚI EMAIL VÀ MẬT KHẨU
-      const userCredential = await signInWithEmailAndPassword(auth, personalEmail, password);
-      // Sau khi đăng nhập, `onAuthStateChanged` sẽ kích hoạt và kiểm tra emailVerified
+      // 3. TẠO TÀI LIỆU NGƯỜI DÙNG TRONG FIRESTORE
+      await setDoc(doc(db, `artifacts/${currentAppId}/public/data/users`, user.uid), {
+        email: personalEmailToUse,
+        fullName: newAccountFullName.trim(),
+        studentId: studentIdToRegister,
+        role: 'member', // Luôn tạo là member
+        createdAt: serverTimestamp(),
+        emailVerified: false // Mặc định là false, người dùng phải tự xác minh
+      });
+      console.log("Admin đã tạo tài liệu user trong Firestore.");
 
-      console.log("Đăng nhập thành công! Đang kiểm tra trạng thái xác minh email...");
-      setAuthError(''); // Xóa lỗi xác thực nếu có
-      setPassword('');
-      setStudentIdForLogin('');
-      setEmail(''); // Xóa email input truyền thống
-  } catch (error) {
-      console.error("Lỗi đăng nhập:", error.code, error.message);
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') { // Thêm invalid-credential
-          setAuthError("Mã số sinh viên hoặc mật khẩu không đúng.");
-      } else if (error.code === 'auth/invalid-email') {
-          setAuthError("Email liên kết không hợp lệ. Vui lòng liên hệ quản trị viên.");
-      } else if (error.code === 'auth/too-many-requests') {
-          setAuthError("Bạn đã thử đăng nhập quá nhiều lần. Vui lòng thử lại sau.");
+      // Admin có thể liên kết resident profile sau hoặc hệ thống tự động liên kết theo tên
+      // Tùy chọn: Bạn có thể thêm logic để Admin chọn residentId để liên kết ngay tại đây.
+      // Để đơn giản, phần liên kết resident profile sẽ vẫn dựa vào `onAuthStateChanged` hoặc Admin tự làm.
+
+      alert(`Đã tạo tài khoản cho ${newAccountFullName.trim()} (MSSV: ${studentIdToRegister}) thành công! Người dùng cần đăng nhập và xác minh email cá nhân.`);
+
+      // Reset form
+      setNewAccountStudentId('');
+      setNewAccountPassword('');
+      setNewAccountFullName('');
+      setNewAccountPersonalEmail('');
+      setAuthError(''); // Xóa lỗi
+    } catch (error) {
+      console.error("Lỗi khi Admin tạo tài khoản:", error.code, error.message);
+      if (error.code === 'auth/email-already-in-use') {
+        setAuthError("Email này đã được sử dụng bởi một tài khoản khác. Vui lòng dùng email khác.");
       } else {
-          setAuthError(`Lỗi đăng nhập: ${error.message}`);
+        setAuthError(`Lỗi khi tạo tài khoản: ${error.message}`);
       }
-  }
-};
-
-// Thêm hàm này vào file App.js của bạn
-const handleRegister = async () => {
-  setAuthError('');
-  if (!auth || !db) {
-    setAuthError("Hệ thống xác thực chưa sẵn sàng.");
-    return;
-  }
-  // Thêm kiểm tra cho email cá nhân
-  if (fullName.trim() === '' || newStudentIdForAuth.trim() === '' || personalEmailForRegister.trim() === '' || password.trim() === '') {
-    setAuthError("Vui lòng nhập đầy đủ Họ tên, Mã số sinh viên, Email và Mật khẩu.");
-    return;
-  }
-  if (password.length < 6) {
-    setAuthError("Mật khẩu phải có ít nhất 6 ký tự.");
-    return;
-  }
-
-  const studentIdToRegister = newStudentIdForAuth.trim();
-  const personalEmail = personalEmailForRegister.trim(); // Sử dụng email người dùng nhập
-
-  try {
-    // 1. KIỂM TRA MSSV VÀ EMAIL CÓ DUY NHẤT KHÔNG
-    const usersRef = collection(db, `artifacts/${currentAppId}/public/data/users`);
-    const qStudentId = query(usersRef, where("studentId", "==", studentIdToRegister));
-    const studentIdSnapshot = await getDocs(qStudentId);
-    if (!studentIdSnapshot.empty) {
-      setAuthError("Mã số sinh viên này đã được sử dụng.");
-      return;
     }
+  };
 
-    const qEmail = query(usersRef, where("email", "==", personalEmail));
-    const emailSnapshot = await getDocs(qEmail);
-    if (!emailSnapshot.empty) {
-      setAuthError("Email này đã được sử dụng bởi một tài khoản khác.");
-      return;
-    }
-
-    // 2. TẠO TÀI KHOẢN TRONG FIREBASE AUTH BẰNG EMAIL CÁ NHÂN
-    const userCredential = await createUserWithEmailAndPassword(auth, personalEmail, password);
-    const user = userCredential.user;
-    console.log("Đã tạo tài khoản Auth thành công! UID:", user.uid);
-
-    // 3. GỬI EMAIL XÁC MINH NGAY LẬP TỨC
-    await sendEmailVerification(user);
-    console.log("Đã gửi email xác minh đến:", personalEmail);
-
-    // 4. TẠO TÀI LIỆU NGƯỜI DÙNG TRONG FIRESTORE
-    await setDoc(doc(db, `artifacts/${currentAppId}/public/data/users`, user.uid), {
-      email: personalEmail, // Lưu email cá nhân
-      fullName: fullName.trim(),
-      studentId: studentIdToRegister,
-      role: 'member',
-      createdAt: serverTimestamp(),
-      emailVerified: false, // Ban đầu luôn là false
-      phoneNumber: '',
-      academicLevel: '',
-      dormEntryDate: '',
-      birthday: '',
-      photoURL: null,
-    });
-    console.log("Đã tạo tài liệu người dùng trong Firestore.");
-
-    // 5. THÔNG BÁO VÀ CHUYỂN HƯỚNG
-    alert(`Đăng ký thành công! Vui lòng kiểm tra hộp thư tại ${personalEmail} để xác minh tài khoản trước khi đăng nhập.`);
-    // Reset form và chuyển qua tab đăng nhập
-    setAuthMode('login');
-    setFullName('');
-    setNewStudentIdForAuth('');
-    setPersonalEmailForRegister(''); // Reset state email mới
-    setPassword('');
+  //Hàm đăng nhập tài khoản
+  const handleSignIn = async () => {
     setAuthError('');
-
-  } catch (error) {
-    console.error("Lỗi khi đăng ký:", error.code, error.message);
-    if (error.code === 'auth/email-already-in-use') {
-      setAuthError("Email này đã được sử dụng.");
-    } else if (error.code === 'auth/invalid-email') {
-      setAuthError("Địa chỉ email không hợp lệ.");
-    } else {
-      setAuthError(`Lỗi khi đăng ký: ${error.message}`);
+    if (!auth || !db) {
+        setAuthError("Hệ thống xác thực chưa sẵn sàng.");
+        return;
     }
-  }
-};
+    if (studentIdForLogin.trim() === '' || password.trim() === '') {
+        setAuthError("Vui lòng nhập Mã số sinh viên và Mật khẩu.");
+        return;
+    }
+
+    const studentIdToLogin = studentIdForLogin.trim();
+
+    try {
+        // 1. TÌM EMAIL LIÊN KẾT VỚI MSSV TỪ FIRESTORE
+        const usersRef = collection(db, `artifacts/${currentAppId}/public/data/users`);
+        const qStudentId = query(usersRef, where("studentId", "==", studentIdToLogin));
+        const snapshot = await getDocs(qStudentId);
+
+        if (snapshot.empty) {
+            setAuthError("Mã số sinh viên không tồn tại hoặc mật khẩu không đúng."); // Thông báo chung để tránh lộ thông tin
+            return;
+        }
+
+        const userDoc = snapshot.docs[0];
+        const userData = userDoc.data();
+        const personalEmail = userData.email;
+
+        if (!personalEmail) {
+            setAuthError("Tài khoản không có email liên kết. Vui lòng liên hệ quản trị viên.");
+            return;
+        }
+        if (userData.role === 'inactive') { // Kiểm tra trạng thái vô hiệu hóa
+            setAuthError("Tài khoản này đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.");
+            return;
+        }
+
+        // 2. ĐĂNG NHẬP VỚI EMAIL VÀ MẬT KHẨU
+        const userCredential = await signInWithEmailAndPassword(auth, personalEmail, password);
+        const user = userCredential.user;
+        // Sau khi đăng nhập, `onAuthStateChanged` sẽ kích hoạt và kiểm tra emailVerified
+
+        // ===== BẮT ĐẦU PHẦN GHI LỊCH SỬ ĐĂNG NHẬP =====
+        const loginHistoryRef = collection(db, `artifacts/${currentAppId}/public/data/loginHistory`);
+        await addDoc(loginHistoryRef, {
+          userId: user.uid,
+          userName: userData.fullName || user.email,
+          loginAt: serverTimestamp(),
+          userAgent: navigator.userAgent // Ghi lại thông tin trình duyệt/HĐH
+        });
+        // ===== KẾT THÚC PHẦN GHI LỊCH SỬ =====
+
+        console.log("Đăng nhập thành công! Đang kiểm tra trạng thái xác minh email...");
+        setAuthError(''); // Xóa lỗi xác thực nếu có
+        setPassword('');
+        setStudentIdForLogin('');
+        setEmail(''); // Xóa email input truyền thống
+    } catch (error) {
+        console.error("Lỗi đăng nhập:", error.code, error.message);
+        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') { // Thêm invalid-credential
+            setAuthError("Mã số sinh viên hoặc mật khẩu không đúng.");
+        } else if (error.code === 'auth/invalid-email') {
+            setAuthError("Email liên kết không hợp lệ. Vui lòng liên hệ quản trị viên.");
+        } else if (error.code === 'auth/too-many-requests') {
+            setAuthError("Bạn đã thử đăng nhập quá nhiều lần. Vui lòng thử lại sau.");
+        } else {
+            setAuthError(`Lỗi đăng nhập: ${error.message}`);
+        }
+    }
+  };
+
+  // Hàm đăng ký tài khoản
+  const handleRegister = async () => {
+    setAuthError('');
+    if (!auth || !db) {
+      setAuthError("Hệ thống xác thực chưa sẵn sàng.");
+      return;
+    }
+    // Thêm kiểm tra cho email cá nhân
+    if (fullName.trim() === '' || newStudentIdForAuth.trim() === '' || personalEmailForRegister.trim() === '' || password.trim() === '') {
+      setAuthError("Vui lòng nhập đầy đủ Họ tên, Mã số sinh viên, Email và Mật khẩu.");
+      return;
+    }
+    if (password.length < 6) {
+      setAuthError("Mật khẩu phải có ít nhất 6 ký tự.");
+      return;
+    }
+
+    const studentIdToRegister = newStudentIdForAuth.trim();
+    const personalEmail = personalEmailForRegister.trim(); // Sử dụng email người dùng nhập
+
+    try {
+      // 1. KIỂM TRA MSSV VÀ EMAIL CÓ DUY NHẤT KHÔNG
+      const usersRef = collection(db, `artifacts/${currentAppId}/public/data/users`);
+      const qStudentId = query(usersRef, where("studentId", "==", studentIdToRegister));
+      const studentIdSnapshot = await getDocs(qStudentId);
+      if (!studentIdSnapshot.empty) {
+        setAuthError("Mã số sinh viên này đã được sử dụng.");
+        return;
+      }
+
+      const qEmail = query(usersRef, where("email", "==", personalEmail));
+      const emailSnapshot = await getDocs(qEmail);
+      if (!emailSnapshot.empty) {
+        setAuthError("Email này đã được sử dụng bởi một tài khoản khác.");
+        return;
+      }
+
+      // 2. TẠO TÀI KHOẢN TRONG FIREBASE AUTH BẰNG EMAIL CÁ NHÂN
+      const userCredential = await createUserWithEmailAndPassword(auth, personalEmail, password);
+      const user = userCredential.user;
+      console.log("Đã tạo tài khoản Auth thành công! UID:", user.uid);
+
+      // 3. GỬI EMAIL XÁC MINH NGAY LẬP TỨC
+      await sendEmailVerification(user);
+      console.log("Đã gửi email xác minh đến:", personalEmail);
+
+      // 4. TẠO TÀI LIỆU NGƯỜI DÙNG TRONG FIRESTORE
+      await setDoc(doc(db, `artifacts/${currentAppId}/public/data/users`, user.uid), {
+        email: personalEmail, // Lưu email cá nhân
+        fullName: fullName.trim(),
+        studentId: studentIdToRegister,
+        role: 'member',
+        createdAt: serverTimestamp(),
+        emailVerified: false, // Ban đầu luôn là false
+        phoneNumber: '',
+        academicLevel: '',
+        dormEntryDate: '',
+        birthday: '',
+        photoURL: null,
+      });
+      console.log("Đã tạo tài liệu người dùng trong Firestore.");
+
+      // 5. THÔNG BÁO VÀ CHUYỂN HƯỚNG
+      alert(`Đăng ký thành công! Vui lòng kiểm tra hộp thư tại ${personalEmail} để xác minh tài khoản trước khi đăng nhập.`);
+      // Reset form và chuyển qua tab đăng nhập
+      setAuthMode('login');
+      setFullName('');
+      setNewStudentIdForAuth('');
+      setPersonalEmailForRegister(''); // Reset state email mới
+      setPassword('');
+      setAuthError('');
+
+    } catch (error) {
+      console.error("Lỗi khi đăng ký:", error.code, error.message);
+      if (error.code === 'auth/email-already-in-use') {
+        setAuthError("Email này đã được sử dụng.");
+      } else if (error.code === 'auth/invalid-email') {
+        setAuthError("Địa chỉ email không hợp lệ.");
+      } else {
+        setAuthError(`Lỗi khi đăng ký: ${error.message}`);
+      }
+    }
+  };
 
   // Hàm Gửi lại email xác minh
   const handleResendVerificationEmail = async () => {
@@ -1507,50 +1544,50 @@ const handleRegister = async () => {
     }
   };
 
-// Hàm chỉnh sửa thông tin cá nhân (member và admin)
-const handleSaveUserProfile = async () => {
-  setAuthError('');
-  if (!db || !userId) {
-    setAuthError('Hệ thống chưa sẵn sàng hoặc bạn chưa đăng nhập.');
-    return;
-  }
-
-  const userDocRef = doc(db, `artifacts/${currentAppId}/public/data/users`, userId);
-  const currentUserData = (await getDoc(userDocRef)).data(); // Lấy dữ liệu hiện tại
-
-  try {
-    const userDataToUpdate = {
-      fullName: fullName.trim(),
-      phoneNumber: memberPhoneNumber.trim(),
-      academicLevel: memberAcademicLevel.trim(),
-      dormEntryDate: memberDormEntryDate.trim(),
-      birthday: memberBirthday.trim(),
-      studentId: memberStudentId.trim(),
-    };
-
-    // Nếu email thay đổi, cập nhật email trong Auth và đặt lại emailVerified
-    if (email.trim() !== currentUserData.email) {
-      try {
-        userDataToUpdate.email = email.trim(); // Cập nhật email trong Firestore
-        userDataToUpdate.emailVerified = false; // Đặt lại trạng thái xác minh trong Firestore
-        setNeedsEmailVerification(true); // Cập nhật cờ để hiển thị thông báo
-        alert('Email đã được thay đổi. Vui lòng kiểm tra email mới để xác minh lại tài khoản.');
-      } catch (updateEmailError) {
-        console.error("Lỗi khi cập nhật email trong Auth:", updateEmailError);
-        setAuthError(`Lỗi khi cập nhật email: ${updateEmailError.message}. Vui lòng thử lại.`);
-        return;
-      }
+  // Hàm chỉnh sửa thông tin cá nhân (member và admin)
+  const handleSaveUserProfile = async () => {
+    setAuthError('');
+    if (!db || !userId) {
+      setAuthError('Hệ thống chưa sẵn sàng hoặc bạn chưa đăng nhập.');
+      return;
     }
 
-    await updateDoc(userDocRef, userDataToUpdate);
-    console.log('Đã cập nhật tài liệu người dùng thành công!');
+    const userDocRef = doc(db, `artifacts/${currentAppId}/public/data/users`, userId);
+    const currentUserData = (await getDoc(userDocRef)).data(); // Lấy dữ liệu hiện tại
 
-    setAuthError('Thông tin cá nhân đã được cập nhật thành công!');
-  } catch (error) {
-    console.error('Lỗi khi cập nhật thông tin cá nhân:', error);
-    setAuthError(`Lỗi khi cập nhật thông tin cá nhân: ${error.message}`);
-  }
-};
+    try {
+      const userDataToUpdate = {
+        fullName: fullName.trim(),
+        phoneNumber: memberPhoneNumber.trim(),
+        academicLevel: memberAcademicLevel.trim(),
+        dormEntryDate: memberDormEntryDate.trim(),
+        birthday: memberBirthday.trim(),
+        studentId: memberStudentId.trim(),
+      };
+
+      // Nếu email thay đổi, cập nhật email trong Auth và đặt lại emailVerified
+      if (email.trim() !== currentUserData.email) {
+        try {
+          userDataToUpdate.email = email.trim(); // Cập nhật email trong Firestore
+          userDataToUpdate.emailVerified = false; // Đặt lại trạng thái xác minh trong Firestore
+          setNeedsEmailVerification(true); // Cập nhật cờ để hiển thị thông báo
+          alert('Email đã được thay đổi. Vui lòng kiểm tra email mới để xác minh lại tài khoản.');
+        } catch (updateEmailError) {
+          console.error("Lỗi khi cập nhật email trong Auth:", updateEmailError);
+          setAuthError(`Lỗi khi cập nhật email: ${updateEmailError.message}. Vui lòng thử lại.`);
+          return;
+        }
+      }
+
+      await updateDoc(userDocRef, userDataToUpdate);
+      console.log('Đã cập nhật tài liệu người dùng thành công!');
+
+      setAuthError('Thông tin cá nhân đã được cập nhật thành công!');
+    } catch (error) {
+      console.error('Lỗi khi cập nhật thông tin cá nhân:', error);
+      setAuthError(`Lỗi khi cập nhật thông tin cá nhân: ${error.message}`);
+    }
+  };
 
   // Hàm để xóa một kỷ niệm (admin có thể xóa bất kỳ, người đăng tải có thể xóa của chính họ)
   const handleDeleteMemory = async (memoryId, files, uploadedByUserId) => {
@@ -1617,37 +1654,37 @@ const handleSaveUserProfile = async () => {
   const [selectedAvatarFile, setSelectedAvatarFile] = useState(null);
   const [tempAvatarUrl, setTempAvatarUrl] = useState('');
 
-// NEW: Hàm để mở modal chỉnh sửa thông tin thành viên trong "Thông tin phòng chung"
-const handleEditCommonResidentDetails = (resident) => {
-  // Chỉ admin mới có quyền chỉnh sửa thông tin chung của người khác
-  if (userRole !== 'admin') {
-    setAuthError('Bạn không có quyền chỉnh sửa thông tin này.');
-    return;
-  }
+  // NEW: Hàm để mở modal chỉnh sửa thông tin thành viên trong "Thông tin phòng chung"
+  const handleEditCommonResidentDetails = (resident) => {
+    // Chỉ admin mới có quyền chỉnh sửa thông tin chung của người khác
+    if (userRole !== 'admin') {
+      setAuthError('Bạn không có quyền chỉnh sửa thông tin này.');
+      return;
+    }
 
-  const linkedUser = allUsersData.find(user => user.linkedResidentId === resident.id);
+    const linkedUser = allUsersData.find(user => user.linkedResidentId === resident.id);
 
-  setEditingCommonResidentData(resident);
-  setEditingCommonResidentUserLinkedData(linkedUser || null);
+    setEditingCommonResidentData(resident);
+    setEditingCommonResidentUserLinkedData(linkedUser || null);
 
-  // Nạp dữ liệu vào các state của form chỉnh sửa
-  setEditCommonFullName(linkedUser?.fullName || resident.name);
-  setEditCommonEmail(linkedUser?.email || '');
-  setEditCommonPhoneNumber(linkedUser?.phoneNumber || '');
-  setEditCommonAcademicLevel(linkedUser?.academicLevel || '');
-  setEditCommonDormEntryDate(linkedUser?.dormEntryDate || '');
-  setEditCommonBirthday(linkedUser?.birthday || '');
-  setEditCommonStudentId(linkedUser?.studentId || '');
+    // Nạp dữ liệu vào các state của form chỉnh sửa
+    setEditCommonFullName(linkedUser?.fullName || resident.name);
+    setEditCommonEmail(linkedUser?.email || '');
+    setEditCommonPhoneNumber(linkedUser?.phoneNumber || '');
+    setEditCommonAcademicLevel(linkedUser?.academicLevel || '');
+    setEditCommonDormEntryDate(linkedUser?.dormEntryDate || '');
+    setEditCommonBirthday(linkedUser?.birthday || '');
+    setEditCommonStudentId(linkedUser?.studentId || '');
 
-  // NEW: Set the temporary avatar URL for preview
-  setTempAvatarUrl(linkedUser?.avatarUrl || '');
-  setSelectedAvatarFile(null); // Reset selected file when opening modal
+    // NEW: Set the temporary avatar URL for preview
+    setTempAvatarUrl(linkedUser?.avatarUrl || '');
+    setSelectedAvatarFile(null); // Reset selected file when opening modal
 
-  setAuthError(''); // Clear any previous auth errors
-  
-};
+    setAuthError(''); // Clear any previous auth errors
+    
+  };
 
-const handleUpdateCommonResidentDetails = async () => {
+  const handleUpdateCommonResidentDetails = async () => {
   setAuthError('');
   setUpdateSuccessMessage('');
   if (!db || !userId || userRole !== 'admin') {
@@ -1725,32 +1762,32 @@ const handleUpdateCommonResidentDetails = async () => {
    setAuthError(`Lỗi khi cập nhật thông tin thành viên: ${error.message}`);
    setTimeout(() => setAuthError(''), 7000); // Xóa lỗi sau 7 giây
   }
- };
+  };
 
-// NEW: Hàm để đóng modal chỉnh sửa mà không lưu
-const handleCancelCommonResidentEdit = () => {
-  setEditingCommonResidentData(null);
-  setEditingCommonResidentUserLinkedData(null);
-  setAuthError('');
-  // Reset các state của form
-  setEditCommonFullName('');
-  setEditCommonEmail('');
-  setEditCommonPhoneNumber('');
-  setEditCommonAcademicLevel('');
-  setEditCommonDormEntryDate('');
-  setEditCommonBirthday('');
-  setEditCommonStudentId('');
-};
+  // NEW: Hàm để đóng modal chỉnh sửa mà không lưu
+  const handleCancelCommonResidentEdit = () => {
+    setEditingCommonResidentData(null);
+    setEditingCommonResidentUserLinkedData(null);
+    setAuthError('');
+    // Reset các state của form
+    setEditCommonFullName('');
+    setEditCommonEmail('');
+    setEditCommonPhoneNumber('');
+    setEditCommonAcademicLevel('');
+    setEditCommonDormEntryDate('');
+    setEditCommonBirthday('');
+    setEditCommonStudentId('');
+  };
 
-// NEW: Function to handle file selection for avatar
-const handleAvatarFileChange = (event) => {
+  // NEW: Function to handle file selection for avatar
+  const handleAvatarFileChange = (event) => {
   const file = event.target.files?.[0];
   if (file) {
    setSelectedAvatarFile(file);
    // Create a temporary URL for preview
    setTempAvatarUrl(URL.createObjectURL(file));
   }
- };
+  };
  
  // NEW: Function to handle avatar upload to Firebase Storage
  const uploadAvatar = async (userId) => {
@@ -2193,8 +2230,6 @@ const handleAvatarFileChange = (event) => {
       }
     }
   };
-
-  // --- Kết thúc các hàm xác thực ---
 
   // Lắng nghe cập nhật danh sách tất cả cư dân (admin sẽ thấy tất cả, thành viên sẽ không dùng trực tiếp)
   useEffect(() => {
@@ -2743,6 +2778,7 @@ const handleAvatarFileChange = (event) => {
     //formerResidentError không còn là state, không cần reset
   }, [activeSection]);
 
+  //KHU VỰC CONST
   // Thêm một cư dân mới
   const handleAddResident = async () => {
     setAuthError('');
@@ -2806,85 +2842,86 @@ const handleAvatarFileChange = (event) => {
   };
   
   // Thêm hàm này vào file App.js của bạn
-const handleUpdateFormerResident = async (e) => {
-  e.preventDefault();
-  setAuthError('');
-  if (!db || !userId || userRole !== 'admin') {
-    setAuthError('Bạn không có quyền cập nhật thông tin tiền bối.');
-    return;
-  }
-  if (!editingFormerResident || !editingFormerResident.id) {
-    setAuthError('Không có tiền bối nào được chọn để cập nhật.');
-    return;
-  }
-  if (!editingFormerResident.name || !editingFormerResident.email || !editingFormerResident.deactivatedAt) {
-    setAuthError('Vui lòng điền đầy đủ Họ tên, Email, Ngày ra khỏi phòng.');
-    return;
-  }
-
-  try {
-    // Bước 1: Giữ lại URL avatar cũ làm giá trị mặc định
-    let avatarDownloadURL = editingFormerResident.photoURL;
-
-    // Bước 2: CHỈ TẢI LÊN NẾU CÓ FILE MỚI ĐƯỢC CHỌN
-    if (editingFormerResidentAvatarFile) {
-      setIsUploadingEditingFormerResidentAvatar(true);
-      setUploadEditingFormerResidentAvatarProgress(0);
-
-      const formData = new FormData();
-      formData.append('file', editingFormerResidentAvatarFile);
-      formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET_AVATAR);
-      formData.append('folder', 'avatars/former-residents');
-
-      try {
-        // Tải file lên và gán kết quả vào biến 'response'
-        const response = await axios.post(CLOUDINARY_API_URL_IMAGE_UPLOAD, formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-          onUploadProgress: (progressEvent) => {
-            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-            setUploadEditingFormerResidentAvatarProgress(percentCompleted);
-          },
-        });
-        
-        // Lấy URL mới sau khi tải lên thành công
-        avatarDownloadURL = response.data.secure_url;
-        console.log('Avatar tiền bối tải lên Cloudinary thành công, URL:', avatarDownloadURL);
-
-      } catch (uploadError) {
-        console.error('Lỗi khi tải ảnh avatar tiền bối lên Cloudinary:', uploadError);
-        setAuthError(`Lỗi khi tải ảnh: ${uploadError.message}`);
-        setIsUploadingEditingFormerResidentAvatar(false);
-        return; // Dừng hàm nếu tải ảnh lỗi
-      } finally {
-        setIsUploadingEditingFormerResidentAvatar(false);
-      }
+  const handleUpdateFormerResident = async (e) => {
+    e.preventDefault();
+    setAuthError('');
+    if (!db || !userId || userRole !== 'admin') {
+      setAuthError('Bạn không có quyền cập nhật thông tin tiền bối.');
+      return;
+    }
+    if (!editingFormerResident || !editingFormerResident.id) {
+      setAuthError('Không có tiền bối nào được chọn để cập nhật.');
+      return;
+    }
+    if (!editingFormerResident.name || !editingFormerResident.email || !editingFormerResident.deactivatedAt) {
+      setAuthError('Vui lòng điền đầy đủ Họ tên, Email, Ngày ra khỏi phòng.');
+      return;
     }
 
-    // Bước 3: Cập nhật tài liệu trong Firestore
-    const formerResidentDocRef = doc(
-      db,
-      `artifacts/${currentAppId}/public/data/formerResidents`,
-      editingFormerResident.id
-    );
+    try {
+      // Bước 1: Giữ lại URL avatar cũ làm giá trị mặc định
+      let avatarDownloadURL = editingFormerResident.photoURL;
 
-    const { id, ...dataToUpdate } = editingFormerResident;
+      // Bước 2: CHỈ TẢI LÊN NẾU CÓ FILE MỚI ĐƯỢC CHỌN
+      if (editingFormerResidentAvatarFile) {
+        setIsUploadingEditingFormerResidentAvatar(true);
+        setUploadEditingFormerResidentAvatarProgress(0);
 
-    await updateDoc(formerResidentDocRef, {
-      ...dataToUpdate,
-      photoURL: avatarDownloadURL, // Lưu URL mới (hoặc cũ nếu không có file mới)
-      lastUpdatedBy: userId,
-      lastUpdatedAt: serverTimestamp(),
-    });
+        const formData = new FormData();
+        formData.append('file', editingFormerResidentAvatarFile);
+        formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET_AVATAR);
+        formData.append('folder', 'avatars/former-residents');
 
-    alert('Đã cập nhật thông tin tiền bối thành công!');
-    setEditingFormerResident(null); // Đóng modal
-    setEditingFormerResidentAvatarFile(null); // Reset file đã chọn
-  } catch (error) {
-    console.error('Lỗi khi cập nhật tiền bối:', error);
-    setAuthError(`Lỗi khi cập nhật tiền bối: ${error.message}`);
-  }
-};  
-// Vô hiệu hóa hoặc kích hoạt lại một cư dân
+        try {
+          // Tải file lên và gán kết quả vào biến 'response'
+          const response = await axios.post(CLOUDINARY_API_URL_IMAGE_UPLOAD, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+            onUploadProgress: (progressEvent) => {
+              const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+              setUploadEditingFormerResidentAvatarProgress(percentCompleted);
+            },
+          });
+          
+          // Lấy URL mới sau khi tải lên thành công
+          avatarDownloadURL = response.data.secure_url;
+          console.log('Avatar tiền bối tải lên Cloudinary thành công, URL:', avatarDownloadURL);
+
+        } catch (uploadError) {
+          console.error('Lỗi khi tải ảnh avatar tiền bối lên Cloudinary:', uploadError);
+          setAuthError(`Lỗi khi tải ảnh: ${uploadError.message}`);
+          setIsUploadingEditingFormerResidentAvatar(false);
+          return; // Dừng hàm nếu tải ảnh lỗi
+        } finally {
+          setIsUploadingEditingFormerResidentAvatar(false);
+        }
+      }
+
+      // Bước 3: Cập nhật tài liệu trong Firestore
+      const formerResidentDocRef = doc(
+        db,
+        `artifacts/${currentAppId}/public/data/formerResidents`,
+        editingFormerResident.id
+      );
+
+      const { id, ...dataToUpdate } = editingFormerResident;
+
+      await updateDoc(formerResidentDocRef, {
+        ...dataToUpdate,
+        photoURL: avatarDownloadURL, // Lưu URL mới (hoặc cũ nếu không có file mới)
+        lastUpdatedBy: userId,
+        lastUpdatedAt: serverTimestamp(),
+      });
+
+      alert('Đã cập nhật thông tin tiền bối thành công!');
+      setEditingFormerResident(null); // Đóng modal
+      setEditingFormerResidentAvatarFile(null); // Reset file đã chọn
+    } catch (error) {
+      console.error('Lỗi khi cập nhật tiền bối:', error);
+      setAuthError(`Lỗi khi cập nhật tiền bối: ${error.message}`);
+    }
+  };
+
+  // Vô hiệu hóa hoặc kích hoạt lại một cư dân
   const handleToggleResidentActiveStatus = async (residentId, residentName, currentStatus) => {
     setAuthError('');
     setBillingError('');
@@ -3218,16 +3255,12 @@ const handleUpdateFormerResident = async (e) => {
 Tổng tiền điện nước của cả phòng là ${formattedTotalCost} VND.
 Số tiền ${residentName} cần đóng là ${individualCosts[selectedResidentForReminder]?.cost.toLocaleString('vi-VN')} VND cho kỳ từ ${period}.
 Hãy nhắc nhở họ về số tiền cần thanh toán và thời hạn nếu có (có thể mặc định là cuối tháng).
-Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dùng individualCosts của người được chọn
+Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
 
     let chatHistory = [];
     chatHistory.push({ role: 'user', parts: [{ text: prompt }] });
     const payload = { contents: chatHistory };
-    // API key cho Gemini được cung cấp bởi Canvas runtime khi triển khai.
-    // Để kiểm tra cục bộ, bạn có thể cần đặt khóa thủ công tại đây hoặc thông qua biến môi trường.
-    // LƯU Ý QUAN TRỌNG: KHÔNG ĐỂ API KEY TRỰC TIẾP TRONG MÃ NGUỒN CLIENT TRONG PRODUCTION.
-    const apiKey = process.env.REACT_APP_GEMINI_API_KEY; // <-- Sử dụng biến môi trường
-
+    const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
     try {
@@ -3698,7 +3731,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
     }
   };
 
-  // Lấy số ngày trong tháng đã chọn
+  // Hàm lấy số ngày trong tháng đã chọn
   const getDaysInMonth = (year, month) => {
     return new Date(year, month, 0).getDate();
   };
@@ -3711,9 +3744,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
   const displayedResidents = showInactiveResidents // Lọc theo trạng thái vô hiệu hóa (chỉ admin dùng)
     ? residents
     : residents.filter((res) => res.isActive !== false);
-
-  // Lưu ý: Đối với thành viên, chúng ta sẽ hiển thị tất cả cư dân đang hoạt động
-  // và điều khiển quyền sửa trên giao diện (disabled checkbox).
 
   // Hàm renderSection để hiển thị các phần giao diện dựa trên vai trò người dùng
   const renderSection = () => {
@@ -3899,1477 +3929,594 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               </div>
             </div>
           );
+        //Case quản lý người ở
         case 'residentManagement':
-          return (
-            <div className="p-6 bg-purple-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-purple-800 dark:text-purple-200 mb-5">
-                Quản lý người trong phòng
-              </h2>
-              <div className="flex flex-col sm:flex-row gap-3 mb-4">
-                <input
-                  type="text"
-                  value={newResidentName}
-                  onChange={(e) => {
-                    setNewResidentName(e.target.value);
-                    setAuthError('');
-                  }}
-                  className="flex-1 shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
-                  placeholder="Nhập tên người trong phòng (tối đa 8 người)"
-                  maxLength="30"
-                />
-                <button
-                  onClick={handleAddResident}
-                  className="px-6 py-2 bg-purple-600 text-white font-semibold rounded-xl shadow-md hover:bg-purple-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75"
-                  disabled={residents.filter((res) => res.isActive !== false).length >= 8}
-                >
-                  <i className="fas fa-user-plus mr-2"></i> Thêm
-                </button>
-              </div>
-              {residents.length > 0 && (
-                <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-inner max-h-screen-1/2 overflow-y-auto border border-gray-200 dark:border-gray-700">
-                  <h3 className="text-xl font-semibold text-purple-700 dark:text-purple-200 mb-3">
-                    Danh sách người trong phòng:
-                  </h3>
-                  <div className="mb-4">
-                    <label className="inline-flex items-center">
-                      <input
-                        type="checkbox"
-                        className="form-checkbox h-5 w-5 text-purple-600 dark:text-purple-400 rounded"
-                        checked={showInactiveResidents}
-                        onChange={(e) => setShowInactiveResidents(e.target.checked)}
-                      />
-                      <span className="ml-2 text-gray-700 dark:text-gray-300">Hiển thị người đã vô hiệu hóa</span>
-                    </label>
-                  </div>
-                  <ul className="space-y-3">
-                    {residents.map((resident) => (
-                      <li
-                        key={resident.id}
-                        className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-600"
-                      >
-                        <div className="flex flex-col items-start">
-                          <span className="font-medium text-gray-700 dark:text-gray-300 text-base">
-                            {resident.name}
-                          </span>
-                          {resident.createdAt && typeof resident.createdAt.toDate === 'function' && (
-                            <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              Thêm vào: {resident.createdAt.toDate().toLocaleDateString('vi-VN')}
-                            </span>
-                          )}
-                          {resident.isActive === false && (
-                            <span className="text-xs text-red-500 dark:text-red-400 mt-1 font-semibold">
-                              (Đã vô hiệu hóa)
-                            </span>
-                          )}
-                          {resident.linkedUserId && (
-                            <span className="text-xs text-blue-500 dark:text-blue-400 mt-1">
-                              (Đã liên kết với Người dùng)
-                            </span>
-                          )}
-                        </div>
-                        {resident.isActive ? (
-                          <button
-                            onClick={() => handleToggleResidentActiveStatus(resident.id, resident.name, true)}
-                            className="ml-4 px-3 py-1 bg-red-500 text-white text-sm rounded-lg shadow-sm hover:bg-red-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-400"
-                          >
-                            Vô hiệu hóa
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleToggleResidentActiveStatus(resident.id, resident.name, false)}
-                            className="ml-4 px-3 py-1 bg-green-500 text-white text-sm rounded-lg shadow-sm hover:bg-green-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-400"
-                          >
-                            Kích hoạt lại
-                          </button>
-                        )}
-                        {resident.isActive && resident.linkedUserId && (
-                          <button
-                            onClick={() => handleMoveToFormerResidents(resident.id, resident.linkedUserId)}
-                            className="ml-2 px-3 py-1 bg-indigo-500 text-white text-sm rounded-lg shadow-sm hover:bg-indigo-600 transition-colors duration-200"
-                          >
-                            Chuyển tiền bối
-                          </button>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          );
-          case 'attendanceTracking':
-            return (
-              <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-                <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">
-                  {userRole === 'admin' ? 'Điểm danh theo tháng' : 'Điểm danh của tôi'}
-                </h2>
-                <div className="mb-6 flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4">
-                  <label htmlFor="monthSelector" className="font-semibold text-gray-700 dark:text-gray-300 text-lg">
-                    Chọn tháng:
-                  </label>
-                  <input
-                    type="month"
-                    id="monthSelector"
-                    value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(e.target.value)}
-                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700"
-                  />
-                </div>
-
-                {/* ===== KHUNG CHỨA CÓ THANH CUỘN NGANG ===== */}
-                <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-                  {displayedResidents.length === 0 ? (
-                    <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
-                      Chưa có người ở nào để điểm danh.
-                    </p>
-                  ) : (
-                    <table className="min-w-full bg-white dark:bg-gray-800">
-                      <thead>
-                        <tr>
-                          <th className="py-3 px-4 text-left sticky left-0 z-10 bg-green-100 dark:bg-gray-700 border-r border-green-200 dark:border-gray-600 text-green-800 dark:text-green-200 uppercase text-sm font-semibold">
-                            Tên
-                          </th>
-                          {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map((day) => (
-                            <th
-                              key={day}
-                              className="py-3 px-2 text-center border-l border-green-200 dark:border-gray-600 text-green-800 dark:text-green-200 uppercase text-sm leading-normal"
-                            >
-                              {day}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
-                        {displayedResidents.map((resident) => {
-                          const isMyRow = loggedInResidentProfile && resident.id === loggedInResidentProfile.id;
-                          return (
-                            <tr
-                              key={resident.id}
-                              className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
-                            >
-                              <td className="py-3 px-6 text-left whitespace-nowrap font-medium sticky left-0 bg-white dark:bg-gray-800 z-10 border-r border-gray-200 dark:border-gray-700">
-                                {resident.name}
-                              </td>
-                              {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map((day) => {
-                                const dayString = String(day).padStart(2, '0');
-                                const isPresent = monthlyAttendanceData[resident.id]?.[dayString] === 1;
-                                return (
-                                  <td
-                                    key={day}
-                                    className="py-3 px-2 text-center border-l border-gray-200 dark:border-gray-700"
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={isPresent}
-                                      onChange={() => handleToggleDailyPresence(resident.id, day)}
-                                      disabled={userRole === 'member' && !isMyRow}
-                                      className="form-checkbox h-5 w-5 rounded focus:ring-green-500 cursor-pointer text-green-600 dark:text-green-400 dark:disabled:bg-slate-500 dark:disabled:border-slate-400 dark:disabled:checked:bg-yellow-600 dark:disabled:checked:border-transparent"
-                                    />
-                                  </td>
-                                );
-                              })}
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  )}
-                </div>
-              </div>
-            );
-            case 'billing':
-              return (
-                // Container chính cho toàn bộ mục, dùng space-y để tạo khoảng cách giữa các khối
-                <div className="space-y-8">
-
-                  {/* ===== KHỐI 1: TÍNH TIỀN ĐIỆN NƯỚC ===== */}
-                  <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-                    <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">Tính tiền điện nước</h2>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                      {/* Electricity */}
-                      <div>
-                        <label htmlFor="lastElectricityReading" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                          Chỉ số điện cuối cùng (KW):
-                        </label>
-                        <input
-                          type="number"
-                          id="lastElectricityReading"
-                          value={lastElectricityReading}
-                          readOnly
-                          className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 bg-gray-100 dark:bg-gray-600 cursor-not-allowed"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="currentElectricityReading" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                          Chỉ số điện hiện tại (KW):
-                        </label>
-                        <input
-                          type="number"
-                          id="currentElectricityReading"
-                          value={currentElectricityReading}
-                          onChange={(e) => { setCurrentElectricityReading(e.target.value); setBillingError(''); }}
-                          className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 bg-white dark:bg-gray-700"
-                          placeholder="Nhập chỉ số hiện tại"
-                        />
-                      </div>
-
-                      {/* Water */}
-                      <div>
-                        <label htmlFor="lastWaterReading" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                          Chỉ số nước cuối cùng (m³):
-                        </label>
-                        <input
-                          type="number"
-                          id="lastWaterReading"
-                          value={lastWaterReading}
-                          readOnly
-                          className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 bg-gray-100 dark:bg-gray-600 cursor-not-allowed"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="currentWaterReading" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                          Chỉ số nước hiện tại (m³):
-                        </label>
-                        <input
-                          type="number"
-                          id="currentWaterReading"
-                          value={currentWaterReading}
-                          onChange={(e) => { setCurrentWaterReading(e.target.value); setBillingError(''); }}
-                          className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 bg-white dark:bg-gray-700"
-                          placeholder="Nhập chỉ số hiện tại"
-                        />
-                      </div>
-                    </div>
-                    
-                    <button
-                      onClick={calculateBill}
-                      className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all"
-                    >
-                      <i className="fas fa-calculator mr-2"></i> Tính toán chi phí
-                    </button>
-
-                    {totalCost > 0 && (
-                      <div className="mt-6 bg-blue-100 dark:bg-gray-800 p-4 rounded-xl text-lg font-semibold">
-                        <p>Tiền điện: <span className="text-blue-700 dark:text-blue-300">{electricityCost.toLocaleString('vi-VN')} VND</span></p>
-                        <p>Tiền nước: <span className="text-blue-700 dark:text-blue-300">{waterCost.toLocaleString('vi-VN')} VND</span></p>
-                        <p className="border-t pt-3 mt-3 text-xl font-bold">
-                          Tổng cộng: <span className="text-blue-800 dark:text-blue-200">{totalCost.toLocaleString('vi-VN')} VND</span>
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* ===== KHỐI 2: CÀI ĐẶT GIÁ ĐIỆN & NƯỚC ===== */}
-                  <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-                    <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">
-                      Cài đặt giá điện & nước
-                    </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-                      <div>
-                        <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                          Giá điện hiện tại (VND/KW):
-                        </label>
-                        <input
-                          type="text"
-                          value={`${electricityRate.toLocaleString('vi-VN')} VND`}
-                          readOnly
-                          className="shadow-sm border rounded-xl w-full py-2 px-4 bg-gray-100 dark:bg-gray-600 cursor-not-allowed"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                          Giá nước hiện tại (VND/m³):
-                        </label>
-                        <input
-                          type="text"
-                          value={`${waterRate.toLocaleString('vi-VN')} VND`}
-                          readOnly
-                          className="shadow-sm border rounded-xl w-full py-2 px-4 bg-gray-100 dark:bg-gray-600 cursor-not-allowed"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="newElecRate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                          Nhập giá điện mới:
-                        </label>
-                        <input
-                          type="number"
-                          id="newElecRate"
-                          value={newElectricityRate}
-                          onChange={(e) => setNewElectricityRate(e.target.value)}
-                          className="shadow-sm border rounded-xl w-full py-2 px-4 bg-white dark:bg-gray-700"
-                          placeholder="Ví dụ: 2600"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="newWatRate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                          Nhập giá nước mới:
-                        </label>
-                        <input
-                          type="number"
-                          id="newWatRate"
-                          value={newWaterRate}
-                          onChange={(e) => setNewWaterRate(e.target.value)}
-                          className="shadow-sm border rounded-xl w-full py-2 px-4 bg-white dark:bg-gray-700"
-                          placeholder="Ví dụ: 4500"
-                        />
-                      </div>
-                    </div>
-                    {billingError && <p className="text-red-500 text-sm text-center mb-4">{billingError}</p>}
-                    <button
-                      onClick={handleUpdateRates}
-                      className="w-full px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all"
-                    >
-                      Lưu thay đổi giá
-                    </button>
-                  </div>
-                  {/* ===== KHỐI 3: CÀI ĐẶT MÃ QR THANH TOÁN ===== */}
-                  <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-                    <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">
-                      Cài đặt QR Thanh toán
-                    </h2>
-                    <div className="flex flex-col md:flex-row items-center gap-6">
-                      {/* Phần xem trước QR */}
-                      <div className="flex-shrink-0">
-                        <p className="text-center text-sm font-semibold mb-2">Mã QR hiện tại:</p>
-                        {qrCodeUrl ? (
-                          <img src={qrCodeUrl} alt="Mã QR thanh toán" className="w-40 h-40 object-contain border rounded-lg bg-white"/>
-                        ) : (
-                          <div className="w-40 h-40 border rounded-lg bg-gray-100 flex items-center justify-center text-gray-400">
-                            Chưa có mã QR
-                          </div>
-                        )}
-                      </div>
-                      {/* Phần tải lên */}
-                      <div className="flex-1 w-full">
-                        <label htmlFor="qrCodeFile" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                          Tải lên mã QR mới:
-                        </label>
-                        <input
-                          type="file"
-                          id="qrCodeFile"
-                          accept="image/*"
-                          onChange={(e) => setNewQrCodeFile(e.target.files[0])}
-                          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                        />
-                        <button
-                          onClick={handleUploadQrCode}
-                          className="w-full mt-4 px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700"
-                          disabled={isUploadingQrCode || !newQrCodeFile}
-                        >
-                          {isUploadingQrCode ? 'Đang tải lên...' : 'Lưu mã QR mới'}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                </div>
-              );
-        case 'costSharing':
-          return (
-            <div className="p-6 bg-orange-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-orange-800 dark:text-orange-200 mb-5">
-                Tính ngày có mặt & Chia tiền
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <div>
-                  <label htmlFor="startDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                    Ngày bắt đầu:
-                  </label>
-                  <input
-                    type="date"
-                    id="startDate"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="endDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                    Ngày kết thúc:
-                  </label>
-                  <input
-                    type="date"
-                    id="endDate"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700"
-                  />
-                </div>
-              </div>
+        return (
+          <div className="p-6 bg-purple-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+            <h2 className="text-2xl font-bold text-purple-800 dark:text-purple-200 mb-5">
+              Quản lý người trong phòng
+            </h2>
+            <div className="flex flex-col sm:flex-row gap-3 mb-4">
+              <input
+                type="text"
+                value={newResidentName}
+                onChange={(e) => {
+                  setNewResidentName(e.target.value);
+                  setAuthError('');
+                }}
+                className="flex-1 shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
+                placeholder="Nhập tên người trong phòng (tối đa 8 người)"
+                maxLength="30"
+              />
               <button
-                onClick={calculateAttendanceDays}
-                className="w-full px-6 py-3 bg-orange-600 text-white font-semibold rounded-xl shadow-md hover:bg-orange-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-75 mb-6"
-                disabled={residents.length === 0 || totalCost <= 0}
+                onClick={handleAddResident}
+                className="px-6 py-2 bg-purple-600 text-white font-semibold rounded-xl shadow-md hover:bg-purple-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75"
+                disabled={residents.filter((res) => res.isActive !== false).length >= 8}
               >
-                <i className="fas fa-calendar-check mr-2"></i> Tính ngày có mặt
+                <i className="fas fa-user-plus mr-2"></i> Thêm
               </button>
-
-              {totalCalculatedDaysAllResidents > 0 && totalCost > 0 && (
-                <div className="bg-orange-100 dark:bg-gray-700 p-4 rounded-xl shadow-inner text-lg font-semibold text-orange-900 dark:text-orange-100 border border-orange-200 dark:border-gray-600">
-                  <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200 mb-3">
-                    Kết quả điểm danh theo ngày:
-                  </h3>
-                  <ul className="space-y-2 mb-3">
-                    {residents.map((resident) => (
-                      <li
-                        key={resident.id}
-                        className="flex justify-between items-center bg-gray-50 dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
-                      >
-                        <span className="font-medium text-gray-700 dark:text-gray-300">{resident.name}:</span>
-                        <span className="text-orange-700 dark:text-orange-300 font-bold">
-                          {calculatedDaysPresent[resident.id] || 0} ngày
+            </div>
+            {residents.length > 0 && (
+              <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-inner max-h-screen-1/2 overflow-y-auto border border-gray-200 dark:border-gray-700">
+                <h3 className="text-xl font-semibold text-purple-700 dark:text-purple-200 mb-3">
+                  Danh sách người trong phòng:
+                </h3>
+                <div className="mb-4">
+                  <label className="inline-flex items-center">
+                    <input
+                      type="checkbox"
+                      className="form-checkbox h-5 w-5 text-purple-600 dark:text-purple-400 rounded"
+                      checked={showInactiveResidents}
+                      onChange={(e) => setShowInactiveResidents(e.target.checked)}
+                    />
+                    <span className="ml-2 text-gray-700 dark:text-gray-300">Hiển thị người đã vô hiệu hóa</span>
+                  </label>
+                </div>
+                <ul className="space-y-3">
+                  {residents.map((resident) => (
+                    <li
+                      key={resident.id}
+                      className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-600"
+                    >
+                      <div className="flex flex-col items-start">
+                        <span className="font-medium text-gray-700 dark:text-gray-300 text-base">
+                          {resident.name}
                         </span>
-                      </li>
-                    ))}
-                  </ul>
-                  <p className="border-t pt-3 mt-3 border-orange-300 dark:border-gray-600 text-xl font-bold">
-                    Tổng số ngày có mặt của tất cả:{' '}
-                    <span className="text-orange-800 dark:text-orange-200">{totalCalculatedDaysAllResidents} ngày</span>
-                  </p>
-
-                  <>
-                    <p className="mt-3 text-xl font-bold">
-                      Chi phí trung bình 1 ngày 1 người:{' '}
-                      <span className="text-orange-800 dark:text-orange-200">
-                        {costPerDayPerPerson.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} VND
-                      </span>
-                    </p>
-                    <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200 mt-5 mb-3">
-                      Số tiền mỗi người cần đóng:
-                    </h3>
-                    <ul className="space-y-2">
-                      {/* Sắp xếp cư dân để hiển thị dựa trên số ngày có mặt và sau đó là chi phí */}
-                      {[...residents]
-                        .sort((a, b) => {
-                          const daysA = calculatedDaysPresent[a.id] || 0;
-                          const daysB = calculatedDaysPresent[b.id] || 0;
-                          const costA = individualCosts[a.id]?.cost || 0;
-                          const costB = individualCosts[b.id]?.cost || 0;
-
-                          if (daysA !== daysB) {
-                            return daysB - daysA;
-                          }
-                          return costB - costA;
-                        })
-                        .map((resident) => (
-                          <li
-                            key={resident.id}
-                            className="flex justify-between items-center bg-gray-50 dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
-                          >
-                            <span className="font-medium text-gray-700 dark:text-gray-300">{resident.name}:</span>
-                            <span className="font-bold">
-                              {(individualCosts[resident.id]?.cost || 0).toLocaleString('vi-VN')} VND
-                            </span>
-                          </li>
-                        ))}
-                    </ul>
-                    <p className="border-t pt-3 mt-3 border-orange-300 dark:border-gray-600 text-xl font-bold">
-                      Quỹ phòng còn lại:{' '}
-                      <span
-                        className={`font-bold ${remainingFund >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}
-                      >
-                        {remainingFund.toLocaleString('vi-VN')} VND
-                      </span>
-                    </p>
-
-                    {/* ===== KHỐI CẬP NHẬT QUỸ PHÒNG - BẮT ĐẦU ===== */}
-                    <div className="mt-6 pt-4 border-t border-dashed border-orange-300 dark:border-gray-600">
-                      <h4 className="text-lg font-bold text-orange-800 dark:text-orange-200 mb-2">
-                        Cập nhật lại số tiền quỹ
-                      </h4>
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="number"
-                          value={fundInputValue}
-                          onChange={(e) => setFundInputValue(e.target.value)}
-                          className="flex-1 shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-gray-700"
-                          placeholder="Nhập số tiền quỹ mới..."
-                        />
-                        <button
-                          onClick={handleUpdateFundManually}
-                          className="px-4 py-2 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all duration-300"
-                        >
-                          Cập nhật
-                        </button>
-                      </div>
-                      {billingError && <p className="text-red-500 text-sm mt-2">{billingError}</p>}
-                    </div>
-                    {/* ===== KHỐI CẬP NHẬT QUỸ PHÒNG - KẾT THÚC ===== */}
-
-                    {/* ===== KHỐC GHI NHẬN CHI TIÊU QUỸ - BẮT ĐẦU ===== */}
-                    <div className="mt-8 pt-6 border-t border-orange-300 dark:border-gray-600">
-                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200">
-                          Lịch sử chi tiêu quỹ phòng
-                        </h3>
-                        <button
-                          onClick={() => setShowAddExpenseModal(true)}
-                          className="bg-orange-500 text-white rounded-full w-10 h-10 flex items-center justify-center shadow-md hover:bg-orange-600 transition"
-                          title="Thêm chi tiêu mới"
-                        >
-                          <i className="fas fa-plus"></i>
-                        </button>
-                      </div>
-
-                      <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
-                        {fundExpenses.length > 0 ? (
-                          fundExpenses.map(expense => (
-                            <div key={expense.id} className="bg-white dark:bg-gray-800 p-3 rounded-lg flex justify-between items-center text-sm">
-                              <div>
-                                <p className="font-semibold text-gray-800 dark:text-gray-200">{expense.description}</p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">
-                                  {expense.spentAt?.toDate().toLocaleDateString('vi-VN')}
-                                </p>
-                              </div>
-                              <p className="font-bold text-red-600">
-                                - {expense.amount.toLocaleString('vi-VN')} VND
-                              </p>
-                            </div>
-                          ))
-                        ) : (
-                          <p className="text-gray-500 dark:text-gray-400 italic text-center">Chưa có chi tiêu nào được ghi nhận.</p>
+                        {resident.createdAt && typeof resident.createdAt.toDate === 'function' && (
+                          <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Thêm vào: {resident.createdAt.toDate().toLocaleDateString('vi-VN')}
+                          </span>
+                        )}
+                        {resident.isActive === false && (
+                          <span className="text-xs text-red-500 dark:text-red-400 mt-1 font-semibold">
+                            (Đã vô hiệu hóa)
+                          </span>
+                        )}
+                        {resident.linkedUserId && (
+                          <span className="text-xs text-blue-500 dark:text-blue-400 mt-1">
+                            (Đã liên kết với Người dùng)
+                          </span>
                         )}
                       </div>
-                    </div>
-                    {/* ===== KHỐI GHI NHẬN CHI TIÊU QUỸ - KẾT THÚC ===== */}
-
-
-                    {/* ===== POPUP THÊM CHI TIÊU MỚI ===== */}
-                    {showAddExpenseModal && (
-                      <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4">
-                        <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md">
-                          <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
-                            Thêm chi tiêu từ quỹ
-                          </h3>
-                          <form onSubmit={handleAddFundExpense} className="space-y-4">
-                            <div>
-                              <label htmlFor="expenseDesc" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                                Nội dung chi tiêu:
-                              </label>
-                              <input
-                                type="text"
-                                id="expenseDesc"
-                                value={newExpenseDescription}
-                                onChange={(e) => setNewExpenseDescription(e.target.value)}
-                                className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4"
-                                required
-                                placeholder="Ví dụ: Mua nước rửa chén, giấy vệ sinh..."
-                              />
-                            </div>
-                            <div>
-                              <label htmlFor="expenseAmount" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                                Số tiền:
-                              </label>
-                              <input
-                                type="number"
-                                id="expenseAmount"
-                                value={newExpenseAmount}
-                                onChange={(e) => setNewExpenseAmount(e.target.value)}
-                                className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4"
-                                required
-                                placeholder="Nhập số tiền đã chi..."
-                              />
-                            </div>
-                            {billingError && <p className="text-red-500 text-sm text-center">{billingError}</p>}
-                            <div className="flex space-x-4 mt-6">
-                              <button
-                                type="button"
-                                onClick={() => { setShowAddExpenseModal(false); setBillingError(''); }}
-                                className="w-1/2 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400"
-                              >
-                                Hủy
-                              </button>
-                              <button
-                                type="submit"
-                                className="w-1/2 px-6 py-3 bg-orange-600 text-white font-semibold rounded-xl shadow-md hover:bg-orange-700"
-                              >
-                                Thêm
-                              </button>
-                            </div>
-                          </form>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                </div>
-              )}
-            </div>
-          );
-        case 'billHistory':
-          return (
-            <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Lịch sử tiền điện nước</h2>
-              {billHistory.length === 0 ? (
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
-                  Chưa có hóa đơn nào được lưu.
-                </p>
-              ) : (
-                <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-                  <table className="min-w-full bg-white dark:bg-gray-800">
-                    <thead>
-                      <tr>
-                        <th className="py-3 px-6 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">
-                          Ngày tính
-                        </th>
-                        <th className="py-3 px-6 text-right text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">
-                          Tổng tiền
-                        </th>
-                        <th className="py-3 px-6 text-center text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">
-                          Người ghi nhận
-                        </th>
-                        <th className="py-3 px-6 text-center text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">
-                          Trạng thái
-                        </th>
-                        <th className="py-3 px-6 text-center text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">
-                          Chi tiết
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
-                      {billHistory.map((bill) => (
-                        <tr
-                          key={bill.id}
-                          className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+                      {resident.isActive ? (
+                        <button
+                          onClick={() => handleToggleResidentActiveStatus(resident.id, resident.name, true)}
+                          className="ml-4 px-3 py-1 bg-red-500 text-white text-sm rounded-lg shadow-sm hover:bg-red-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-400"
                         >
-                          <td className="py-3 px-6 text-left whitespace-nowrap">
-                            {bill.billDate && bill.billDate instanceof Date
-                              ? bill.billDate.toLocaleDateString('vi-VN')
-                              : 'N/A'}
-                          </td>
-                          <td className="py-3 px-6 text-right whitespace-nowrap font-bold text-blue-700 dark:text-blue-300">
-                            {bill.totalCost?.toLocaleString('vi-VN') || 0} VND
-                          </td>
-                          <td className="py-3 px-6 text-center whitespace-nowrap">{bill.recordedBy || 'N/A'}</td>
-                          <td className="py-3 px-6 text-center">
-                            <input
-                              type="checkbox"
-                              checked={bill.isPaid || false}
-                              onChange={() => handleToggleBillPaidStatus(bill.id, bill.isPaid || false)}
-                              className="form-checkbox h-5 w-5 text-green-600 dark:text-green-400 rounded cursor-pointer"
-                            />
-                            <span
-                              className={`ml-2 font-semibold ${bill.isPaid ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}
-                            >
-                              {bill.isPaid ? 'Đã trả' : 'Chưa trả'}
-                            </span>
-                          </td>
-                          <td className="py-3 px-6 text-center">
-                            <button
-                              onClick={() => setSelectedBillDetails(bill)}
-                              className="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg shadow-sm hover:bg-blue-600 transition-colors"
-                            >
-                              Xem
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          );
-        case 'costSharingHistory':
-          return (
-            <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg mt-8 max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">Lịch sử chia tiền</h2>
-              {costSharingHistory.length === 0 ? (
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
-                  Chưa có lịch sử chia tiền nào được lưu.
-                </p>
-              ) : (
-                <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-                  <table className="min-w-full bg-white dark:bg-gray-800">
-                    <thead>
-                      <tr>
-                        <th className="py-3 px-6 text-left text-yellow-800 dark:text-yellow-200 uppercase text-sm leading-normal bg-yellow-100 dark:bg-gray-700">
-                          Kỳ tính
-                        </th>
-                        <th className="py-3 px-6 text-right text-yellow-800 dark:text-yellow-200 uppercase text-sm leading-normal bg-yellow-100 dark:bg-gray-700">
-                          Tổng ngày có mặt
-                        </th>
-                        <th className="py-3 px-6 text-right text-yellow-800 dark:text-yellow-200 uppercase text-sm leading-normal bg-yellow-100 dark:bg-gray-700">
-                          Quỹ phòng
-                        </th>
-                        <th className="py-3 px-6 text-center text-yellow-800 dark:text-yellow-200 uppercase text-sm leading-normal bg-yellow-100 dark:bg-gray-700">
-                          Chi tiết
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
-                      {costSharingHistory.map((summary) => (
-                        <tr
-                          key={summary.id}
-                          className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+                          Vô hiệu hóa
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleToggleResidentActiveStatus(resident.id, resident.name, false)}
+                          className="ml-4 px-3 py-1 bg-green-500 text-white text-sm rounded-lg shadow-sm hover:bg-green-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-400"
                         >
-                          <td className="py-3 px-6 text-left whitespace-nowrap">
-                            {summary.periodStart} đến {summary.periodEnd}
-                          </td>
-                          <td className="py-3 px-6 text-right whitespace-nowrap">
-                            {summary.totalCalculatedDaysAllResidents} ngày
-                          </td>
-                          <td className="py-3 px-6 text-right whitespace-nowrap">
-                            <span
-                              className={`font-bold ${summary.remainingFund >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}
-                            >
-                              {summary.remainingFund?.toLocaleString('vi-VN')} VND
-                            </span>
-                          </td>
-                          <td className="py-3 px-6 text-center">
-                            <button
-                              onClick={() => setSelectedCostSharingDetails(summary)}
-                              className="px-3 py-1 bg-yellow-600 text-white text-xs rounded-lg shadow-sm hover:bg-yellow-700 transition-colors"
-                            >
-                              Xem
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          );
-        case 'cleaningSchedule':
-          return (
-            <div className="p-6 bg-purple-50 dark:bg-gray-700 rounded-2xl shadow-lg mt-8 max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-purple-800 dark:text-purple-200 mb-5">Lịch trực phòng lau dọn</h2>
-              <div className="flex flex-col sm:flex-row gap-3 mb-4">
-                <input
-                  type="text"
-                  value={newCleaningTaskName}
-                  onChange={(e) => {
-                    setNewCleaningTaskName(e.target.value);
-                    setAuthError('');
-                  }}
-                  className="flex-1 shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
-                  placeholder="Tên công việc (ví dụ: Lau sàn)"
-                />
-                <input
-                  type="date"
-                  value={newCleaningTaskDate}
-                  onChange={(e) => {
-                    setNewCleaningTaskDate(e.target.value);
-                    setAuthError('');
-                  }}
-                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
-                />
-                <select
-                  value={selectedResidentForCleaning}
-                  onChange={(e) => {
-                    setSelectedResidentForCleaning(e.target.value);
-                    setAuthError('');
-                  }}
-                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
-                >
-                  <option value="">-- Chọn người --</option>
-                  {residents
-                    .filter((res) => res.isActive !== false)
-                    .map((resident) => (
-                      <option key={resident.id} value={resident.id}>
-                        {resident.name}
-                      </option>
-                    ))}
-                </select>
-                <button
-                  onClick={handleAddCleaningTask}
-                  className="px-6 py-2 bg-purple-600 text-white font-semibold rounded-xl shadow-md hover:bg-purple-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75"
-                >
-                  <i className="fas fa-plus mr-2"></i> Thêm công việc
-                </button>
-              </div>
-              <button
-                onClick={() => setShowGenerateScheduleModal(true)} // Nút để mở modal tạo lịch
-                className="w-full px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl shadow-md hover:bg-indigo-700 transition-all duration-300"
-                disabled={residents.filter((res) => res.isActive !== false).length === 0} // Vô hiệu hóa nếu không có cư dân hoạt động
-              >
-                ✨ Tạo lịch tự động
-              </button>
-              {cleaningSchedule.length === 0 ? (
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
-                  Chưa có công việc lau dọn nào được lên lịch.
-                </p>
-              ) : (
-                <div className="max-h-60 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-xl p-3 bg-gray-50 dark:bg-gray-700">
-                  <h3 className="text-xl font-semibold text-purple-700 dark:text-purple-200 mb-3">
-                    Lịch trực hiện có:
-                  </h3>
-                  <ul className="space-y-2">
-                    {cleaningSchedule.map((task) => (
-                      <li
-                        key={task.id}
-                        className="flex items-center justify-between bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
-                      >
-                        <div className="flex flex-col items-start">
-                          <span className="font-medium text-gray-700 dark:text-gray-300">
-                            {task.name} ({task.assignedToResidentName})
-                          </span>
-                          <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">Ngày: {task.date}</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <input
-                            type="checkbox"
-                            checked={task.isCompleted || false}
-                            onChange={() => handleToggleCleaningTaskCompletion(task.id, task.isCompleted || false)}
-                            className="form-checkbox h-5 w-5 text-green-600 dark:text-green-400 rounded focus:ring-green-500 cursor-pointer"
-                          />
-                          <button
-                            onClick={() => handleDeleteCleaningTask(task.id, task.name)}
-                            className="px-3 py-1 bg-red-500 text-white text-sm rounded-lg shadow-sm hover:bg-red-600 transition-colors"
-                          >
-                            Xóa
-                          </button>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          );
-        case 'shoeRackManagement':
-          return (
-            <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">Quản lý kệ giày</h2>
-              <div className="flex flex-col sm:flex-row gap-3 mb-4">
-                <select
-                  value={selectedShelfNumber}
-                  onChange={(e) => {
-                    setSelectedShelfNumber(e.target.value);
-                    setAuthError('');
-                  }}
-                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white dark:bg-gray-700"
-                >
-                  <option value="">-- Chọn tầng kệ --</option>
-                  {[...Array(8)].map((_, i) => (
-                    <option key={i + 1} value={i + 1}>
-                      Tầng {i + 1}
-                    </option>
+                          Kích hoạt lại
+                        </button>
+                      )}
+                      {resident.isActive && resident.linkedUserId && (
+                        <button
+                          onClick={() => handleMoveToFormerResidents(resident.id, resident.linkedUserId)}
+                          className="ml-2 px-3 py-1 bg-indigo-500 text-white text-sm rounded-lg shadow-sm hover:bg-indigo-600 transition-colors duration-200"
+                        >
+                          Chuyển tiền bối
+                        </button>
+                      )}
+                    </li>
                   ))}
-                </select>
-                <select
-                  value={selectedResidentForShelf}
-                  onChange={(e) => {
-                    setSelectedResidentForShelf(e.target.value);
-                    setAuthError('');
-                  }}
-                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white dark:bg-gray-700"
-                >
-                  <option value="">-- Chọn người --</option>
-                  {residents
-                    .filter((res) => res.isActive !== false)
-                    .map((resident) => (
-                      <option key={resident.id} value={resident.id}>
-                        {resident.name}
-                      </option>
-                    ))}
-                </select>
-                <button
-                  onClick={handleAssignShoeRack}
-                  className="px-6 py-2 bg-yellow-600 text-white font-semibold rounded-xl shadow-md hover:bg-yellow-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-75"
-                  disabled={!selectedShelfNumber || !selectedResidentForShelf}
-                >
-                  <i className="fas fa-shoe-prints mr-2"></i> Gán kệ
-                </button>
+                </ul>
               </div>
-              {Object.keys(shoeRackAssignments).length === 0 ? (
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
-                  Chưa có kệ giày nào được gán.
-                </p>
-              ) : (
-                <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-inner border border-gray-200 dark:border-gray-700">
-                  <h3 className="text-xl font-semibold text-yellow-700 dark:text-yellow-200 mb-3">
-                    Phân công kệ giày:
-                  </h3>
-                  <ul className="space-y-3">
-                    {[...Array(8)].map((_, i) => {
-                      const shelfNum = i + 1;
-                      const assignment = shoeRackAssignments[shelfNum];
-                      const isMyShelf =
-                        loggedInResidentProfile && assignment && assignment.residentId === loggedInResidentProfile.id;
-                      return (
-                        <li
-                          key={shelfNum}
-                          className={`flex items-center justify-between p-3 rounded-lg shadow-sm border ${isMyShelf ? 'bg-yellow-200 dark:bg-yellow-900 border-yellow-400' : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600'}`}
-                        >
-                          <span
-                            className={`font-medium ${isMyShelf ? 'text-yellow-900 dark:text-yellow-100' : 'text-gray-700 dark:text-gray-300'}`}
-                          >
-                            Tầng {shelfNum}:
-                          </span>
-                          {assignment ? (
-                            <span
-                              className={`font-bold ${isMyShelf ? 'text-yellow-800 dark:text-yellow-200' : 'text-yellow-700 dark:text-yellow-300'}`}
-                            >
-                              {assignment.residentName}
-                              {userRole === 'admin' && ( // Chỉ hiển thị nút xóa cho admin
-                                <button
-                                  onClick={() => handleClearShoeRackAssignment(shelfNum)}
-                                  className="ml-3 px-2 py-1 bg-red-500 text-white text-xs rounded-lg shadow-sm hover:bg-red-600 transition-colors"
-                                >
-                                  Xóa
-                                </button>
-                              )}
-                            </span>
-                          ) : (
-                            <span className="text-gray-500 dark:text-gray-400 italic">Trống</span>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              )}
-            </div>
-          );
-          case 'commonRoomInfo':
-            // Phân quyền hiển thị ngay tại đây
-            if (userRole === 'admin') {
-              // ===== GIAO DIỆN "THẺ THÀNH VIÊN" CHO ADMIN =====
-              return (
-                <div className="p-4 md:p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg w-full">
-                  <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">
-                    Thông tin phòng chung
-                  </h2>
-                  {residents.length === 0 ? (
-                    <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
-                      Chưa có người ở nào trong danh sách.
-                    </p>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {residents.map((resident) => {
-                        const linkedUser = allUsersData.find((user) => user.linkedResidentId === resident.id);
-                        return (
-                          <div key={resident.id} className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 flex flex-col justify-between transition-transform transform hover:scale-105 duration-300">
-                            {/* Phần Header của Thẻ */}
-                            <div className="flex items-start mb-4">
-                              <div className="relative group"> {/* Thêm 'group' để tạo hiệu ứng hover */}
-                                {linkedUser?.photoURL ? (
-                                  <img src={linkedUser.photoURL} alt="Avatar" className="w-16 h-16 rounded-full object-cover border-2 border-gray-200 dark:border-gray-600"/>
-                                ) : (
-                                  <div className="w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-3xl text-gray-400">
-                                    <i className="fas fa-user-circle"></i>
-                                  </div>
-                                )}
-                                <span className={`absolute bottom-0 right-0 block h-4 w-4 rounded-full border-2 border-white dark:border-gray-800 ${resident.isActive ? 'bg-green-500' : 'bg-gray-400'}`}></span>
-                                
-                                {/* ===== NÚT THAY ĐỔI AVATAR ĐƯỢC THÊM VÀO ĐÂY ===== */}
-                                {linkedUser && (
-                                  <button 
-                                    onClick={() => setSelectedResidentForAvatarUpload(linkedUser)}
-                                    className="absolute inset-0 w-16 h-16 rounded-full bg-black bg-opacity-0 group-hover:bg-opacity-50 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                                    title="Thay đổi ảnh đại diện"
-                                  >
-                                    <i className="fas fa-camera text-xl"></i>
-                                  </button>
-                                )}
-                              </div>
-                              <div className="ml-4">
-                                <p className="font-bold text-lg text-gray-900 dark:text-white break-words">{linkedUser?.fullName || resident.name}</p>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">{linkedUser?.role === 'admin' ? 'Quản trị viên' : 'Thành viên'}</p>
-                              </div>
-                            </div>
-                            {/* Phần Thân của Thẻ - Chi tiết */}
-                            <div className="space-y-3 text-sm">
-                              <div className="flex items-center text-gray-700 dark:text-gray-300">
-                                <i className="fas fa-id-badge w-5 text-center mr-2 text-blue-500"></i>
-                                <span>{linkedUser?.studentId || 'N/A'}</span>
-                              </div>
-                              <div className="flex items-center text-gray-700 dark:text-gray-300">
-                                <i className="fas fa-envelope w-5 text-center mr-2 text-blue-500"></i>
-                                <span>{linkedUser?.email || 'N/A'}</span>
-                              </div>
-                              <div className="flex items-center text-gray-700 dark:text-gray-300">
-                                <i className="fas fa-phone w-5 text-center mr-2 text-blue-500"></i>
-                                <span>{linkedUser?.phoneNumber || 'N/A'}</span>
-                              </div>
-                            </div>
-                            {/* Phần Footer của Thẻ - Hành động (Admin) */}
-                            <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end space-x-2">
-                              {linkedUser && linkedUser.role === 'member' && (
-                                  <button
-                                    onClick={() => handleToggleAttendancePermission(linkedUser.id, linkedUser.canTakeAttendance || false)}
-                                    className={`px-3 py-1 text-white text-xs rounded-lg shadow-sm ${
-                                      linkedUser.canTakeAttendance 
-                                      ? 'bg-red-500 hover:bg-red-600' 
-                                      : 'bg-green-500 hover:bg-green-600'
-                                    }`}
-                                    title={linkedUser.canTakeAttendance ? 'Thu hồi quyền điểm danh' : 'Trao quyền điểm danh'}
-                                  >
-                                    <i className="fas fa-tasks"></i>
-                                  </button>
-                              )}
-                              <button
-                                onClick={() => handleEditCommonResidentDetails(resident)}
-                                className="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg shadow-sm hover:bg-blue-600"
-                                title="Điều chỉnh thông tin"
-                              >
-                                <i className="fas fa-edit"></i>
-                              </button>
-                              {/* NÚT NÂNG CẤP VAI TRÒ */}
-                              {linkedUser && linkedUser.role === 'member' && (
-                                  <button
-                                    onClick={() => handleUpgradeToAdmin(linkedUser.id)}
-                                    className="px-3 py-1 bg-green-500 text-white text-xs rounded-lg shadow-sm hover:bg-green-600"
-                                    title="Nâng cấp vai trò"
-                                  >
-                                    <i className="fas fa-user-shield"></i>
-                                  </button>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            } else {
-              // ===== GIAO DIỆN BẢNG TRUYỀN THỐNG CHO MEMBER =====
-              return (
-                <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-                  <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Thông tin phòng chung</h2>
-                  {residents.length === 0 ? (
-                    <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
-                      Chưa có người ở nào trong danh sách.
-                    </p>
-                  ) : (
-                    <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-                      <table className="min-w-full bg-white dark:bg-gray-800">
-                        <thead>
-                          <tr>
-                            <th className="py-3 px-4 text-center text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Avatar</th>
-                            <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Họ tên</th>
-                            <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Email</th>
-                            <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">SĐT</th>
-                            <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">MSSV</th>
-                          </tr>
-                        </thead>
-                        <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
-                          {residents.map((resident) => {
-                            const linkedUser = allUsersData.find((user) => user.linkedResidentId === resident.id);
-                            return (
-                              <tr key={resident.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-                                <td className="py-3 px-4 text-center">
-                                  {linkedUser?.photoURL ? (
-                                    <img src={linkedUser.photoURL} alt="Avatar" className="w-10 h-10 rounded-full object-cover mx-auto"/>
-                                  ) : (
-                                    <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-xl mx-auto">
-                                      <i className="fas fa-user-circle"></i>
-                                    </div>
-                                  )}
-                                </td>
-                                <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.fullName || resident.name}</td>
-                                <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.email || 'N/A'}</td>
-                                <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.phoneNumber || 'N/A'}</td>
-                                <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.studentId || 'N/A'}</td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              );
-            }          
-            case 'roomMemories':
-            return (
-              <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-                {/* ===== TIÊU ĐỀ VÀ NÚT BẤM MỚI ===== */}
-                <div className="flex justify-between items-center mb-5">
-                  <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200">Kỷ niệm phòng</h2>
-                  <button
-                    onClick={() => setShowAddMemoryModal(true)}
-                    className="bg-yellow-500 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:bg-yellow-600 transition-transform transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
-                    title="Đăng kỷ niệm mới"
-                  >
-                    <i className="fas fa-plus text-xl"></i>
-                  </button>
-                </div>
+            )}
+          </div>
+        );
+        //Case điểm danh
+        case 'attendanceTracking':
+          return (
+            <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">
+                {userRole === 'admin' ? 'Điểm danh theo tháng' : 'Điểm danh của tôi'}
+              </h2>
+              <div className="mb-6 flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4">
+                <label htmlFor="monthSelector" className="font-semibold text-gray-700 dark:text-gray-300 text-lg">
+                  Chọn tháng:
+                </label>
+                <input
+                  type="month"
+                  id="monthSelector"
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700"
+                />
+              </div>
 
-                {/* Phần lọc và tìm kiếm */}
-                <div className="mb-4 flex flex-col sm:flex-row items-center justify-between space-y-3 sm:space-y-0 sm:space-x-4">
-                  <input
-                    type="text"
-                    placeholder="Tìm kiếm theo tên sự kiện..."
-                    value={searchTermMemory}
-                    onChange={(e) => setSearchTermMemory(e.target.value)}
-                    className="flex-grow shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full sm:w-auto py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white dark:bg-gray-700"
-                  />
-                  <select
-                    value={filterUploaderMemory}
-                    onChange={(e) => setFilterUploaderMemory(e.target.value)}
-                    className="shadow-sm border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white dark:bg-gray-700"
-                  >
-                    <option value="all">Tất cả người đăng</option>
-                    {allUsersData
-                      .filter((user) => user.role === 'member' || user.role === 'admin')
-                      .map((user) => (
-                        <option key={user.id} value={user.id}>
-                          {user.fullName || user.email}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-
-                {/* Danh sách kỷ niệm */}
-                {memories.length === 0 ? (
+              {/* ===== KHUNG CHỨA CÓ THANH CUỘN NGANG ===== */}
+              <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                {displayedResidents.length === 0 ? (
                   <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
-                    Chưa có kỷ niệm nào được thêm.
+                    Chưa có người ở nào để điểm danh.
                   </p>
                 ) : (
-                  <div className="max-h-[600px] overflow-y-auto p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {memories.map((memory) => (
-                        <div
-                          key={memory.id}
-                          className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden transition-transform transform hover:scale-105 duration-200"
-                          onClick={() => setSelectedMemoryDetails(memory)}
-                        >
-                          <div className="relative aspect-video bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                            {memory.files && memory.files.length > 0 ? (
-                              <>
-                                {memory.files[0].fileType === 'image' ? (
-                                  <img
-                                    src={memory.files[0].fileUrl}
-                                    alt={memory.eventName}
-                                    className="w-full h-full object-cover cursor-pointer"
-                                    onClick={() => setSelectedMemoryForLightbox(memory)}
-                                  />
-                                ) : (
-                                  <video
-                                    src={memory.files[0].fileUrl}
-                                    controls
-                                    className="w-full h-full object-cover"
-                                    onClick={() => setSelectedMemoryForLightbox(memory)}
-                                  />
-                                )}
-                                {memory.files.length > 1 && (
-                                  <span className="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded-full">
-                                    {memory.files.length} ảnh/video
-                                  </span>
-                                )}
-                              </>
-                            ) : (
-                              <div className="text-gray-500 dark:text-gray-400">Không có ảnh</div>
-                            )}
-                          </div>
-                          <div className="p-4">
-                            <h3 className="font-bold text-lg text-gray-800 dark:text-gray-200 mb-2 truncate">
-                              {memory.eventName}
-                            </h3>
-                            <p className="text-gray-600 dark:text-gray-400 text-sm mb-1">
-                              Ngày chụp: {memory.photoDate}
-                            </p>
-                            <p className="text-gray-600 dark:text-gray-400 text-sm mb-3">
-                              Đăng bởi:{' '}
-                              <span className="font-medium">
-                                {memory.uploadedByName ||
-                                  allUsersData.find((u) => u.id === memory.uploadedBy)?.fullName ||
-                                  'Người dùng ẩn danh'}
-                              </span>
-                            </p>
-                            {(userRole === 'admin' || userId === memory.uploadedBy) && (
-                              <div className="flex justify-end space-x-2">
-                                <button
-                                  onClick={() => handleEditMemory(memory)}
-                                  className="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600 transition-colors"
+                  <table className="min-w-full bg-white dark:bg-gray-800">
+                    <thead>
+                      <tr>
+                        <th className="py-3 px-4 text-left sticky left-0 z-10 bg-green-100 dark:bg-gray-700 border-r border-green-200 dark:border-gray-600 text-green-800 dark:text-green-200 uppercase text-sm font-semibold">
+                          Tên
+                        </th>
+                        {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map((day) => (
+                          <th
+                            key={day}
+                            className="py-3 px-2 text-center border-l border-green-200 dark:border-gray-600 text-green-800 dark:text-green-200 uppercase text-sm leading-normal"
+                          >
+                            {day}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
+                      {displayedResidents.map((resident) => {
+                        const isMyRow = loggedInResidentProfile && resident.id === loggedInResidentProfile.id;
+                        return (
+                          <tr
+                            key={resident.id}
+                            className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+                          >
+                            <td className="py-3 px-6 text-left whitespace-nowrap font-medium sticky left-0 bg-white dark:bg-gray-800 z-10 border-r border-gray-200 dark:border-gray-700">
+                              {resident.name}
+                            </td>
+                            {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map((day) => {
+                              const dayString = String(day).padStart(2, '0');
+                              const isPresent = monthlyAttendanceData[resident.id]?.[dayString] === 1;
+                              return (
+                                <td
+                                  key={day}
+                                  className="py-3 px-2 text-center border-l border-gray-200 dark:border-gray-700"
                                 >
-                                  Chỉnh sửa
-                                </button>
-                                <button
-                                  onClick={() =>
-                                    handleDeleteMemory(memory.id, memory.files, memory.uploadedBy)
-                                  }
-                                  className="px-3 py-1 bg-red-500 text-white text-xs rounded-lg hover:bg-red-600 transition-colors"
-                                >
-                                  Xóa
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Pagination Controls */}
-                {totalMemoriesCount > itemsPerPageMemories && (
-                  <div className="flex justify-center items-center space-x-4 mt-8">
-                    <button
-                      onClick={() => setCurrentPageMemories((prev) => Math.max(1, prev - 1))}
-                      disabled={currentPageMemories === 1}
-                      className="px-4 py-2 bg-yellow-500 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      Trang trước
-                    </button>
-                    <span className="text-gray-800 dark:text-gray-200 font-medium">
-                      Trang {currentPageMemories} / {totalPagesMemories}
-                    </span>
-                    <button
-                      onClick={() => setCurrentPageMemories((prev) => Math.min(totalPagesMemories, prev + 1))}
-                      disabled={currentPageMemories === totalPagesMemories}
-                      className="px-4 py-2 bg-yellow-500 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      Trang sau
-                    </button>
-                  </div>
-                )}
-
-                {/* POPUP ĐĂNG KỶ NIỆM MỚI */}
-                {showAddMemoryModal && (
-                  <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-                      <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
-                        Đăng Kỷ niệm mới
-                      </h3>
-                      <form onSubmit={handleAddMemory} className="space-y-4">
-                        <div>
-                          <label htmlFor="eventName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                            Tên sự kiện:
-                          </label>
-                          <input
-                            type="text"
-                            id="eventName"
-                            value={newMemoryEventName}
-                            onChange={(e) => setNewMemoryEventName(e.target.value)}
-                            className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white dark:bg-gray-700"
-                            placeholder="Ví dụ: Sinh nhật Duy, Chuyến đi Vũng Tàu"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor="photoDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                            Ngày chụp/quay:
-                          </label>
-                          <input
-                            type="date"
-                            id="photoDate"
-                            value={newMemoryPhotoDate}
-                            onChange={(e) => setNewMemoryPhotoDate(e.target.value)}
-                            className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white dark:bg-gray-700"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor="memoryImageFile" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                            Chọn ảnh/video:
-                          </label>
-                          <input
-                            type="file"
-                            id="memoryImageFile"
-                            accept="image/*,video/*"
-                            multiple
-                            onChange={(e) => setNewMemoryImageFile(Array.from(e.target.files))}
-                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-50 file:text-yellow-700 hover:file:bg-yellow-100"
-                            required
-                          />
-                          {isUploadingMemory && (
-                            <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2">
-                              <div className="bg-yellow-600 h-2.5 rounded-full" style={{ width: `${uploadProgress}%` }}></div>
-                            </div>
-                          )}
-                          {uploadProgress > 0 && uploadProgress < 100 && (
-                            <p className="text-gray-500 dark:text-gray-400 text-sm mt-1 text-right">{uploadProgress}% tải lên</p>
-                          )}
-                        </div>
-                        {memoryError && <p className="text-red-500 text-sm text-center mt-4">{memoryError}</p>}
-                        <div className="flex space-x-4 mt-6">
-                            <button
-                              type="button"
-                              onClick={() => setShowAddMemoryModal(false)}
-                              className="w-1/2 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
-                            >
-                              Hủy
-                            </button>
-                            <button
-                              type="submit"
-                              className="w-1/2 px-6 py-3 bg-yellow-600 text-white font-semibold rounded-xl shadow-md hover:bg-yellow-700 transition-all duration-300"
-                              disabled={isUploadingMemory}
-                            >
-                              {isUploadingMemory ? <i className="fas fa-spinner fa-spin"></i> : 'Đăng'}
-                            </button>
-                        </div>
-                      </form>
-                    </div>
-                  </div>
+                                  <input
+                                    type="checkbox"
+                                    checked={isPresent}
+                                    onChange={() => handleToggleDailyPresence(resident.id, day)}
+                                    disabled={userRole === 'member' && !isMyRow}
+                                    className="form-checkbox h-5 w-5 rounded focus:ring-green-500 cursor-pointer text-green-600 dark:text-green-400 dark:disabled:bg-slate-500 dark:disabled:border-slate-400 dark:disabled:checked:bg-yellow-600 dark:disabled:checked:border-transparent"
+                                  />
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 )}
               </div>
-            );          
-            case 'formerResidents':
-              const filteredFormerResidents = formerResidents.filter(resident =>
-                (resident.name?.toLowerCase().includes(searchTermFormerResident.toLowerCase())) ||
-                (resident.studentId?.toLowerCase().includes(searchTermFormerResident.toLowerCase()))
-              );
-              return (
-                <div className="p-6 bg-purple-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-                  {/* ===== TIÊU ĐỀ VÀ NÚT BẤM MỚI ===== */}
-                  <div className="flex justify-between items-center mb-5">
-                    <h2 className="text-2xl font-bold text-purple-800 dark:text-purple-200">Thông tin Tiền bối</h2>
-                    {userRole === 'admin' && (
-                      <button
-                        onClick={() => setShowAddFormerResidentModal(true)}
-                        className="bg-purple-500 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:bg-purple-600 transition-transform transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-                        title="Thêm tiền bối mới"
-                      >
-                        <i className="fas fa-user-plus text-xl"></i>
-                      </button>
-                    )}
-                  </div>
+            </div>
+          );
+        //Case tính tiền điện nước
+        case 'billing':
+            return (
+              // Container chính cho toàn bộ mục, dùng space-y để tạo khoảng cách giữa các khối
+              <div className="space-y-8">
 
-                  {/* Phần tìm kiếm (giữ nguyên) */}
-                  <div className="mb-4">
-                    <input
-                      type="text"
-                      placeholder="Tìm kiếm theo tên hoặc MSSV..."
-                      value={searchTermFormerResident}
-                      onChange={(e) => setSearchTermFormerResident(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    />
-                  </div>
+                {/* ===== KHỐI 1: TÍNH TIỀN ĐIỆN NƯỚC ===== */}
+                <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+                  <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">Tính tiền điện nước</h2>
 
-                  {/* Danh sách tiền bối */}
-                  <div className="space-y-4">
-                    {filteredFormerResidents.map((resident) => (
-                      <div key={resident.id} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md flex justify-between items-center">
-                        <div className="flex items-center">
-                          {/* Avatar */}
-                          <div className="flex-shrink-0 mr-4">
-                            {resident.photoURL ? (
-                              <img
-                                src={resident.photoURL}
-                                alt={`Avatar của ${resident.name}`}
-                                className="w-16 h-16 rounded-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 text-3xl">
-                                <i className="fas fa-user-circle"></i>
-                              </div>
-                            )}
-                          </div>
-                          {/* Thông tin chữ */}
-                          <div>
-                            <p className="font-bold text-gray-800 dark:text-white">{resident.name}</p>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">MSSV: {resident.studentId}</p>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">Liên hệ: {resident.contact}</p>
-                            {resident.notes && <p className="text-xs text-gray-500 dark:text-gray-300 mt-1">Ghi chú: {resident.notes}</p>}
-                          </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    {/* Electricity */}
+                    <div>
+                      <label htmlFor="lastElectricityReading" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                        Chỉ số điện cuối cùng (KW):
+                      </label>
+                      <input
+                        type="number"
+                        id="lastElectricityReading"
+                        value={lastElectricityReading}
+                        readOnly
+                        className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 bg-gray-100 dark:bg-gray-600 cursor-not-allowed"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="currentElectricityReading" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                        Chỉ số điện hiện tại (KW):
+                      </label>
+                      <input
+                        type="number"
+                        id="currentElectricityReading"
+                        value={currentElectricityReading}
+                        onChange={(e) => { setCurrentElectricityReading(e.target.value); setBillingError(''); }}
+                        className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 bg-white dark:bg-gray-700"
+                        placeholder="Nhập chỉ số hiện tại"
+                      />
+                    </div>
+
+                    {/* Water */}
+                    <div>
+                      <label htmlFor="lastWaterReading" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                        Chỉ số nước cuối cùng (m³):
+                      </label>
+                      <input
+                        type="number"
+                        id="lastWaterReading"
+                        value={lastWaterReading}
+                        readOnly
+                        className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 bg-gray-100 dark:bg-gray-600 cursor-not-allowed"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="currentWaterReading" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                        Chỉ số nước hiện tại (m³):
+                      </label>
+                      <input
+                        type="number"
+                        id="currentWaterReading"
+                        value={currentWaterReading}
+                        onChange={(e) => { setCurrentWaterReading(e.target.value); setBillingError(''); }}
+                        className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 bg-white dark:bg-gray-700"
+                        placeholder="Nhập chỉ số hiện tại"
+                      />
+                    </div>
+                  </div>
+                  
+                  <button
+                    onClick={calculateBill}
+                    className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all"
+                  >
+                    <i className="fas fa-calculator mr-2"></i> Tính toán chi phí
+                  </button>
+
+                  {totalCost > 0 && (
+                    <div className="mt-6 bg-blue-100 dark:bg-gray-800 p-4 rounded-xl text-lg font-semibold">
+                      <p>Tiền điện: <span className="text-blue-700 dark:text-blue-300">{electricityCost.toLocaleString('vi-VN')} VND</span></p>
+                      <p>Tiền nước: <span className="text-blue-700 dark:text-blue-300">{waterCost.toLocaleString('vi-VN')} VND</span></p>
+                      <p className="border-t pt-3 mt-3 text-xl font-bold">
+                        Tổng cộng: <span className="text-blue-800 dark:text-blue-200">{totalCost.toLocaleString('vi-VN')} VND</span>
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* ===== KHỐI 2: CÀI ĐẶT GIÁ ĐIỆN & NƯỚC ===== */}
+                <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+                  <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">
+                    Cài đặt giá điện & nước
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                    <div>
+                      <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                        Giá điện hiện tại (VND/KW):
+                      </label>
+                      <input
+                        type="text"
+                        value={`${electricityRate.toLocaleString('vi-VN')} VND`}
+                        readOnly
+                        className="shadow-sm border rounded-xl w-full py-2 px-4 bg-gray-100 dark:bg-gray-600 cursor-not-allowed"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                        Giá nước hiện tại (VND/m³):
+                      </label>
+                      <input
+                        type="text"
+                        value={`${waterRate.toLocaleString('vi-VN')} VND`}
+                        readOnly
+                        className="shadow-sm border rounded-xl w-full py-2 px-4 bg-gray-100 dark:bg-gray-600 cursor-not-allowed"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="newElecRate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                        Nhập giá điện mới:
+                      </label>
+                      <input
+                        type="number"
+                        id="newElecRate"
+                        value={newElectricityRate}
+                        onChange={(e) => setNewElectricityRate(e.target.value)}
+                        className="shadow-sm border rounded-xl w-full py-2 px-4 bg-white dark:bg-gray-700"
+                        placeholder="Ví dụ: 2600"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="newWatRate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                        Nhập giá nước mới:
+                      </label>
+                      <input
+                        type="number"
+                        id="newWatRate"
+                        value={newWaterRate}
+                        onChange={(e) => setNewWaterRate(e.target.value)}
+                        className="shadow-sm border rounded-xl w-full py-2 px-4 bg-white dark:bg-gray-700"
+                        placeholder="Ví dụ: 4500"
+                      />
+                    </div>
+                  </div>
+                  {billingError && <p className="text-red-500 text-sm text-center mb-4">{billingError}</p>}
+                  <button
+                    onClick={handleUpdateRates}
+                    className="w-full px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all"
+                  >
+                    Lưu thay đổi giá
+                  </button>
+                </div>
+                {/* ===== KHỐI 3: CÀI ĐẶT MÃ QR THANH TOÁN ===== */}
+                <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+                  <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">
+                    Cài đặt QR Thanh toán
+                  </h2>
+                  <div className="flex flex-col md:flex-row items-center gap-6">
+                    {/* Phần xem trước QR */}
+                    <div className="flex-shrink-0">
+                      <p className="text-center text-sm font-semibold mb-2">Mã QR hiện tại:</p>
+                      {qrCodeUrl ? (
+                        <img src={qrCodeUrl} alt="Mã QR thanh toán" className="w-40 h-40 object-contain border rounded-lg bg-white"/>
+                      ) : (
+                        <div className="w-40 h-40 border rounded-lg bg-gray-100 flex items-center justify-center text-gray-400">
+                          Chưa có mã QR
                         </div>
-                        {userRole === 'admin' && (
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={() => handleEditFormerResident (resident)}
-                              className="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600"
-                            >
-                              Sửa
-                            </button>
-                            <button
-                              onClick={() => handleDeleteFormerResident(resident.id)}
-                              className="px-3 py-1 bg-red-500 text-white text-xs rounded-lg hover:bg-red-600"
-                            >
-                              Xóa
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                      )}
+                    </div>
+                    {/* Phần tải lên */}
+                    <div className="flex-1 w-full">
+                      <label htmlFor="qrCodeFile" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                        Tải lên mã QR mới:
+                      </label>
+                      <input
+                        type="file"
+                        id="qrCodeFile"
+                        accept="image/*"
+                        onChange={(e) => setNewQrCodeFile(e.target.files[0])}
+                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      />
+                      <button
+                        onClick={handleUploadQrCode}
+                        className="w-full mt-4 px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700"
+                        disabled={isUploadingQrCode || !newQrCodeFile}
+                      >
+                        {isUploadingQrCode ? 'Đang tải lên...' : 'Lưu mã QR mới'}
+                      </button>
+                    </div>
                   </div>
+                </div>
 
-                  {/* ===== POPUP THÊM TIỀN BỐI MỚI ===== */}
-                  {showAddFormerResidentModal && (
+              </div>
+            );
+        //Case chia tiền điện nước
+        case 'costSharing':
+        return (
+          <div className="p-6 bg-orange-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+            <h2 className="text-2xl font-bold text-orange-800 dark:text-orange-200 mb-5">
+              Tính ngày có mặt & Chia tiền
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div>
+                <label htmlFor="startDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                  Ngày bắt đầu:
+                </label>
+                <input
+                  type="date"
+                  id="startDate"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700"
+                />
+              </div>
+              <div>
+                <label htmlFor="endDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                  Ngày kết thúc:
+                </label>
+                <input
+                  type="date"
+                  id="endDate"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700"
+                />
+              </div>
+            </div>
+            <button
+              onClick={calculateAttendanceDays}
+              className="w-full px-6 py-3 bg-orange-600 text-white font-semibold rounded-xl shadow-md hover:bg-orange-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-75 mb-6"
+              disabled={residents.length === 0 || totalCost <= 0}
+            >
+              <i className="fas fa-calendar-check mr-2"></i> Tính ngày có mặt
+            </button>
+
+            {totalCalculatedDaysAllResidents > 0 && totalCost > 0 && (
+              <div className="bg-orange-100 dark:bg-gray-700 p-4 rounded-xl shadow-inner text-lg font-semibold text-orange-900 dark:text-orange-100 border border-orange-200 dark:border-gray-600">
+                <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200 mb-3">
+                  Kết quả điểm danh theo ngày:
+                </h3>
+                <ul className="space-y-2 mb-3">
+                  {residents.map((resident) => (
+                    <li
+                      key={resident.id}
+                      className="flex justify-between items-center bg-gray-50 dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+                    >
+                      <span className="font-medium text-gray-700 dark:text-gray-300">{resident.name}:</span>
+                      <span className="text-orange-700 dark:text-orange-300 font-bold">
+                        {calculatedDaysPresent[resident.id] || 0} ngày
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="border-t pt-3 mt-3 border-orange-300 dark:border-gray-600 text-xl font-bold">
+                  Tổng số ngày có mặt của tất cả:{' '}
+                  <span className="text-orange-800 dark:text-orange-200">{totalCalculatedDaysAllResidents} ngày</span>
+                </p>
+
+                <>
+                  <p className="mt-3 text-xl font-bold">
+                    Chi phí trung bình 1 ngày 1 người:{' '}
+                    <span className="text-orange-800 dark:text-orange-200">
+                      {costPerDayPerPerson.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} VND
+                    </span>
+                  </p>
+                  <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200 mt-5 mb-3">
+                    Số tiền mỗi người cần đóng:
+                  </h3>
+                  <ul className="space-y-2">
+                    {/* Sắp xếp cư dân để hiển thị dựa trên số ngày có mặt và sau đó là chi phí */}
+                    {[...residents]
+                      .sort((a, b) => {
+                        const daysA = calculatedDaysPresent[a.id] || 0;
+                        const daysB = calculatedDaysPresent[b.id] || 0;
+                        const costA = individualCosts[a.id]?.cost || 0;
+                        const costB = individualCosts[b.id]?.cost || 0;
+
+                        if (daysA !== daysB) {
+                          return daysB - daysA;
+                        }
+                        return costB - costA;
+                      })
+                      .map((resident) => (
+                        <li
+                          key={resident.id}
+                          className="flex justify-between items-center bg-gray-50 dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+                        >
+                          <span className="font-medium text-gray-700 dark:text-gray-300">{resident.name}:</span>
+                          <span className="font-bold">
+                            {(individualCosts[resident.id]?.cost || 0).toLocaleString('vi-VN')} VND
+                          </span>
+                        </li>
+                      ))}
+                  </ul>
+                  <p className="border-t pt-3 mt-3 border-orange-300 dark:border-gray-600 text-xl font-bold">
+                    Quỹ phòng còn lại:{' '}
+                    <span
+                      className={`font-bold ${remainingFund >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}
+                    >
+                      {remainingFund.toLocaleString('vi-VN')} VND
+                    </span>
+                  </p>
+
+                  {/* ===== KHỐI CẬP NHẬT QUỸ PHÒNG - BẮT ĐẦU ===== */}
+                  <div className="mt-6 pt-4 border-t border-dashed border-orange-300 dark:border-gray-600">
+                    <h4 className="text-lg font-bold text-orange-800 dark:text-orange-200 mb-2">
+                      Cập nhật lại số tiền quỹ
+                    </h4>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="number"
+                        value={fundInputValue}
+                        onChange={(e) => setFundInputValue(e.target.value)}
+                        className="flex-1 shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-gray-700"
+                        placeholder="Nhập số tiền quỹ mới..."
+                      />
+                      <button
+                        onClick={handleUpdateFundManually}
+                        className="px-4 py-2 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all duration-300"
+                      >
+                        Cập nhật
+                      </button>
+                    </div>
+                    {billingError && <p className="text-red-500 text-sm mt-2">{billingError}</p>}
+                  </div>
+                  {/* ===== KHỐI CẬP NHẬT QUỸ PHÒNG - KẾT THÚC ===== */}
+
+                  {/* ===== KHỐC GHI NHẬN CHI TIÊU QUỸ - BẮT ĐẦU ===== */}
+                  <div className="mt-8 pt-6 border-t border-orange-300 dark:border-gray-600">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200">
+                        Lịch sử chi tiêu quỹ phòng
+                      </h3>
+                      <button
+                        onClick={() => setShowAddExpenseModal(true)}
+                        className="bg-orange-500 text-white rounded-full w-10 h-10 flex items-center justify-center shadow-md hover:bg-orange-600 transition"
+                        title="Thêm chi tiêu mới"
+                      >
+                        <i className="fas fa-plus"></i>
+                      </button>
+                    </div>
+
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                      {fundExpenses.length > 0 ? (
+                        fundExpenses.map(expense => (
+                          <div key={expense.id} className="bg-white dark:bg-gray-800 p-3 rounded-lg flex justify-between items-center text-sm">
+                            <div>
+                              <p className="font-semibold text-gray-800 dark:text-gray-200">{expense.description}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {expense.spentAt?.toDate().toLocaleDateString('vi-VN')}
+                              </p>
+                            </div>
+                            <p className="font-bold text-red-600">
+                              - {expense.amount.toLocaleString('vi-VN')} VND
+                            </p>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-gray-500 dark:text-gray-400 italic text-center">Chưa có chi tiêu nào được ghi nhận.</p>
+                      )}
+                    </div>
+                  </div>
+                  {/* ===== KHỐI GHI NHẬN CHI TIÊU QUỸ - KẾT THÚC ===== */}
+
+
+                  {/* ===== POPUP THÊM CHI TIÊU MỚI ===== */}
+                  {showAddExpenseModal && (
                     <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4">
                       <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md">
                         <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
-                          Thêm Tiền bối
+                          Thêm chi tiêu từ quỹ
                         </h3>
-                        <form onSubmit={handleAddFormerResidentManually} className="space-y-4">
+                        <form onSubmit={handleAddFundExpense} className="space-y-4">
                           <div>
-                            <label htmlFor="formerResidentName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                              Họ tên:
+                            <label htmlFor="expenseDesc" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                              Nội dung chi tiêu:
                             </label>
                             <input
                               type="text"
-                              id="formerResidentName"
-                              value={newFormerResidentName}
-                              onChange={(e) => setNewFormerResidentName(e.target.value)}
-                              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700"
+                              id="expenseDesc"
+                              value={newExpenseDescription}
+                              onChange={(e) => setNewExpenseDescription(e.target.value)}
+                              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4"
                               required
+                              placeholder="Ví dụ: Mua nước rửa chén, giấy vệ sinh..."
                             />
                           </div>
                           <div>
-                            <label htmlFor="formerResidentStudentId" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                              Mã số sinh viên:
+                            <label htmlFor="expenseAmount" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                              Số tiền:
                             </label>
                             <input
-                              type="text"
-                              id="formerResidentStudentId"
-                              value={newFormerResidentStudentId}
-                              onChange={(e) => setNewFormerResidentStudentId(e.target.value)}
-                              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700"
+                              type="number"
+                              id="expenseAmount"
+                              value={newExpenseAmount}
+                              onChange={(e) => setNewExpenseAmount(e.target.value)}
+                              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4"
                               required
+                              placeholder="Nhập số tiền đã chi..."
                             />
                           </div>
-                          <div>
-                            <label htmlFor="formerResidentContact" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                              Thông tin liên hệ:
-                            </label>
-                            <input
-                              type="text"
-                              id="formerResidentContact"
-                              value={newFormerResidentContact}
-                              onChange={(e) => setNewFormerResidentContact(e.target.value)}
-                              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700"
-                              placeholder="SĐT, Facebook, Zalo..."
-                            />
-                          </div>
-                          <div>
-                            <label htmlFor="formerResidentNotes" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                              Ghi chú:
-                            </label>
-                            <textarea
-                              id="formerResidentNotes"
-                              value={newFormerResidentNotes}
-                              onChange={(e) => setNewFormerResidentNotes(e.target.value)}
-                              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700"
-                              rows="3"
-                              placeholder="Ví dụ: Khóa, chuyên ngành, công ty hiện tại..."
-                            ></textarea>
-                          </div>
-                          <div>
-                            <label htmlFor="formerResidentAvatar" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                              Chọn avatar:
-                            </label>
-                            <input
-                              type="file"
-                              id="formerResidentAvatar"
-                              accept="image/*"
-                              onChange={(e) => setNewFormerResidentAvatarFile(e.target.files && e.target.files.length > 0 ? e.target.files : null)}
-                              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
-                            />
-                            {isUploadingFormerResidentAvatar && (
-                              <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2">
-                                <div className="bg-purple-600 h-2.5 rounded-full" style={{ width: `${uploadFormerResidentAvatarProgress}%` }}></div>
-                              </div>
-                            )}
-                            {uploadFormerResidentAvatarProgress > 0 && uploadFormerResidentAvatarProgress < 100 && (
-                              <p className="text-gray-500 dark:text-gray-400 text-sm mt-1 text-right">{uploadFormerResidentAvatarProgress}% tải lên</p>
-                            )}
-                          </div>
+                          {billingError && <p className="text-red-500 text-sm text-center">{billingError}</p>}
                           <div className="flex space-x-4 mt-6">
                             <button
                               type="button"
-                              onClick={() => setShowAddFormerResidentModal(false)}
+                              onClick={() => { setShowAddExpenseModal(false); setBillingError(''); }}
                               className="w-1/2 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400"
                             >
                               Hủy
                             </button>
                             <button
                               type="submit"
-                              className="w-1/2 px-6 py-3 bg-purple-600 text-white font-semibold rounded-xl shadow-md hover:bg-purple-700"
+                              className="w-1/2 px-6 py-3 bg-orange-600 text-white font-semibold rounded-xl shadow-md hover:bg-orange-700"
                             >
                               Thêm
                             </button>
@@ -5378,158 +4525,895 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                       </div>
                     </div>
                   )}
-                </div>
-              );
-        default:
-          return (
-            <div className="text-center p-8 bg-gray-100 dark:bg-gray-700 rounded-xl shadow-inner">
-              <p className="text-xl text-gray-700 dark:text-gray-300 font-semibold mb-4">
-                Chào mừng Admin! Vui lòng chọn một mục từ thanh điều hướng.
+                </>
+              </div>
+            )}
+          </div>
+        );
+        //Case lịch sử tính tiền điện nước
+        case 'billHistory':
+        return (
+          <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+            <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Lịch sử tiền điện nước</h2>
+            {billHistory.length === 0 ? (
+              <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
+                Chưa có hóa đơn nào được lưu.
               </p>
+            ) : (
+              <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                <table className="min-w-full bg-white dark:bg-gray-800">
+                  <thead>
+                    <tr>
+                      <th className="py-3 px-6 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">
+                        Ngày tính
+                      </th>
+                      <th className="py-3 px-6 text-right text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">
+                        Tổng tiền
+                      </th>
+                      <th className="py-3 px-6 text-center text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">
+                        Người ghi nhận
+                      </th>
+                      <th className="py-3 px-6 text-center text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">
+                        Trạng thái
+                      </th>
+                      <th className="py-3 px-6 text-center text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">
+                        Chi tiết
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
+                    {billHistory.map((bill) => (
+                      <tr
+                        key={bill.id}
+                        className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+                      >
+                        <td className="py-3 px-6 text-left whitespace-nowrap">
+                          {bill.billDate && bill.billDate instanceof Date
+                            ? bill.billDate.toLocaleDateString('vi-VN')
+                            : 'N/A'}
+                        </td>
+                        <td className="py-3 px-6 text-right whitespace-nowrap font-bold text-blue-700 dark:text-blue-300">
+                          {bill.totalCost?.toLocaleString('vi-VN') || 0} VND
+                        </td>
+                        <td className="py-3 px-6 text-center whitespace-nowrap">{bill.recordedBy || 'N/A'}</td>
+                        <td className="py-3 px-6 text-center">
+                          <input
+                            type="checkbox"
+                            checked={bill.isPaid || false}
+                            onChange={() => handleToggleBillPaidStatus(bill.id, bill.isPaid || false)}
+                            className="form-checkbox h-5 w-5 text-green-600 dark:text-green-400 rounded cursor-pointer"
+                          />
+                          <span
+                            className={`ml-2 font-semibold ${bill.isPaid ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}
+                          >
+                            {bill.isPaid ? 'Đã trả' : 'Chưa trả'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-6 text-center">
+                          <button
+                            onClick={() => setSelectedBillDetails(bill)}
+                            className="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg shadow-sm hover:bg-blue-600 transition-colors"
+                          >
+                            Xem
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        );
+        //Case lịch sử chia tiền điện nước
+        case 'costSharingHistory':
+        return (
+          <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg mt-8 max-w-5xl mx-auto">
+            <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">Lịch sử chia tiền</h2>
+            {costSharingHistory.length === 0 ? (
+              <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
+                Chưa có lịch sử chia tiền nào được lưu.
+              </p>
+            ) : (
+              <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                <table className="min-w-full bg-white dark:bg-gray-800">
+                  <thead>
+                    <tr>
+                      <th className="py-3 px-6 text-left text-yellow-800 dark:text-yellow-200 uppercase text-sm leading-normal bg-yellow-100 dark:bg-gray-700">
+                        Kỳ tính
+                      </th>
+                      <th className="py-3 px-6 text-right text-yellow-800 dark:text-yellow-200 uppercase text-sm leading-normal bg-yellow-100 dark:bg-gray-700">
+                        Tổng ngày có mặt
+                      </th>
+                      <th className="py-3 px-6 text-right text-yellow-800 dark:text-yellow-200 uppercase text-sm leading-normal bg-yellow-100 dark:bg-gray-700">
+                        Quỹ phòng
+                      </th>
+                      <th className="py-3 px-6 text-center text-yellow-800 dark:text-yellow-200 uppercase text-sm leading-normal bg-yellow-100 dark:bg-gray-700">
+                        Chi tiết
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
+                    {costSharingHistory.map((summary) => (
+                      <tr
+                        key={summary.id}
+                        className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+                      >
+                        <td className="py-3 px-6 text-left whitespace-nowrap">
+                          {summary.periodStart} đến {summary.periodEnd}
+                        </td>
+                        <td className="py-3 px-6 text-right whitespace-nowrap">
+                          {summary.totalCalculatedDaysAllResidents} ngày
+                        </td>
+                        <td className="py-3 px-6 text-right whitespace-nowrap">
+                          <span
+                            className={`font-bold ${summary.remainingFund >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}
+                          >
+                            {summary.remainingFund?.toLocaleString('vi-VN')} VND
+                          </span>
+                        </td>
+                        <td className="py-3 px-6 text-center">
+                          <button
+                            onClick={() => setSelectedCostSharingDetails(summary)}
+                            className="px-3 py-1 bg-yellow-600 text-white text-xs rounded-lg shadow-sm hover:bg-yellow-700 transition-colors"
+                          >
+                            Xem
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        );
+        //Case quản lý lịch trực phòng
+        case 'cleaningSchedule':
+        return (
+          <div className="p-6 bg-purple-50 dark:bg-gray-700 rounded-2xl shadow-lg mt-8 max-w-5xl mx-auto">
+            <h2 className="text-2xl font-bold text-purple-800 dark:text-purple-200 mb-5">Lịch trực phòng lau dọn</h2>
+            <div className="flex flex-col sm:flex-row gap-3 mb-4">
+              <input
+                type="text"
+                value={newCleaningTaskName}
+                onChange={(e) => {
+                  setNewCleaningTaskName(e.target.value);
+                  setAuthError('');
+                }}
+                className="flex-1 shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
+                placeholder="Tên công việc (ví dụ: Lau sàn)"
+              />
+              <input
+                type="date"
+                value={newCleaningTaskDate}
+                onChange={(e) => {
+                  setNewCleaningTaskDate(e.target.value);
+                  setAuthError('');
+                }}
+                className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
+              />
+              <select
+                value={selectedResidentForCleaning}
+                onChange={(e) => {
+                  setSelectedResidentForCleaning(e.target.value);
+                  setAuthError('');
+                }}
+                className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
+              >
+                <option value="">-- Chọn người --</option>
+                {residents
+                  .filter((res) => res.isActive !== false)
+                  .map((resident) => (
+                    <option key={resident.id} value={resident.id}>
+                      {resident.name}
+                    </option>
+                  ))}
+              </select>
+              <button
+                onClick={handleAddCleaningTask}
+                className="px-6 py-2 bg-purple-600 text-white font-semibold rounded-xl shadow-md hover:bg-purple-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75"
+              >
+                <i className="fas fa-plus mr-2"></i> Thêm công việc
+              </button>
             </div>
-          );
-
-          case 'customNotificationDesign':
+            <button
+              onClick={() => setShowGenerateScheduleModal(true)} // Nút để mở modal tạo lịch
+              className="w-full px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl shadow-md hover:bg-indigo-700 transition-all duration-300"
+              disabled={residents.filter((res) => res.isActive !== false).length === 0} // Vô hiệu hóa nếu không có cư dân hoạt động
+            >
+              ✨ Tạo lịch tự động
+            </button>
+            {cleaningSchedule.length === 0 ? (
+              <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
+                Chưa có công việc lau dọn nào được lên lịch.
+              </p>
+            ) : (
+              <div className="max-h-60 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-xl p-3 bg-gray-50 dark:bg-gray-700">
+                <h3 className="text-xl font-semibold text-purple-700 dark:text-purple-200 mb-3">
+                  Lịch trực hiện có:
+                </h3>
+                <ul className="space-y-2">
+                  {cleaningSchedule.map((task) => (
+                    <li
+                      key={task.id}
+                      className="flex items-center justify-between bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+                    >
+                      <div className="flex flex-col items-start">
+                        <span className="font-medium text-gray-700 dark:text-gray-300">
+                          {task.name} ({task.assignedToResidentName})
+                        </span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">Ngày: {task.date}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={task.isCompleted || false}
+                          onChange={() => handleToggleCleaningTaskCompletion(task.id, task.isCompleted || false)}
+                          className="form-checkbox h-5 w-5 text-green-600 dark:text-green-400 rounded focus:ring-green-500 cursor-pointer"
+                        />
+                        <button
+                          onClick={() => handleDeleteCleaningTask(task.id, task.name)}
+                          className="px-3 py-1 bg-red-500 text-white text-sm rounded-lg shadow-sm hover:bg-red-600 transition-colors"
+                        >
+                          Xóa
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        );
+        //Case quản lý kệ giày
+        case 'shoeRackManagement':
+        return (
+          <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+            <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">Quản lý kệ giày</h2>
+            <div className="flex flex-col sm:flex-row gap-3 mb-4">
+              <select
+                value={selectedShelfNumber}
+                onChange={(e) => {
+                  setSelectedShelfNumber(e.target.value);
+                  setAuthError('');
+                }}
+                className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white dark:bg-gray-700"
+              >
+                <option value="">-- Chọn tầng kệ --</option>
+                {[...Array(8)].map((_, i) => (
+                  <option key={i + 1} value={i + 1}>
+                    Tầng {i + 1}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={selectedResidentForShelf}
+                onChange={(e) => {
+                  setSelectedResidentForShelf(e.target.value);
+                  setAuthError('');
+                }}
+                className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white dark:bg-gray-700"
+              >
+                <option value="">-- Chọn người --</option>
+                {residents
+                  .filter((res) => res.isActive !== false)
+                  .map((resident) => (
+                    <option key={resident.id} value={resident.id}>
+                      {resident.name}
+                    </option>
+                  ))}
+              </select>
+              <button
+                onClick={handleAssignShoeRack}
+                className="px-6 py-2 bg-yellow-600 text-white font-semibold rounded-xl shadow-md hover:bg-yellow-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-75"
+                disabled={!selectedShelfNumber || !selectedResidentForShelf}
+              >
+                <i className="fas fa-shoe-prints mr-2"></i> Gán kệ
+              </button>
+            </div>
+            {Object.keys(shoeRackAssignments).length === 0 ? (
+              <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
+                Chưa có kệ giày nào được gán.
+              </p>
+            ) : (
+              <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-inner border border-gray-200 dark:border-gray-700">
+                <h3 className="text-xl font-semibold text-yellow-700 dark:text-yellow-200 mb-3">
+                  Phân công kệ giày:
+                </h3>
+                <ul className="space-y-3">
+                  {[...Array(8)].map((_, i) => {
+                    const shelfNum = i + 1;
+                    const assignment = shoeRackAssignments[shelfNum];
+                    const isMyShelf =
+                      loggedInResidentProfile && assignment && assignment.residentId === loggedInResidentProfile.id;
+                    return (
+                      <li
+                        key={shelfNum}
+                        className={`flex items-center justify-between p-3 rounded-lg shadow-sm border ${isMyShelf ? 'bg-yellow-200 dark:bg-yellow-900 border-yellow-400' : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600'}`}
+                      >
+                        <span
+                          className={`font-medium ${isMyShelf ? 'text-yellow-900 dark:text-yellow-100' : 'text-gray-700 dark:text-gray-300'}`}
+                        >
+                          Tầng {shelfNum}:
+                        </span>
+                        {assignment ? (
+                          <span
+                            className={`font-bold ${isMyShelf ? 'text-yellow-800 dark:text-yellow-200' : 'text-yellow-700 dark:text-yellow-300'}`}
+                          >
+                            {assignment.residentName}
+                            {userRole === 'admin' && ( // Chỉ hiển thị nút xóa cho admin
+                              <button
+                                onClick={() => handleClearShoeRackAssignment(shelfNum)}
+                                className="ml-3 px-2 py-1 bg-red-500 text-white text-xs rounded-lg shadow-sm hover:bg-red-600 transition-colors"
+                              >
+                                Xóa
+                              </button>
+                            )}
+                          </span>
+                        ) : (
+                          <span className="text-gray-500 dark:text-gray-400 italic">Trống</span>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+          </div>
+        );
+        //Case thông tin của phòng
+        case 'commonRoomInfo':
+          // Phân quyền hiển thị ngay tại đây
+          if (userRole === 'admin') {
+            // ===== GIAO DIỆN "THẺ THÀNH VIÊN" CHO ADMIN =====
+            return (
+              <div className="p-4 md:p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg w-full">
+                <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">
+                  Thông tin phòng chung
+                </h2>
+                {residents.length === 0 ? (
+                  <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
+                    Chưa có người ở nào trong danh sách.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {residents.map((resident) => {
+                      const linkedUser = allUsersData.find((user) => user.linkedResidentId === resident.id);
+                      return (
+                        <div key={resident.id} className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 flex flex-col justify-between transition-transform transform hover:scale-105 duration-300">
+                          {/* Phần Header của Thẻ */}
+                          <div className="flex items-start mb-4">
+                            <div className="relative group"> {/* Thêm 'group' để tạo hiệu ứng hover */}
+                              {linkedUser?.photoURL ? (
+                                <img src={linkedUser.photoURL} alt="Avatar" className="w-16 h-16 rounded-full object-cover border-2 border-gray-200 dark:border-gray-600"/>
+                              ) : (
+                                <div className="w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-3xl text-gray-400">
+                                  <i className="fas fa-user-circle"></i>
+                                </div>
+                              )}
+                              <span className={`absolute bottom-0 right-0 block h-4 w-4 rounded-full border-2 border-white dark:border-gray-800 ${resident.isActive ? 'bg-green-500' : 'bg-gray-400'}`}></span>
+                              
+                              {/* ===== NÚT THAY ĐỔI AVATAR ĐƯỢC THÊM VÀO ĐÂY ===== */}
+                              {linkedUser && (
+                                <button 
+                                  onClick={() => setSelectedResidentForAvatarUpload(linkedUser)}
+                                  className="absolute inset-0 w-16 h-16 rounded-full bg-black bg-opacity-0 group-hover:bg-opacity-50 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                                  title="Thay đổi ảnh đại diện"
+                                >
+                                  <i className="fas fa-camera text-xl"></i>
+                                </button>
+                              )}
+                            </div>
+                            <div className="ml-4">
+                              <p className="font-bold text-lg text-gray-900 dark:text-white break-words">{linkedUser?.fullName || resident.name}</p>
+                              <p className="text-sm text-gray-500 dark:text-gray-400">{linkedUser?.role === 'admin' ? 'Quản trị viên' : 'Thành viên'}</p>
+                            </div>
+                          </div>
+                          {/* Phần Thân của Thẻ - Chi tiết */}
+                          <div className="space-y-3 text-sm">
+                            <div className="flex items-center text-gray-700 dark:text-gray-300">
+                              <i className="fas fa-id-badge w-5 text-center mr-2 text-blue-500"></i>
+                              <span>{linkedUser?.studentId || 'N/A'}</span>
+                            </div>
+                            <div className="flex items-center text-gray-700 dark:text-gray-300">
+                              <i className="fas fa-envelope w-5 text-center mr-2 text-blue-500"></i>
+                              <span>{linkedUser?.email || 'N/A'}</span>
+                            </div>
+                            <div className="flex items-center text-gray-700 dark:text-gray-300">
+                              <i className="fas fa-phone w-5 text-center mr-2 text-blue-500"></i>
+                              <span>{linkedUser?.phoneNumber || 'N/A'}</span>
+                            </div>
+                          </div>
+                          {/* Phần Footer của Thẻ - Hành động (Admin) */}
+                          <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end space-x-2">
+                            {linkedUser && linkedUser.role === 'member' && (
+                                <button
+                                  onClick={() => handleToggleAttendancePermission(linkedUser.id, linkedUser.canTakeAttendance || false)}
+                                  className={`px-3 py-1 text-white text-xs rounded-lg shadow-sm ${
+                                    linkedUser.canTakeAttendance 
+                                    ? 'bg-red-500 hover:bg-red-600' 
+                                    : 'bg-green-500 hover:bg-green-600'
+                                  }`}
+                                  title={linkedUser.canTakeAttendance ? 'Thu hồi quyền điểm danh' : 'Trao quyền điểm danh'}
+                                >
+                                  <i className="fas fa-tasks"></i>
+                                </button>
+                            )}
+                            <button
+                              onClick={() => handleEditCommonResidentDetails(resident)}
+                              className="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg shadow-sm hover:bg-blue-600"
+                              title="Điều chỉnh thông tin"
+                            >
+                              <i className="fas fa-edit"></i>
+                            </button>
+                            {/* NÚT NÂNG CẤP VAI TRÒ */}
+                            {linkedUser && linkedUser.role === 'member' && (
+                                <button
+                                  onClick={() => handleUpgradeToAdmin(linkedUser.id)}
+                                  className="px-3 py-1 bg-green-500 text-white text-xs rounded-lg shadow-sm hover:bg-green-600"
+                                  title="Nâng cấp vai trò"
+                                >
+                                  <i className="fas fa-user-shield"></i>
+                                </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          } else {
+            // ===== GIAO DIỆN BẢNG TRUYỀN THỐNG CHO MEMBER =====
             return (
               <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-                {/* ===== TIÊU ĐỀ VÀ NÚT BẤM MỚI ===== */}
-                <div className="flex justify-between items-center mb-5">
-                  <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200">Quản lý Thông báo</h2>
+                <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Thông tin phòng chung</h2>
+                {residents.length === 0 ? (
+                  <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
+                    Chưa có người ở nào trong danh sách.
+                  </p>
+                ) : (
+                  <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                    <table className="min-w-full bg-white dark:bg-gray-800">
+                      <thead>
+                        <tr>
+                          <th className="py-3 px-4 text-center text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Avatar</th>
+                          <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Họ tên</th>
+                          <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">Email</th>
+                          <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">SĐT</th>
+                          <th className="py-3 px-4 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">MSSV</th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
+                        {residents.map((resident) => {
+                          const linkedUser = allUsersData.find((user) => user.linkedResidentId === resident.id);
+                          return (
+                            <tr key={resident.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                              <td className="py-3 px-4 text-center">
+                                {linkedUser?.photoURL ? (
+                                  <img src={linkedUser.photoURL} alt="Avatar" className="w-10 h-10 rounded-full object-cover mx-auto"/>
+                                ) : (
+                                  <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-xl mx-auto">
+                                    <i className="fas fa-user-circle"></i>
+                                  </div>
+                                )}
+                              </td>
+                              <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.fullName || resident.name}</td>
+                              <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.email || 'N/A'}</td>
+                              <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.phoneNumber || 'N/A'}</td>
+                              <td className="py-3 px-4 whitespace-nowrap">{linkedUser?.studentId || 'N/A'}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            );
+          }
+          //Case kỷ niệm    
+        case 'roomMemories':
+          return (
+            <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              {/* ===== TIÊU ĐỀ VÀ NÚT BẤM MỚI ===== */}
+              <div className="flex justify-between items-center mb-5">
+                <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200">Kỷ niệm phòng</h2>
+                <button
+                  onClick={() => setShowAddMemoryModal(true)}
+                  className="bg-yellow-500 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:bg-yellow-600 transition-transform transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+                  title="Đăng kỷ niệm mới"
+                >
+                  <i className="fas fa-plus text-xl"></i>
+                </button>
+              </div>
+
+              {/* Phần lọc và tìm kiếm */}
+              <div className="mb-4 flex flex-col sm:flex-row items-center justify-between space-y-3 sm:space-y-0 sm:space-x-4">
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm theo tên sự kiện..."
+                  value={searchTermMemory}
+                  onChange={(e) => setSearchTermMemory(e.target.value)}
+                  className="flex-grow shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full sm:w-auto py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white dark:bg-gray-700"
+                />
+                <select
+                  value={filterUploaderMemory}
+                  onChange={(e) => setFilterUploaderMemory(e.target.value)}
+                  className="shadow-sm border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white dark:bg-gray-700"
+                >
+                  <option value="all">Tất cả người đăng</option>
+                  {allUsersData
+                    .filter((user) => user.role === 'member' || user.role === 'admin')
+                    .map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.fullName || user.email}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              {/* Danh sách kỷ niệm */}
+              {memories.length === 0 ? (
+                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
+                  Chưa có kỷ niệm nào được thêm.
+                </p>
+              ) : (
+                <div className="max-h-[600px] overflow-y-auto p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {memories.map((memory) => (
+                      <div
+                        key={memory.id}
+                        className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden transition-transform transform hover:scale-105 duration-200"
+                        onClick={() => setSelectedMemoryDetails(memory)}
+                      >
+                        <div className="relative aspect-video bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                          {memory.files && memory.files.length > 0 ? (
+                            <>
+                              {memory.files[0].fileType === 'image' ? (
+                                <img
+                                  src={memory.files[0].fileUrl}
+                                  alt={memory.eventName}
+                                  className="w-full h-full object-cover cursor-pointer"
+                                  onClick={() => setSelectedMemoryForLightbox(memory)}
+                                />
+                              ) : (
+                                <video
+                                  src={memory.files[0].fileUrl}
+                                  controls
+                                  className="w-full h-full object-cover"
+                                  onClick={() => setSelectedMemoryForLightbox(memory)}
+                                />
+                              )}
+                              {memory.files.length > 1 && (
+                                <span className="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded-full">
+                                  {memory.files.length} ảnh/video
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <div className="text-gray-500 dark:text-gray-400">Không có ảnh</div>
+                          )}
+                        </div>
+                        <div className="p-4">
+                          <h3 className="font-bold text-lg text-gray-800 dark:text-gray-200 mb-2 truncate">
+                            {memory.eventName}
+                          </h3>
+                          <p className="text-gray-600 dark:text-gray-400 text-sm mb-1">
+                            Ngày chụp: {memory.photoDate}
+                          </p>
+                          <p className="text-gray-600 dark:text-gray-400 text-sm mb-3">
+                            Đăng bởi:{' '}
+                            <span className="font-medium">
+                              {memory.uploadedByName ||
+                                allUsersData.find((u) => u.id === memory.uploadedBy)?.fullName ||
+                                'Người dùng ẩn danh'}
+                            </span>
+                          </p>
+                          {(userRole === 'admin' || userId === memory.uploadedBy) && (
+                            <div className="flex justify-end space-x-2">
+                              <button
+                                onClick={() => handleEditMemory(memory)}
+                                className="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600 transition-colors"
+                              >
+                                Chỉnh sửa
+                              </button>
+                              <button
+                                onClick={() =>
+                                  handleDeleteMemory(memory.id, memory.files, memory.uploadedBy)
+                                }
+                                className="px-3 py-1 bg-red-500 text-white text-xs rounded-lg hover:bg-red-600 transition-colors"
+                              >
+                                Xóa
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Pagination Controls */}
+              {totalMemoriesCount > itemsPerPageMemories && (
+                <div className="flex justify-center items-center space-x-4 mt-8">
                   <button
-                    onClick={() => setShowAddNotificationModal(true)}
-                    className="bg-blue-500 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:bg-blue-600 transition-transform transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                    title="Soạn thông báo mới"
+                    onClick={() => setCurrentPageMemories((prev) => Math.max(1, prev - 1))}
+                    disabled={currentPageMemories === 1}
+                    className="px-4 py-2 bg-yellow-500 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    <i className="fas fa-plus text-xl"></i>
+                    Trang trước
+                  </button>
+                  <span className="text-gray-800 dark:text-gray-200 font-medium">
+                    Trang {currentPageMemories} / {totalPagesMemories}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPageMemories((prev) => Math.min(totalPagesMemories, prev + 1))}
+                    disabled={currentPageMemories === totalPagesMemories}
+                    className="px-4 py-2 bg-yellow-500 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Trang sau
                   </button>
                 </div>
+              )}
 
-                {/* ===== DANH SÁCH THÔNG BÁO ĐÃ GỬI/NHẬN (ĐÃ SỬA LẠI) ===== */}
-                <div className="mt-8 pt-6 border-t border-gray-300 dark:border-gray-600">
-                  <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-5">
-                    Danh sách thông báo đã gửi/nhận
-                  </h3>
-                  {notificationError && <p className="text-red-500 text-sm text-center mb-4">{notificationError}</p>}
-                  {notifications.length === 0 ? (
-                    <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có thông báo nào.</p>
-                  ) : (
-                    <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-                      <table className="min-w-full bg-white dark:bg-gray-800">
-                        <thead>
-                          <tr>
-                            <th className="py-3 px-4 text-left ...">Nội dung tóm tắt</th>
-                            <th className="py-3 px-4 text-left ...">Loại</th>
-                            <th className="py-3 px-4 text-left ...">Người nhận</th>
-                            <th className="py-3 px-4 text-left ...">Thời gian</th>
-                            <th className="py-3 px-4 text-center ...">Trạng thái</th>
-                            <th className="py-3 px-4 text-center ...">Hành động</th>
-                          </tr>
-                        </thead>
-                        <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
-                          {notifications.map((notification) => (
-                            <tr key={notification.id} className={`border-b ... ${!notification.isRead ? 'font-semibold' : ''}`}>
-                              <td className="py-3 px-4 max-w-xs overflow-hidden text-ellipsis whitespace-nowrap">{notification.message}</td>
-                              <td className="py-3 px-4 whitespace-nowrap">{notification.type}</td>
-                              <td className="py-3 px-4 whitespace-nowrap">
-                                {notification.recipientId === 'all'
-                                  ? 'Tất cả'
-                                  : allUsersData.find((u) => u.id === notification.recipientId)?.fullName || 'N/A'}
-                              </td>
-                              <td className="py-3 px-4 whitespace-nowrap">
-                                {notification.createdAt instanceof Date
-                                  ? notification.createdAt.toLocaleDateString('vi-VN')
-                                  : 'N/A'}
-                              </td>
-                              <td className="py-3 px-4 text-center">
-                                <span className={`px-2 py-1 rounded-full text-xs ...`}>
-                                  {notification.isRead ? 'Đã đọc' : 'Chưa đọc'}
-                                </span>
-                              </td>
-                              <td className="py-3 px-4 text-center">
-                                <button
-                                  onClick={() => deleteNotification(notification.id)}
-                                  className="px-3 py-1 bg-red-500 text-white text-xs rounded-lg shadow-sm hover:bg-red-600"
-                                >
-                                  Xóa
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+              {/* POPUP ĐĂNG KỶ NIỆM MỚI */}
+              {showAddMemoryModal && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4">
+                  <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+                    <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
+                      Đăng Kỷ niệm mới
+                    </h3>
+                    <form onSubmit={handleAddMemory} className="space-y-4">
+                      <div>
+                        <label htmlFor="eventName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                          Tên sự kiện:
+                        </label>
+                        <input
+                          type="text"
+                          id="eventName"
+                          value={newMemoryEventName}
+                          onChange={(e) => setNewMemoryEventName(e.target.value)}
+                          className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white dark:bg-gray-700"
+                          placeholder="Ví dụ: Sinh nhật Duy, Chuyến đi Vũng Tàu"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="photoDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                          Ngày chụp/quay:
+                        </label>
+                        <input
+                          type="date"
+                          id="photoDate"
+                          value={newMemoryPhotoDate}
+                          onChange={(e) => setNewMemoryPhotoDate(e.target.value)}
+                          className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white dark:bg-gray-700"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="memoryImageFile" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                          Chọn ảnh/video:
+                        </label>
+                        <input
+                          type="file"
+                          id="memoryImageFile"
+                          accept="image/*,video/*"
+                          multiple
+                          onChange={(e) => setNewMemoryImageFile(Array.from(e.target.files))}
+                          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-50 file:text-yellow-700 hover:file:bg-yellow-100"
+                          required
+                        />
+                        {isUploadingMemory && (
+                          <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2">
+                            <div className="bg-yellow-600 h-2.5 rounded-full" style={{ width: `${uploadProgress}%` }}></div>
+                          </div>
+                        )}
+                        {uploadProgress > 0 && uploadProgress < 100 && (
+                          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1 text-right">{uploadProgress}% tải lên</p>
+                        )}
+                      </div>
+                      {memoryError && <p className="text-red-500 text-sm text-center mt-4">{memoryError}</p>}
+                      <div className="flex space-x-4 mt-6">
+                          <button
+                            type="button"
+                            onClick={() => setShowAddMemoryModal(false)}
+                            className="w-1/2 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
+                          >
+                            Hủy
+                          </button>
+                          <button
+                            type="submit"
+                            className="w-1/2 px-6 py-3 bg-yellow-600 text-white font-semibold rounded-xl shadow-md hover:bg-yellow-700 transition-all duration-300"
+                            disabled={isUploadingMemory}
+                          >
+                            {isUploadingMemory ? <i className="fas fa-spinner fa-spin"></i> : 'Đăng'}
+                          </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+          //Case thông tin tiền bối         
+        case 'formerResidents':
+            const filteredFormerResidents = formerResidents.filter(resident =>
+              (resident.name?.toLowerCase().includes(searchTermFormerResident.toLowerCase())) ||
+              (resident.studentId?.toLowerCase().includes(searchTermFormerResident.toLowerCase()))
+            );
+            return (
+              <div className="p-6 bg-purple-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+                {/* ===== TIÊU ĐỀ VÀ NÚT BẤM MỚI ===== */}
+                <div className="flex justify-between items-center mb-5">
+                  <h2 className="text-2xl font-bold text-purple-800 dark:text-purple-200">Thông tin Tiền bối</h2>
+                  {userRole === 'admin' && (
+                    <button
+                      onClick={() => setShowAddFormerResidentModal(true)}
+                      className="bg-purple-500 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:bg-purple-600 transition-transform transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                      title="Thêm tiền bối mới"
+                    >
+                      <i className="fas fa-user-plus text-xl"></i>
+                    </button>
                   )}
                 </div>
 
-                {/* ===== POPUP SOẠN THÔNG BÁO MỚI ===== */}
-                {showAddNotificationModal && (
-                  <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-lg">
-                      <h3 className="text-2xl font-bold text-blue-700 dark:text-blue-200 mb-4 text-center">Soạn thông báo mới</h3>
-                      <form onSubmit={handleSendCustomNotification} className="space-y-4">
-                        {/* Tiêu đề thông báo */}
+                {/* Phần tìm kiếm (giữ nguyên) */}
+                <div className="mb-4">
+                  <input
+                    type="text"
+                    placeholder="Tìm kiếm theo tên hoặc MSSV..."
+                    value={searchTermFormerResident}
+                    onChange={(e) => setSearchTermFormerResident(e.target.value)}
+                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
+                  />
+                </div>
+
+                {/* Danh sách tiền bối */}
+                <div className="space-y-4">
+                  {filteredFormerResidents.map((resident) => (
+                    <div key={resident.id} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md flex justify-between items-center">
+                      <div className="flex items-center">
+                        {/* Avatar */}
+                        <div className="flex-shrink-0 mr-4">
+                          {resident.photoURL ? (
+                            <img
+                              src={resident.photoURL}
+                              alt={`Avatar của ${resident.name}`}
+                              className="w-16 h-16 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 text-3xl">
+                              <i className="fas fa-user-circle"></i>
+                            </div>
+                          )}
+                        </div>
+                        {/* Thông tin chữ */}
                         <div>
-                          <label htmlFor="notificationTitle" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Tiêu đề (Tùy chọn):</label>
+                          <p className="font-bold text-gray-800 dark:text-white">{resident.name}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">MSSV: {resident.studentId}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">Liên hệ: {resident.contact}</p>
+                          {resident.notes && <p className="text-xs text-gray-500 dark:text-gray-300 mt-1">Ghi chú: {resident.notes}</p>}
+                        </div>
+                      </div>
+                      {userRole === 'admin' && (
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleEditFormerResident (resident)}
+                            className="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600"
+                          >
+                            Sửa
+                          </button>
+                          <button
+                            onClick={() => handleDeleteFormerResident(resident.id)}
+                            className="px-3 py-1 bg-red-500 text-white text-xs rounded-lg hover:bg-red-600"
+                          >
+                            Xóa
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* ===== POPUP THÊM TIỀN BỐI MỚI ===== */}
+                {showAddFormerResidentModal && (
+                  <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md">
+                      <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
+                        Thêm Tiền bối
+                      </h3>
+                      <form onSubmit={handleAddFormerResidentManually} className="space-y-4">
+                        <div>
+                          <label htmlFor="formerResidentName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                            Họ tên:
+                          </label>
                           <input
                             type="text"
-                            id="notificationTitle"
-                            value={newNotificationTitle}
-                            onChange={(e) => setNewNotificationTitle(e.target.value)}
-                            className="shadow-sm appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="Ví dụ: Thông báo khẩn về tiền điện"
+                            id="formerResidentName"
+                            value={newFormerResidentName}
+                            onChange={(e) => setNewFormerResidentName(e.target.value)}
+                            className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700"
+                            required
                           />
                         </div>
-
-                        {/* Người nhận */}
                         <div>
-                          <label htmlFor="notificationRecipient" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Gửi đến:</label>
-                          <select
-                            id="notificationRecipient"
-                            value={newNotificationRecipient}
-                            onChange={(e) => setNewNotificationRecipient(e.target.value)}
-                            className="shadow-sm appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                          >
-                            <option value="all">Tất cả thành viên</option>
-                            {residents.filter(res => res.isActive).map(resident => {
-                              const linkedUser = allUsersData.find(user => user.linkedResidentId === resident.id);
-                              if (linkedUser) {
-                                return <option key={linkedUser.id} value={linkedUser.id}>{linkedUser.fullName || resident.name}</option>;
-                              }
-                              return null;
-                            })}
-                          </select>
+                          <label htmlFor="formerResidentStudentId" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                            Mã số sinh viên:
+                          </label>
+                          <input
+                            type="text"
+                            id="formerResidentStudentId"
+                            value={newFormerResidentStudentId}
+                            onChange={(e) => setNewFormerResidentStudentId(e.target.value)}
+                            className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700"
+                            required
+                          />
                         </div>
-
-                        {/* Nội dung thông báo */}
                         <div>
-                          <label htmlFor="notificationMessage" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Nội dung thông báo:</label>
+                          <label htmlFor="formerResidentContact" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                            Thông tin liên hệ:
+                          </label>
+                          <input
+                            type="text"
+                            id="formerResidentContact"
+                            value={newFormerResidentContact}
+                            onChange={(e) => setNewFormerResidentContact(e.target.value)}
+                            className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700"
+                            placeholder="SĐT, Facebook, Zalo..."
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="formerResidentNotes" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                            Ghi chú:
+                          </label>
                           <textarea
-                            id="notificationMessage"
-                            value={newNotificationMessage}
-                            onChange={(e) => setNewNotificationMessage(e.target.value)}
-                            rows="5"
-                            className="shadow-sm appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500 resize-y"
-                            placeholder="Nhập nội dung thông báo..."
+                            id="formerResidentNotes"
+                            value={newFormerResidentNotes}
+                            onChange={(e) => setNewFormerResidentNotes(e.target.value)}
+                            className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700"
+                            rows="3"
+                            placeholder="Ví dụ: Khóa, chuyên ngành, công ty hiện tại..."
                           ></textarea>
                         </div>
-
-                        {customNotificationError && <p className="text-red-500 text-sm text-center mt-4">{customNotificationError}</p>}
-                        {customNotificationSuccess && <p className="text-green-600 text-sm text-center mt-4">{customNotificationSuccess}</p>}
-                        
+                        <div>
+                          <label htmlFor="formerResidentAvatar" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                            Chọn avatar:
+                          </label>
+                          <input
+                            type="file"
+                            id="formerResidentAvatar"
+                            accept="image/*"
+                            onChange={(e) => setNewFormerResidentAvatarFile(e.target.files && e.target.files.length > 0 ? e.target.files : null)}
+                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
+                          />
+                          {isUploadingFormerResidentAvatar && (
+                            <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2">
+                              <div className="bg-purple-600 h-2.5 rounded-full" style={{ width: `${uploadFormerResidentAvatarProgress}%` }}></div>
+                            </div>
+                          )}
+                          {uploadFormerResidentAvatarProgress > 0 && uploadFormerResidentAvatarProgress < 100 && (
+                            <p className="text-gray-500 dark:text-gray-400 text-sm mt-1 text-right">{uploadFormerResidentAvatarProgress}% tải lên</p>
+                          )}
+                        </div>
                         <div className="flex space-x-4 mt-6">
-                            <button
-                              type="button"
-                              onClick={() => setShowAddNotificationModal(false)}
-                              className="w-1/2 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400"
-                            >
-                              Hủy
-                            </button>
-                            <button
-                              type="submit"
-                              className="w-1/2 px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700"
-                            >
-                              <i className="fas fa-paper-plane mr-2"></i> Gửi
-                            </button>
+                          <button
+                            type="button"
+                            onClick={() => setShowAddFormerResidentModal(false)}
+                            className="w-1/2 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400"
+                          >
+                            Hủy
+                          </button>
+                          <button
+                            type="submit"
+                            className="w-1/2 px-6 py-3 bg-purple-600 text-white font-semibold rounded-xl shadow-md hover:bg-purple-700"
+                          >
+                            Thêm
+                          </button>
                         </div>
                       </form>
                     </div>
@@ -5537,403 +5421,589 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 )}
               </div>
             );
-          case 'myProfileDetails': // Chỉ hiển thị thông tin hồ sơ
-            return (
-              <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-                <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Hồ sơ của tôi</h2>
-                <div className="space-y-4">
-                  {/* Các trường thông tin cá nhân */}
-                  <div>
-                    <label
-                      htmlFor="editFullName"
-                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                    >
-                      Họ tên đầy đủ:
-                    </label>
-                    <input
-                      type="text"
-                      id="editFullName"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="editPhoneNumber"
-                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                    >
-                      Số điện thoại:
-                    </label>
-                    <input
-                      type="text"
-                      id="editPhoneNumber"
-                      value={memberPhoneNumber}
-                      onChange={(e) => setMemberPhoneNumber(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="editStudentId"
-                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                    >
-                      Mã số sinh viên:
-                    </label>
-                    <input
-                      type="text"
-                      id="editStudentId"
-                      value={memberStudentId}
-                      onChange={(e) => setMemberStudentId(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="editBirthday"
-                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                    >
-                      Ngày sinh:
-                    </label>
-                    <input
-                      type="date"
-                      id="editBirthday"
-                      value={memberBirthday}
-                      onChange={(e) => setMemberBirthday(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="editDormEntryDate"
-                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                    >
-                      Ngày nhập KTX:
-                    </label>
-                    <input
-                      type="date"
-                      id="editDormEntryDate"
-                      value={memberDormEntryDate}
-                      onChange={(e) => setMemberDormEntryDate(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="editAcademicLevel"
-                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                    >
-                      Email trường:
-                    </label>
-                    <input
-                      type="text"
-                      id="editAcademicLevel"
-                      value={memberAcademicLevel}
-                      onChange={(e) => setMemberAcademicLevel(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                    />
-                  </div>
-
-                  {/* Phần tải ảnh đại diện */}
-                  <div className="mt-8 pt-6 border-t border-gray-300 dark:border-gray-600">
-                    <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-4">Ảnh đại diện</h3>
-                    <div className="flex items-center space-x-4 mb-4">
-                      {userAvatarUrl ? (
-                        <img
-                          src={userAvatarUrl}
-                          alt="Avatar"
-                          className="w-24 h-24 rounded-full object-cover shadow-lg border-2 border-gray-200 dark:border-gray-700"
-                        />
-                      ) : (
-                        <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-5xl">
-                          <i className="fas fa-user-circle"></i>
-                        </div>
-                      )}
-                      <div>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => {
-                            setNewAvatarFile(e.target.files[0]);
-                            setAvatarError('');
-                          }}
-                          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                        />
-                        {isUploadingAvatar && (
-                          <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2">
-                            <div
-                              className="bg-blue-600 h-2.5 rounded-full"
-                              style={{ width: `${avatarUploadProgress}%` }}
-                            ></div>
-                          </div>
-                        )}
-                        {avatarError && <p className="text-red-500 text-sm mt-2">{avatarError}</p>}
-                        <button
-                          onClick={handleUploadMyAvatar}
-                          className="mt-3 px-4 py-2 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
-                          disabled={isUploadingAvatar || !newAvatarFile}
-                        >
-                          {isUploadingAvatar ? (
-                            <i className="fas fa-spinner fa-spin mr-2"></i>
-                          ) : (
-                            <i className="fas fa-upload mr-2"></i>
-                          )}
-                          Tải ảnh đại diện
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
-                  <button
-                    onClick={handleSaveUserProfile}
-                    className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
-                  >
-                    <i className="fas fa-save mr-2"></i> Lưu thông tin
-                  </button>
-                </div>
-              </div>
-            );
-
-          case 'passwordSettings': // MỤC MỚI: Chỉ hiển thị phần đổi mật khẩu
-            return (
-              <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-                <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Đổi mật khẩu</h2>
-                <div className="space-y-4">
-                  <div>
-                    <label
-                      htmlFor="oldPassword"
-                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                    >
-                      Mật khẩu cũ:
-                    </label>
-                    <input
-                      type="password"
-                      id="oldPassword"
-                      value={oldPassword}
-                      onChange={(e) => setOldPassword(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                      placeholder="Nhập mật khẩu cũ"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="newPassword"
-                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                    >
-                      Mật khẩu mới:
-                    </label>
-                    <input
-                      type="password"
-                      id="newPassword"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                      placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="confirmNewPassword"
-                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                    >
-                      Xác nhận mật khẩu mới:
-                    </label>
-                    <input
-                      type="password"
-                      id="confirmNewPassword"
-                      value={confirmNewPassword}
-                      onChange={(e) => setConfirmNewPassword(e.target.value)}
-                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                      placeholder="Xác nhận mật khẩu mới"
-                    />
-                  </div>
-                  {passwordChangeMessage && (
-                    <p
-                      className={`text-sm text-center mt-4 ${passwordChangeMessage.includes('thành công') ? 'text-green-600' : 'text-red-500'}`}
-                    >
-                      {passwordChangeMessage}
-                    </p>
-                  )}
-                  <button
-                    onClick={handleChangePassword}
-                    className="w-full px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-md hover:bg-red-700 transition-all duration-300"
-                  >
-                    <i className="fas fa-key mr-2"></i> Đổi mật khẩu
-                  </button>
-                </div>
-              </div>
-            );
-          case 'adminCreateAccount': // NEW CASE FOR ADMIN
-                return (
-                    <div className="p-6 bg-purple-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-                        <h2 className="text-2xl font-bold text-purple-800 dark:text-purple-200 mb-5">
-                            Tạo tài khoản mới cho Thành viên
-                        </h2>
-                        <div className="space-y-4">
-                            <div>
-                                <label htmlFor="newAccFullName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                                    Họ tên đầy đủ:
-                                </label>
-                                <input
-                                    type="text"
-                                    id="newAccFullName"
-                                    value={newAccountFullName}
-                                    onChange={(e) => setNewAccountFullName(e.target.value)}
-                                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
-                                    placeholder="Họ tên đầy đủ của thành viên"
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor="newAccStudentId" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                                    Mã số sinh viên:
-                                </label>
-                                <input
-                                    type="text"
-                                    id="newAccStudentId"
-                                    value={newAccountStudentId}
-                                    onChange={(e) => setNewAccountStudentId(e.target.value)}
-                                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
-                                    placeholder="MSSV (dùng làm tên đăng nhập)"
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor="newAccPersonalEmail" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                                    Email cá nhân (Tùy chọn ban đầu):
-                                </label>
-                                <input
-                                    type="email"
-                                    id="newAccPersonalEmail"
-                                    value={newAccountPersonalEmail}
-                                    onChange={(e) => setNewAccountPersonalEmail(e.target.value)}
-                                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
-                                    placeholder="Email cá nhân (Nếu có, để xác minh)"
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor="newAccPassword" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                                    Mật khẩu:
-                                </label>
-                                <input
-                                    type="password"
-                                    id="newAccPassword"
-                                    value={newAccountPassword}
-                                    onChange={(e) => setNewAccountPassword(e.target.value)}
-                                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
-                                    placeholder="Mật khẩu (ít nhất 6 ký tự)"
-                                />
-                            </div>
-                            {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
-                            <button
-                                onClick={handleAdminCreateAccount}
-                                className="w-full px-6 py-3 bg-purple-600 text-white font-semibold rounded-xl shadow-md hover:bg-purple-700 transition-all duration-300"
-                            >
-                                <i className="fas fa-user-plus mr-2"></i> Tạo tài khoản
-                            </button>
-                        </div>
-                    </div>
-                );
-        case 'consumptionStats': //Thống kê tiêu thụ
+        //Case thiết kế thông báo
+        case 'customNotificationDesign':
           return (
             <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Thống kê tiêu thụ theo tháng</h2>
-              {Object.keys(monthlyConsumptionStats).length === 0 ? (
-                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
-                  Chưa có dữ liệu thống kê nào. Vui lòng tính toán hóa đơn.
-                </p>
-              ) : (
-                <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-                  <table className="min-w-full bg-white dark:bg-gray-800">
-                    <thead>
-                      <tr>
-                        <th className="py-3 px-6 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">
-                          Tháng
-                        </th>
-                        <th className="py-3 px-6 text-right text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">
-                          Điện (KW)
-                        </th>
-                        <th className="py-3 px-6 text-right text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">
-                          Nước (m³)
-                        </th>
-                        <th className="py-3 px-6 text-right text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">
-                          Tổng tiền (VND)
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
-                      {Object.entries(monthlyConsumptionStats).map(([month, stats]) => (
-                        <tr
-                          key={month}
-                          className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
-                        >
-                          <td className="py-3 px-6 text-left whitespace-nowrap">{month}</td>
-                          <td className="py-3 px-6 text-right whitespace-nowrap">
-                            {stats.electricity.toLocaleString('vi-VN')}
-                          </td>
-                          <td className="py-3 px-6 text-right whitespace-nowrap">
-                            {stats.water.toLocaleString('vi-VN')}
-                          </td>
-                          <td className="py-3 px-6 text-right whitespace-nowrap font-bold text-blue-700 dark:text-blue-300">
-                            {stats.total.toLocaleString('vi-VN')}
-                          </td>
+              {/* ===== TIÊU ĐỀ VÀ NÚT BẤM MỚI ===== */}
+              <div className="flex justify-between items-center mb-5">
+                <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200">Quản lý Thông báo</h2>
+                <button
+                  onClick={() => setShowAddNotificationModal(true)}
+                  className="bg-blue-500 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:bg-blue-600 transition-transform transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  title="Soạn thông báo mới"
+                >
+                  <i className="fas fa-plus text-xl"></i>
+                </button>
+              </div>
+
+              {/* ===== DANH SÁCH THÔNG BÁO ĐÃ GỬI/NHẬN (ĐÃ SỬA LẠI) ===== */}
+              <div className="mt-8 pt-6 border-t border-gray-300 dark:border-gray-600">
+                <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-5">
+                  Danh sách thông báo đã gửi/nhận
+                </h3>
+                {notificationError && <p className="text-red-500 text-sm text-center mb-4">{notificationError}</p>}
+                {notifications.length === 0 ? (
+                  <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Chưa có thông báo nào.</p>
+                ) : (
+                  <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                    <table className="min-w-full bg-white dark:bg-gray-800">
+                      <thead>
+                        <tr>
+                          <th className="py-3 px-4 text-left ...">Nội dung tóm tắt</th>
+                          <th className="py-3 px-4 text-left ...">Loại</th>
+                          <th className="py-3 px-4 text-left ...">Người nhận</th>
+                          <th className="py-3 px-4 text-left ...">Thời gian</th>
+                          <th className="py-3 px-4 text-center ...">Trạng thái</th>
+                          <th className="py-3 px-4 text-center ...">Hành động</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
+                        {notifications.map((notification) => (
+                          <tr key={notification.id} className={`border-b ... ${!notification.isRead ? 'font-semibold' : ''}`}>
+                            <td className="py-3 px-4 max-w-xs overflow-hidden text-ellipsis whitespace-nowrap">{notification.message}</td>
+                            <td className="py-3 px-4 whitespace-nowrap">{notification.type}</td>
+                            <td className="py-3 px-4 whitespace-nowrap">
+                              {notification.recipientId === 'all'
+                                ? 'Tất cả'
+                                : allUsersData.find((u) => u.id === notification.recipientId)?.fullName || 'N/A'}
+                            </td>
+                            <td className="py-3 px-4 whitespace-nowrap">
+                              {notification.createdAt instanceof Date
+                                ? notification.createdAt.toLocaleDateString('vi-VN')
+                                : 'N/A'}
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              <span className={`px-2 py-1 rounded-full text-xs ...`}>
+                                {notification.isRead ? 'Đã đọc' : 'Chưa đọc'}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              <button
+                                onClick={() => deleteNotification(notification.id)}
+                                className="px-3 py-1 bg-red-500 text-white text-xs rounded-lg shadow-sm hover:bg-red-600"
+                              >
+                                Xóa
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* ===== POPUP SOẠN THÔNG BÁO MỚI ===== */}
+              {showAddNotificationModal && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4">
+                  <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-lg">
+                    <h3 className="text-2xl font-bold text-blue-700 dark:text-blue-200 mb-4 text-center">Soạn thông báo mới</h3>
+                    <form onSubmit={handleSendCustomNotification} className="space-y-4">
+                      {/* Tiêu đề thông báo */}
+                      <div>
+                        <label htmlFor="notificationTitle" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Tiêu đề (Tùy chọn):</label>
+                        <input
+                          type="text"
+                          id="notificationTitle"
+                          value={newNotificationTitle}
+                          onChange={(e) => setNewNotificationTitle(e.target.value)}
+                          className="shadow-sm appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="Ví dụ: Thông báo khẩn về tiền điện"
+                        />
+                      </div>
+
+                      {/* Người nhận */}
+                      <div>
+                        <label htmlFor="notificationRecipient" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Gửi đến:</label>
+                        <select
+                          id="notificationRecipient"
+                          value={newNotificationRecipient}
+                          onChange={(e) => setNewNotificationRecipient(e.target.value)}
+                          className="shadow-sm appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          <option value="all">Tất cả thành viên</option>
+                          {residents.filter(res => res.isActive).map(resident => {
+                            const linkedUser = allUsersData.find(user => user.linkedResidentId === resident.id);
+                            if (linkedUser) {
+                              return <option key={linkedUser.id} value={linkedUser.id}>{linkedUser.fullName || resident.name}</option>;
+                            }
+                            return null;
+                          })}
+                        </select>
+                      </div>
+
+                      {/* Nội dung thông báo */}
+                      <div>
+                        <label htmlFor="notificationMessage" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Nội dung thông báo:</label>
+                        <textarea
+                          id="notificationMessage"
+                          value={newNotificationMessage}
+                          onChange={(e) => setNewNotificationMessage(e.target.value)}
+                          rows="5"
+                          className="shadow-sm appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500 resize-y"
+                          placeholder="Nhập nội dung thông báo..."
+                        ></textarea>
+                      </div>
+
+                      {customNotificationError && <p className="text-red-500 text-sm text-center mt-4">{customNotificationError}</p>}
+                      {customNotificationSuccess && <p className="text-green-600 text-sm text-center mt-4">{customNotificationSuccess}</p>}
+                      
+                      <div className="flex space-x-4 mt-6">
+                          <button
+                            type="button"
+                            onClick={() => setShowAddNotificationModal(false)}
+                            className="w-1/2 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400"
+                          >
+                            Hủy
+                          </button>
+                          <button
+                            type="submit"
+                            className="w-1/2 px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700"
+                          >
+                            <i className="fas fa-paper-plane mr-2"></i> Gửi
+                          </button>
+                      </div>
+                    </form>
+                  </div>
                 </div>
               )}
             </div>
           );
-          // Case gửi góp ý
-          case 'feedback':
-          // Giao diện cho Admin: Xem tất cả góp ý
-          if (userRole === 'admin') {
-            return (
-              // Container chính, bỏ các style riêng để dùng chung layout
-              <div className="p-4 md:p-6">
-                <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6">
-                  Hộp thư góp ý
-                </h2>
-                {allFeedback.length > 0 ? (
-                  // Sử dụng grid layout để hiển thị các thẻ góp ý
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {allFeedback.map(fb => (
-                      <div
-                        key={fb.id}
-                        // CSS cho thẻ góp ý, đồng bộ với các thẻ khác và thêm hiệu ứng
-                        className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between"
-                        onClick={() => setSelectedFeedbackDetails(fb)}
-                      >
-                        <div>
-                          {/* Nội dung góp ý, giới hạn 3 dòng để không làm vỡ layout */}
-                          <p className="text-gray-700 dark:text-gray-300 line-clamp-3">
-                            {fb.content}
-                          </p>
-                        </div>
-                        {/* Thông tin người gửi ở dưới cùng */}
-                        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            Gửi bởi: <span className="font-medium text-gray-600 dark:text-gray-300">{fb.submittedByName}</span>
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            Ngày: {fb.submittedAt?.toDate().toLocaleDateString('vi-VN')}
-                          </p>
-                        </div>
+        //Case chỉnh sửa thông tin cá nhân admin
+        case 'myProfileDetails':
+          return (
+            <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Hồ sơ của tôi</h2>
+              <div className="space-y-4">
+                {/* Các trường thông tin cá nhân */}
+                <div>
+                  <label
+                    htmlFor="editFullName"
+                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                  >
+                    Họ tên đầy đủ:
+                  </label>
+                  <input
+                    type="text"
+                    id="editFullName"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="editPhoneNumber"
+                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                  >
+                    Số điện thoại:
+                  </label>
+                  <input
+                    type="text"
+                    id="editPhoneNumber"
+                    value={memberPhoneNumber}
+                    onChange={(e) => setMemberPhoneNumber(e.target.value)}
+                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="editStudentId"
+                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                  >
+                    Mã số sinh viên:
+                  </label>
+                  <input
+                    type="text"
+                    id="editStudentId"
+                    value={memberStudentId}
+                    onChange={(e) => setMemberStudentId(e.target.value)}
+                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="editBirthday"
+                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                  >
+                    Ngày sinh:
+                  </label>
+                  <input
+                    type="date"
+                    id="editBirthday"
+                    value={memberBirthday}
+                    onChange={(e) => setMemberBirthday(e.target.value)}
+                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="editDormEntryDate"
+                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                  >
+                    Ngày nhập KTX:
+                  </label>
+                  <input
+                    type="date"
+                    id="editDormEntryDate"
+                    value={memberDormEntryDate}
+                    onChange={(e) => setMemberDormEntryDate(e.target.value)}
+                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="editAcademicLevel"
+                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                  >
+                    Email trường:
+                  </label>
+                  <input
+                    type="text"
+                    id="editAcademicLevel"
+                    value={memberAcademicLevel}
+                    onChange={(e) => setMemberAcademicLevel(e.target.value)}
+                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                  />
+                </div>
+
+                {/* Phần tải ảnh đại diện */}
+                <div className="mt-8 pt-6 border-t border-gray-300 dark:border-gray-600">
+                  <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-4">Ảnh đại diện</h3>
+                  <div className="flex items-center space-x-4 mb-4">
+                    {userAvatarUrl ? (
+                      <img
+                        src={userAvatarUrl}
+                        alt="Avatar"
+                        className="w-24 h-24 rounded-full object-cover shadow-lg border-2 border-gray-200 dark:border-gray-700"
+                      />
+                    ) : (
+                      <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-5xl">
+                        <i className="fas fa-user-circle"></i>
                       </div>
+                    )}
+                    <div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          setNewAvatarFile(e.target.files[0]);
+                          setAvatarError('');
+                        }}
+                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      />
+                      {isUploadingAvatar && (
+                        <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2">
+                          <div
+                            className="bg-blue-600 h-2.5 rounded-full"
+                            style={{ width: `${avatarUploadProgress}%` }}
+                          ></div>
+                        </div>
+                      )}
+                      {avatarError && <p className="text-red-500 text-sm mt-2">{avatarError}</p>}
+                      <button
+                        onClick={handleUploadMyAvatar}
+                        className="mt-3 px-4 py-2 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+                        disabled={isUploadingAvatar || !newAvatarFile}
+                      >
+                        {isUploadingAvatar ? (
+                          <i className="fas fa-spinner fa-spin mr-2"></i>
+                        ) : (
+                          <i className="fas fa-upload mr-2"></i>
+                        )}
+                        Tải ảnh đại diện
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
+                <button
+                  onClick={handleSaveUserProfile}
+                  className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+                >
+                  <i className="fas fa-save mr-2"></i> Lưu thông tin
+                </button>
+              </div>
+            </div>
+          );
+        //Case đổi mật khẩu
+        case 'passwordSettings':
+          return (
+            <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Đổi mật khẩu</h2>
+              <div className="space-y-4">
+                <div>
+                  <label
+                    htmlFor="oldPassword"
+                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                  >
+                    Mật khẩu cũ:
+                  </label>
+                  <input
+                    type="password"
+                    id="oldPassword"
+                    value={oldPassword}
+                    onChange={(e) => setOldPassword(e.target.value)}
+                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    placeholder="Nhập mật khẩu cũ"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="newPassword"
+                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                  >
+                    Mật khẩu mới:
+                  </label>
+                  <input
+                    type="password"
+                    id="newPassword"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="confirmNewPassword"
+                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                  >
+                    Xác nhận mật khẩu mới:
+                  </label>
+                  <input
+                    type="password"
+                    id="confirmNewPassword"
+                    value={confirmNewPassword}
+                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    placeholder="Xác nhận mật khẩu mới"
+                  />
+                </div>
+                {passwordChangeMessage && (
+                  <p
+                    className={`text-sm text-center mt-4 ${passwordChangeMessage.includes('thành công') ? 'text-green-600' : 'text-red-500'}`}
+                  >
+                    {passwordChangeMessage}
+                  </p>
+                )}
+                <button
+                  onClick={handleChangePassword}
+                  className="w-full px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-md hover:bg-red-700 transition-all duration-300"
+                >
+                  <i className="fas fa-key mr-2"></i> Đổi mật khẩu
+                </button>
+              </div>
+            </div>
+          );
+        //Case admin tạo tài khoản
+        case 'adminCreateAccount':
+              return (
+                  <div className="p-6 bg-purple-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+                      <h2 className="text-2xl font-bold text-purple-800 dark:text-purple-200 mb-5">
+                          Tạo tài khoản mới cho Thành viên
+                      </h2>
+                      <div className="space-y-4">
+                          <div>
+                              <label htmlFor="newAccFullName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                                  Họ tên đầy đủ:
+                              </label>
+                              <input
+                                  type="text"
+                                  id="newAccFullName"
+                                  value={newAccountFullName}
+                                  onChange={(e) => setNewAccountFullName(e.target.value)}
+                                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
+                                  placeholder="Họ tên đầy đủ của thành viên"
+                              />
+                          </div>
+                          <div>
+                              <label htmlFor="newAccStudentId" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                                  Mã số sinh viên:
+                              </label>
+                              <input
+                                  type="text"
+                                  id="newAccStudentId"
+                                  value={newAccountStudentId}
+                                  onChange={(e) => setNewAccountStudentId(e.target.value)}
+                                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
+                                  placeholder="MSSV (dùng làm tên đăng nhập)"
+                              />
+                          </div>
+                          <div>
+                              <label htmlFor="newAccPersonalEmail" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                                  Email cá nhân (Tùy chọn ban đầu):
+                              </label>
+                              <input
+                                  type="email"
+                                  id="newAccPersonalEmail"
+                                  value={newAccountPersonalEmail}
+                                  onChange={(e) => setNewAccountPersonalEmail(e.target.value)}
+                                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
+                                  placeholder="Email cá nhân (Nếu có, để xác minh)"
+                              />
+                          </div>
+                          <div>
+                              <label htmlFor="newAccPassword" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                                  Mật khẩu:
+                              </label>
+                              <input
+                                  type="password"
+                                  id="newAccPassword"
+                                  value={newAccountPassword}
+                                  onChange={(e) => setNewAccountPassword(e.target.value)}
+                                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
+                                  placeholder="Mật khẩu (ít nhất 6 ký tự)"
+                              />
+                          </div>
+                          {authError && <p className="text-red-500 text-sm text-center mt-4">{authError}</p>}
+                          <button
+                              onClick={handleAdminCreateAccount}
+                              className="w-full px-6 py-3 bg-purple-600 text-white font-semibold rounded-xl shadow-md hover:bg-purple-700 transition-all duration-300"
+                          >
+                              <i className="fas fa-user-plus mr-2"></i> Tạo tài khoản
+                          </button>
+                      </div>
+                  </div>
+              );
+        //Case thống kê tiêu thụ
+        case 'consumptionStats':
+        return (
+          <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+            <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Thống kê tiêu thụ theo tháng</h2>
+            {Object.keys(monthlyConsumptionStats).length === 0 ? (
+              <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
+                Chưa có dữ liệu thống kê nào. Vui lòng tính toán hóa đơn.
+              </p>
+            ) : (
+              <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                <table className="min-w-full bg-white dark:bg-gray-800">
+                  <thead>
+                    <tr>
+                      <th className="py-3 px-6 text-left text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">
+                        Tháng
+                      </th>
+                      <th className="py-3 px-6 text-right text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">
+                        Điện (KW)
+                      </th>
+                      <th className="py-3 px-6 text-right text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">
+                        Nước (m³)
+                      </th>
+                      <th className="py-3 px-6 text-right text-blue-800 dark:text-blue-200 uppercase text-sm leading-normal bg-blue-100 dark:bg-gray-700">
+                        Tổng tiền (VND)
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
+                    {Object.entries(monthlyConsumptionStats).map(([month, stats]) => (
+                      <tr
+                        key={month}
+                        className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+                      >
+                        <td className="py-3 px-6 text-left whitespace-nowrap">{month}</td>
+                        <td className="py-3 px-6 text-right whitespace-nowrap">
+                          {stats.electricity.toLocaleString('vi-VN')}
+                        </td>
+                        <td className="py-3 px-6 text-right whitespace-nowrap">
+                          {stats.water.toLocaleString('vi-VN')}
+                        </td>
+                        <td className="py-3 px-6 text-right whitespace-nowrap font-bold text-blue-700 dark:text-blue-300">
+                          {stats.total.toLocaleString('vi-VN')}
+                        </td>
+                      </tr>
                     ))}
-                  </div>
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        );
+        // Case gửi góp ý
+        case 'feedback':
+        // Giao diện cho Admin: Xem tất cả góp ý
+        if (userRole === 'admin') {
+          return (
+            // Container chính, bỏ các style riêng để dùng chung layout
+            <div className="p-4 md:p-6">
+              <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6">
+                Hộp thư góp ý
+              </h2>
+              {allFeedback.length > 0 ? (
+                // Sử dụng grid layout để hiển thị các thẻ góp ý
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {allFeedback.map(fb => (
+                    <div
+                      key={fb.id}
+                      // CSS cho thẻ góp ý, đồng bộ với các thẻ khác và thêm hiệu ứng
+                      className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between"
+                      onClick={() => setSelectedFeedbackDetails(fb)}
+                    >
+                      <div>
+                        {/* Nội dung góp ý, giới hạn 3 dòng để không làm vỡ layout */}
+                        <p className="text-gray-700 dark:text-gray-300 line-clamp-3">
+                          {fb.content}
+                        </p>
+                      </div>
+                      {/* Thông tin người gửi ở dưới cùng */}
+                      <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Gửi bởi: <span className="font-medium text-gray-600 dark:text-gray-300">{fb.submittedByName}</span>
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          Ngày: {fb.submittedAt?.toDate().toLocaleDateString('vi-VN')}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                // Giao diện khi không có góp ý nào
+                <div className="flex flex-col items-center justify-center h-64 bg-gray-50 dark:bg-gray-800 rounded-xl shadow-md">
+                  <svg className="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+                  <p className="text-gray-500 dark:text-gray-400 italic text-center mt-4">
+                    Chưa có góp ý nào trong hộp thư.
+                  </p>
+                </div>
+              )}
+            </div>
+          );
+        }
+        // Case kiểm tra lượt đăng nhập
+        case 'loginHistory':
+          return (
+            <div className="p-6 bg-gray-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-5">Lịch sử đăng nhập</h2>
+              <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+                {loginHistory.length > 0 ? (
+                  loginHistory.map(log => (
+                    <div key={log.id} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+                      <p className="font-semibold text-gray-800 dark:text-gray-200">
+                        {log.userName}
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Thời gian: {log.loginAt?.toDate().toLocaleString('vi-VN')}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-500 mt-1 truncate" title={log.userAgent}>
+                        Thiết bị: {log.userAgent}
+                      </p>
+                    </div>
+                  ))
                 ) : (
-                  // Giao diện khi không có góp ý nào
-                  <div className="flex flex-col items-center justify-center h-64 bg-gray-50 dark:bg-gray-800 rounded-xl shadow-md">
-                    <svg className="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
-                    <p className="text-gray-500 dark:text-gray-400 italic text-center mt-4">
-                      Chưa có góp ý nào trong hộp thư.
-                    </p>
-                  </div>
+                  <p className="text-gray-500 dark:text-gray-400 italic text-center">Chưa có lịch sử đăng nhập nào.</p>
                 )}
               </div>
-            );
-          }
+            </div>
+          );
+        default:
+        return (
+          <div className="text-center p-8 bg-gray-100 dark:bg-gray-700 rounded-xl shadow-inner">
+            <p className="text-xl text-gray-700 dark:text-gray-300 font-semibold mb-4">
+              Chào mừng Admin! Vui lòng chọn một mục từ thanh điều hướng.
+            </p>
+          </div>
+        );
       }
     }
     // Logic cho Thành viên
@@ -5963,7 +6033,8 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
           ? `${costSharingHistory[0].periodStart} - ${costSharingHistory[0].periodEnd}`
           : 'N/A';
       switch (activeSection) {
-        case 'dashboard': // Dashboard cho Thành viên
+        //Case trang chủ của thành viên
+        case 'dashboard':
           return (
             <div className="p-6 bg-gray-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
               <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-5">Dashboard Tổng quan</h2>
@@ -6037,191 +6108,194 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               </div>
             </div>
           );
-          case 'attendanceTracking':{
-            const currentUserData = allUsersData.find(u => u.id === userId);
-            const memberCanTakeAttendance = currentUserData?.canTakeAttendance === true;
-            return (
-              <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-                <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">
-                  {userRole === 'admin' ? 'Điểm danh theo tháng' : 'Điểm danh của tôi'}
-                </h2>
-                <div className="mb-6 flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4">
-                  <label htmlFor="monthSelector" className="font-semibold text-gray-700 dark:text-gray-300 text-lg">
-                    Chọn tháng:
-                  </label>
-                  <input
-                    type="month"
-                    id="monthSelector"
-                    value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(e.target.value)}
-                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700"
-                  />
-                </div>
-
-                {/* ===== KHUNG CHỨA CÓ THANH CUỘN NGANG ===== */}
-                <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-                  {displayedResidents.length === 0 ? (
-                    <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
-                      Chưa có người ở nào để điểm danh.
-                    </p>
-                  ) : (
-                    <table className="min-w-full bg-white dark:bg-gray-800">
-                      <thead>
-                        <tr>
-                          <th className="py-3 px-4 text-left sticky left-0 z-10 bg-green-100 dark:bg-gray-700 border-r border-green-200 dark:border-gray-600 text-green-800 dark:text-green-200 uppercase text-sm font-semibold">
-                            Tên
-                          </th>
-                          {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map((day) => (
-                            <th
-                              key={day}
-                              className="py-3 px-2 text-center border-l border-green-200 dark:border-gray-600 text-green-800 dark:text-green-200 uppercase text-sm leading-normal"
-                            >
-                              {day}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
-                        {displayedResidents.map((resident) => {
-                          const isMyRow = loggedInResidentProfile && resident.id === loggedInResidentProfile.id;
-                          return (
-                            <tr
-                              key={resident.id}
-                              className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
-                            >
-                              <td className="py-3 px-6 text-left whitespace-nowrap font-medium sticky left-0 bg-white dark:bg-gray-800 z-10 border-r border-gray-200 dark:border-gray-700">
-                                {resident.name}
-                              </td>
-                              {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map((day) => {
-                                const dayString = String(day).padStart(2, '0');
-                                const isPresent = monthlyAttendanceData[resident.id]?.[dayString] === 1;
-                                return (
-                                  <td
-                                    key={day}
-                                    className="py-3 px-2 text-center border-l border-gray-200 dark:border-gray-700"
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={isPresent}
-                                      onChange={() => handleToggleDailyPresence(resident.id, day)}
-                                      disabled={!isMyRow && !memberCanTakeAttendance} 
-                                      className=" form-checkbox h-5 w-5 rounded focus:ring-green-500 cursor-pointer 
-                                                  text-green-600 
-                                                  disabled:checked:bg-red-500 
-                                                  dark:text-green-400 
-                                                  dark:disabled:bg-slate-700 
-                                                  dark:disabled:checked:bg-yellow-600 
-                                                  dark:disabled:checked:border-transparent"
-                                    />
-                                  </td>
-                                );
-                              })}
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  )}
-                </div>
+        //Case điểm danh của thành viên (cho chính mình và người khác (nếu được ủy quyền))
+        case 'attendanceTracking':{
+          const currentUserData = allUsersData.find(u => u.id === userId);
+          const memberCanTakeAttendance = currentUserData?.canTakeAttendance === true;
+          return (
+            <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">
+                {userRole === 'admin' ? 'Điểm danh theo tháng' : 'Điểm danh của tôi'}
+              </h2>
+              <div className="mb-6 flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4">
+                <label htmlFor="monthSelector" className="font-semibold text-gray-700 dark:text-gray-300 text-lg">
+                  Chọn tháng:
+                </label>
+                <input
+                  type="month"
+                  id="monthSelector"
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700"
+                />
               </div>
-            ); 
-          }       
-          case 'memberCostSummary': // Chi phí của tôi
-            const latestCostSharingRecord = costSharingHistory[0];
-            return (
-              <div className="p-6 bg-orange-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-                <h2 className="text-2xl font-bold text-orange-800 dark:text-orange-200 mb-5">Chi phí của tôi</h2>
-                {!loggedInResidentProfile ? (
+
+              {/* ===== KHUNG CHỨA CÓ THANH CUỘN NGANG ===== */}
+              <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                {displayedResidents.length === 0 ? (
                   <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
-                    Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.
-                  </p>
-                ) : !latestCostSharingRecord ||
-                  !latestCostSharingRecord.individualCosts ||
-                  !latestCostSharingRecord.individualCosts[loggedInResidentProfile.id] ? (
-                  <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
-                    Chưa có thông tin chi phí nào cho bạn.
+                    Chưa có người ở nào để điểm danh.
                   </p>
                 ) : (
-                  <div>
-                    {/* Khối hiển thị thông tin chi phí */}
-                    <div className="bg-orange-100 dark:bg-gray-800 p-6 rounded-xl shadow-inner text-lg font-semibold text-orange-900 dark:text-orange-100 border border-orange-200 dark:border-gray-600">
-                      {/* ... (Phần hiển thị Kỳ tính, Số ngày, Số tiền, Trạng thái) ... */}
-                      <p className="mb-2"><strong>Kỳ tính:</strong> {latestCostSharingRecord.periodStart} đến {latestCostSharingRecord.periodEnd}</p>
-                      <p className="mb-2"><strong>Số ngày có mặt:</strong> {latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.daysPresent || 0} ngày</p>
-                      <p className="mb-2 text-xl font-bold border-t pt-3 mt-3 border-orange-300 dark:border-gray-600">
-                        Số tiền cần đóng:{' '}
-                        <span className="text-orange-800 dark:text-orange-200">
-                          {(latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.cost || 0).toLocaleString('vi-VN')} VND
-                        </span>
-                      </p>
-                      <p className="text-lg font-bold">Trạng thái:{' '}
-                          <span className={ latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.isPaid ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400' }>
-                              {latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.isPaid ? 'Đã đóng' : 'Chưa đóng'}
-                          </span>
-                      </p>
-                      {!latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.isPaid && (
-                        <button
-                          onClick={handleMarkMyPaymentAsPaid}
-                          className="w-full mt-4 px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700"
-                        >
-                          <i className="fas fa-check-circle mr-2"></i> Đánh dấu đã đóng
-                        </button>
-                      )}
-                    </div>
-                    {/* Nút hiển thị mã QR để thanh toán */}
-                    {qrCodeUrl && (
-                      <button
-                        onClick={() => setShowQrCodeModal(true)}
-                        className="w-full mt-4 px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all"
-                      >
-                        <i className="fas fa-qrcode mr-2"></i>
-                        Thanh toán bằng mã QR
-                      </button>
-                    )}
-                    {/* ===== POPUP HIỂN THỊ QR (PHIÊN BẢN GỐC) ===== */}
-                    {showQrCodeModal && latestCostSharingRecord && loggedInResidentProfile && (
-                      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowQrCodeModal(false)}>
-                        {(() => {
-                          // --- Logic tạo URL VietQR (giữ nguyên) ---
-                          const amountToPay = latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.cost || 0;
-                          const bankId = "970415"; // Vietinbank
-                          const accountNumber = "101877135020";
-                          const accountName = "NGUYEN HUYNH PHUC KHANG";
-                          const billPeriod = latestCostSharingRecord.periodStart || new Date().toISOString().slice(0, 7);
-                          const billMonth = billPeriod.split('-')[1];
-                          const billYear = billPeriod.split('-')[0];
-                          const description = `CK ${fullName.split(' ').slice(-1).join('')} KTX T${billMonth}-${billYear}`;
-                          const vietQR_imageUrl = `https://img.vietqr.io/image/${bankId}-${accountNumber}-print.png?amount=${amountToPay}&addInfo=${encodeURIComponent(description)}&accountName=${encodeURIComponent(accountName)}`;
-
-                          return (
-                            <div className="bg-white p-6 rounded-lg text-center" onClick={(e) => e.stopPropagation()}>
-                              <h3 className="text-xl font-bold mb-2">Quét mã để thanh toán</h3>
-                              <p className="text-gray-700 mb-4">
-                                Số tiền cần thanh toán: <strong className="text-red-600">{amountToPay.toLocaleString('vi-VN')} VND</strong>
-                              </p>
-
-                              <div className="p-2 border rounded-lg inline-block">
-                                <img 
-                                  src={vietQR_imageUrl} 
-                                  alt="VietQR Code"
-                                  width="256"
-                                  height="256"
-                                />
-                              </div>
-
-                              <button onClick={() => setShowQrCodeModal(false)} className="w-full mt-4 p-2 bg-gray-200 rounded-lg hover:bg-gray-300">
-                                Đóng
-                              </button>
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    )}
-                  </div>
+                  <table className="min-w-full bg-white dark:bg-gray-800">
+                    <thead>
+                      <tr>
+                        <th className="py-3 px-4 text-left sticky left-0 z-10 bg-green-100 dark:bg-gray-700 border-r border-green-200 dark:border-gray-600 text-green-800 dark:text-green-200 uppercase text-sm font-semibold">
+                          Tên
+                        </th>
+                        {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map((day) => (
+                          <th
+                            key={day}
+                            className="py-3 px-2 text-center border-l border-green-200 dark:border-gray-600 text-green-800 dark:text-green-200 uppercase text-sm leading-normal"
+                          >
+                            {day}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
+                      {displayedResidents.map((resident) => {
+                        const isMyRow = loggedInResidentProfile && resident.id === loggedInResidentProfile.id;
+                        return (
+                          <tr
+                            key={resident.id}
+                            className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+                          >
+                            <td className="py-3 px-6 text-left whitespace-nowrap font-medium sticky left-0 bg-white dark:bg-gray-800 z-10 border-r border-gray-200 dark:border-gray-700">
+                              {resident.name}
+                            </td>
+                            {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map((day) => {
+                              const dayString = String(day).padStart(2, '0');
+                              const isPresent = monthlyAttendanceData[resident.id]?.[dayString] === 1;
+                              return (
+                                <td
+                                  key={day}
+                                  className="py-3 px-2 text-center border-l border-gray-200 dark:border-gray-700"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isPresent}
+                                    onChange={() => handleToggleDailyPresence(resident.id, day)}
+                                    disabled={!isMyRow && !memberCanTakeAttendance} 
+                                    className=" form-checkbox h-5 w-5 rounded focus:ring-green-500 cursor-pointer 
+                                                text-green-600 
+                                                disabled:checked:bg-red-500 
+                                                dark:text-green-400 
+                                                dark:disabled:bg-slate-700 
+                                                dark:disabled:checked:bg-yellow-600 
+                                                dark:disabled:checked:border-transparent"
+                                  />
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 )}
               </div>
-            );
-          case 'memberCleaningSchedule': // Lịch trực của tôi
+            </div>
+          ); 
+        }       
+        //Xem tiền điện nước cần đóng và thanh toán
+        case 'memberCostSummary':
+          const latestCostSharingRecord = costSharingHistory[0];
+          return (
+            <div className="p-6 bg-orange-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-orange-800 dark:text-orange-200 mb-5">Chi phí của tôi</h2>
+              {!loggedInResidentProfile ? (
+                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
+                  Bạn chưa được liên kết với hồ sơ người ở. Vui lòng liên hệ quản trị viên.
+                </p>
+              ) : !latestCostSharingRecord ||
+                !latestCostSharingRecord.individualCosts ||
+                !latestCostSharingRecord.individualCosts[loggedInResidentProfile.id] ? (
+                <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
+                  Chưa có thông tin chi phí nào cho bạn.
+                </p>
+              ) : (
+                <div>
+                  {/* Khối hiển thị thông tin chi phí */}
+                  <div className="bg-orange-100 dark:bg-gray-800 p-6 rounded-xl shadow-inner text-lg font-semibold text-orange-900 dark:text-orange-100 border border-orange-200 dark:border-gray-600">
+                    {/* ... (Phần hiển thị Kỳ tính, Số ngày, Số tiền, Trạng thái) ... */}
+                    <p className="mb-2"><strong>Kỳ tính:</strong> {latestCostSharingRecord.periodStart} đến {latestCostSharingRecord.periodEnd}</p>
+                    <p className="mb-2"><strong>Số ngày có mặt:</strong> {latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.daysPresent || 0} ngày</p>
+                    <p className="mb-2 text-xl font-bold border-t pt-3 mt-3 border-orange-300 dark:border-gray-600">
+                      Số tiền cần đóng:{' '}
+                      <span className="text-orange-800 dark:text-orange-200">
+                        {(latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.cost || 0).toLocaleString('vi-VN')} VND
+                      </span>
+                    </p>
+                    <p className="text-lg font-bold">Trạng thái:{' '}
+                        <span className={ latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.isPaid ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400' }>
+                            {latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.isPaid ? 'Đã đóng' : 'Chưa đóng'}
+                        </span>
+                    </p>
+                    {!latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.isPaid && (
+                      <button
+                        onClick={handleMarkMyPaymentAsPaid}
+                        className="w-full mt-4 px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700"
+                      >
+                        <i className="fas fa-check-circle mr-2"></i> Đánh dấu đã đóng
+                      </button>
+                    )}
+                  </div>
+                  {/* Nút hiển thị mã QR để thanh toán */}
+                  {qrCodeUrl && (
+                    <button
+                      onClick={() => setShowQrCodeModal(true)}
+                      className="w-full mt-4 px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all"
+                    >
+                      <i className="fas fa-qrcode mr-2"></i>
+                      Thanh toán bằng mã QR
+                    </button>
+                  )}
+                  {/* ===== POPUP HIỂN THỊ QR (PHIÊN BẢN GỐC) ===== */}
+                  {showQrCodeModal && latestCostSharingRecord && loggedInResidentProfile && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowQrCodeModal(false)}>
+                      {(() => {
+                        // --- Logic tạo URL VietQR (giữ nguyên) ---
+                        const amountToPay = latestCostSharingRecord.individualCosts[loggedInResidentProfile.id]?.cost || 0;
+                        const bankId = "970415"; // Vietinbank
+                        const accountNumber = "101877135020";
+                        const accountName = "NGUYEN HUYNH PHUC KHANG";
+                        const billPeriod = latestCostSharingRecord.periodStart || new Date().toISOString().slice(0, 7);
+                        const billMonth = billPeriod.split('-')[1];
+                        const billYear = billPeriod.split('-')[0];
+                        const description = `CK ${fullName.split(' ').slice(-1).join('')} KTX T${billMonth}-${billYear}`;
+                        const vietQR_imageUrl = `https://img.vietqr.io/image/${bankId}-${accountNumber}-print.png?amount=${amountToPay}&addInfo=${encodeURIComponent(description)}&accountName=${encodeURIComponent(accountName)}`;
+
+                        return (
+                          <div className="bg-white p-6 rounded-lg text-center" onClick={(e) => e.stopPropagation()}>
+                            <h3 className="text-xl font-bold mb-2">Quét mã để thanh toán</h3>
+                            <p className="text-gray-700 mb-4">
+                              Số tiền cần thanh toán: <strong className="text-red-600">{amountToPay.toLocaleString('vi-VN')} VND</strong>
+                            </p>
+
+                            <div className="p-2 border rounded-lg inline-block">
+                              <img 
+                                src={vietQR_imageUrl} 
+                                alt="VietQR Code"
+                                width="256"
+                                height="256"
+                              />
+                            </div>
+
+                            <button onClick={() => setShowQrCodeModal(false)} className="w-full mt-4 p-2 bg-gray-200 rounded-lg hover:bg-gray-300">
+                              Đóng
+                            </button>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        //Xem lịch trực của thành viên
+        case 'memberCleaningSchedule':
           // Hiển thị lịch trực nhưng chỉ những nhiệm vụ được giao cho thành viên đó
           const myCleaningTasks = cleaningSchedule.filter(
             (task) => loggedInResidentProfile && task.assignedToResidentId === loggedInResidentProfile.id,
@@ -6264,7 +6338,8 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               )}
             </div>
           );
-        case 'shoeRackManagement': // Thông tin kệ giày (chỉ hiển thị kệ của mình nếu có)
+        //Xem kệ giày của thành viên
+        case 'shoeRackManagement':
           return (
             <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
               <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">Thông tin kệ giày</h2>
@@ -6310,7 +6385,8 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               )}
             </div>
           );
-        case 'commonRoomInfo': // Thông tin phòng chung (thành viên có thể xem)
+        //Xem thông tin của phòng
+        case 'commonRoomInfo':
           return (
             <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
               <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Thông tin phòng chung</h2>
@@ -6380,7 +6456,8 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               )}
             </div>
           );
-          case 'myProfileDetails': // MỤC MỚI: Chỉ hiển thị thông tin hồ sơ
+        //Xem thông tin cá nhân
+        case 'myProfileDetails':
             return (
               <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
                 <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Hồ sơ của tôi</h2>
@@ -6537,8 +6614,8 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 </div>
               </div>
             );
-
-          case 'passwordSettings': // MỤC MỚI: Chỉ hiển thị phần đổi mật khẩu
+        //Đổi mật khẩu tài khoản
+        case 'passwordSettings':
             return (
               <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
                 <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Đổi mật khẩu</h2>
@@ -6607,7 +6684,8 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 </div>
               </div>
             );
-            case 'roomMemories':
+        //Đăng và xem kỷ niệm phòng
+        case 'roomMemories':
               return (
                 <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
                   {/* ===== TIÊU ĐỀ VÀ NÚT BẤM MỚI ===== */}
@@ -6832,7 +6910,8 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                   )}
                 </div>
               );          
-          case 'formerResidents': // Thông tin tiền bối (Dành cho THÀNH VIÊN)
+        //Xem thông tin tiền bối
+        case 'formerResidents':
           return (
             <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
               <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">Thông tin tiền bối</h2>
@@ -6905,7 +6984,8 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               )}
             </div>
           );
-        case 'notifications': // Vẫn giữ nguyên cho member
+        //Xem thông báo tới thành viên
+        case 'notifications':
           return (
             <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
               <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Thông báo của tôi</h2>
@@ -6975,16 +7055,8 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               )}
             </div>
           );
-        default:
-          return (
-            <div className="text-center p-8 bg-gray-100 dark:bg-gray-700 rounded-xl shadow-inner">
-              <p className="text-xl text-gray-700 dark:text-gray-300 font-semibold mb-4">
-                Chào mừng Thành viên! Vui lòng chọn một mục từ thanh điều hướng.
-              </p>
-            </div>
-          );
-
-        case 'memberProfileEdit': // Chỉnh sửa thông tin cá nhân (thành viên có thể tự chỉnh sửa)
+        //Chỉnh sửa thông tin cá nhân
+        case 'memberProfileEdit':
           return (
             <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
               <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Chỉnh sửa thông tin cá nhân</h2>
@@ -7079,8 +7151,8 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               </div>
             </div>
           );
-
-          case 'feedback':
+        //Gửi góp ý cho admin
+        case 'feedback':
             if (userRole === 'member') {
               return (
               <div className="p-6 bg-gray-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
@@ -7105,7 +7177,15 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 </form>
               </div>
             );
-          }
+        }
+        default:
+        return (
+          <div className="text-center p-8 bg-gray-100 dark:bg-gray-700 rounded-xl shadow-inner">
+            <p className="text-xl text-gray-700 dark:text-gray-300 font-semibold mb-4">
+              Chào mừng Thành viên! Vui lòng chọn một mục từ thanh điều hướng.
+            </p>
+          </div>
+        );
       }
     }
 
@@ -7216,412 +7296,419 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               </div>
             )}
           </div>
-        </header>
-        {/* Container chính cho sidebar và nội dung - thêm "relative group" */}
-        <div className="relative group flex flex-1 h-full">
-            {/* Sidebar */}
-            <aside
-                className={`flex-shrink-0 fixed inset-y-0 left-0 bg-white dark:bg-gray-800 shadow-lg transform ${
-                    isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-                } lg:relative lg:translate-x-0 transition-all duration-300 ease-in-out z-20 h-full flex flex-col ${
-                    isSidebarCollapsed ? 'lg:w-20' : 'lg:w-64'
-                }`}
-            >
-                {/* Khối nội dung chính của sidebar, có thể cuộn */}
-                <div className="flex-1 overflow-y-auto overflow-x-hidden">
-                    <div className="flex justify-end lg:hidden p-4">
-                        <button onClick={() => setIsSidebarOpen(false)} className="p-2 rounded-md text-gray-700 dark:text-gray-300">
-                            <i className="fas fa-times text-xl"></i>
-                        </button>
-                    </div>
-                    
-                    {/* Khối thông tin cá nhân */}
-                    <div className={`flex items-center p-4 border-b border-gray-200 dark:border-gray-700 mb-4 ${isSidebarCollapsed && 'lg:justify-center'}`}>
-                        <div className="flex-shrink-0">
-                            {userAvatarUrl ? (
-                                <img src={userAvatarUrl} alt="Avatar" className="w-14 h-14 rounded-full object-cover"/>
-                            ) : (
-                                <div className="w-14 h-14 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-3xl">
-                                    <i className="fas fa-user-circle"></i>
-                                </div>
-                            )}
-                        </div>
-                        {!isSidebarCollapsed && (
-                            <div className="ml-4">
-                                <p className="font-bold text-gray-800 dark:text-white break-words">{fullName}</p>
-                                {memberStudentId && (<p className="text-sm text-gray-600 dark:text-gray-400">{memberStudentId}</p>)}
-                                <p className="text-xs text-gray-500 dark:text-gray-300 mt-1">{userRole === 'admin' ? 'Quản trị viên' : 'Thành viên'}</p>
-                            </div>
-                        )}
-                    </div>
+      </header>
+      {/* Container chính cho sidebar và nội dung - thêm "relative group" */}
+      <div className="relative group flex flex-1 h-full">
+          {/* Sidebar */}
+          <aside
+              className={`flex-shrink-0 fixed inset-y-0 left-0 bg-white dark:bg-gray-800 shadow-lg transform ${
+                  isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+              } lg:relative lg:translate-x-0 transition-all duration-300 ease-in-out z-20 h-full flex flex-col ${
+                  isSidebarCollapsed ? 'lg:w-20' : 'lg:w-64'
+              }`}
+          >
+              {/* Khối nội dung chính của sidebar, có thể cuộn */}
+              <div className="flex-1 overflow-y-auto overflow-x-hidden">
+                  <div className="flex justify-end lg:hidden p-4">
+                      <button onClick={() => setIsSidebarOpen(false)} className="p-2 rounded-md text-gray-700 dark:text-gray-300">
+                          <i className="fas fa-times text-xl"></i>
+                      </button>
+                  </div>
+                  
+                  {/* Khối thông tin cá nhân */}
+                  <div className={`flex items-center p-4 border-b border-gray-200 dark:border-gray-700 mb-4 ${isSidebarCollapsed && 'lg:justify-center'}`}>
+                      <div className="flex-shrink-0">
+                          {userAvatarUrl ? (
+                              <img src={userAvatarUrl} alt="Avatar" className="w-14 h-14 rounded-full object-cover"/>
+                          ) : (
+                              <div className="w-14 h-14 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-3xl">
+                                  <i className="fas fa-user-circle"></i>
+                              </div>
+                          )}
+                      </div>
+                      {!isSidebarCollapsed && (
+                          <div className="ml-4">
+                              <p className="font-bold text-gray-800 dark:text-white break-words">{fullName}</p>
+                              {memberStudentId && (<p className="text-sm text-gray-600 dark:text-gray-400">{memberStudentId}</p>)}
+                              <p className="text-xs text-gray-500 dark:text-gray-300 mt-1">{userRole === 'admin' ? 'Quản trị viên' : 'Thành viên'}</p>
+                          </div>
+                      )}
+                  </div>
 
-                    {/* Nav */}
-                    <nav className="space-y-1 px-4">
-                        {/* ===== ĐIỀU HƯỚNG CỦA ADMIN ===== */}
-                        {userId && userRole === 'admin' && (
-                          <>
-                            {/* --- Nhóm Cá Nhân --- */}
-                            <div>
-                              {!isSidebarCollapsed && <h3 className="sidebar-group-title">Cá Nhân</h3>}
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'dashboard'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('dashboard'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-tachometer-alt"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Dashboard</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'customNotificationDesign'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('customNotificationDesign'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-bullhorn"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Quản lý Thông báo</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'feedback'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('feedback'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-lightbulb"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Hộp thư góp ý</span>}
-                              </button>
-                            </div>
+                  {/* Nav */}
+                  <nav className="space-y-1 px-4">
+                      {/* ===== ĐIỀU HƯỚNG CỦA ADMIN ===== */}
+                      {userId && userRole === 'admin' && (
+                        <>
+                          {/* --- Nhóm Cá Nhân --- */}
+                          <div>
+                            {!isSidebarCollapsed && <h3 className="sidebar-group-title">Cá Nhân</h3>}
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'dashboard'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('dashboard'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-tachometer-alt"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Dashboard</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'customNotificationDesign'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('customNotificationDesign'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-bullhorn"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Quản lý Thông báo</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'feedback'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('feedback'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-lightbulb"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Hộp thư góp ý</span>}
+                            </button>
+                          </div>
 
-                            {/* --- Nhóm Quản Lý Chung --- */}
-                            <div className="pt-2">
-                              {!isSidebarCollapsed && <h3 className="sidebar-group-title">Quản Lý Chung</h3>}
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'residentManagement'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('residentManagement'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-users"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Quản lý người ở</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'attendanceTracking'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('attendanceTracking'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-calendar-alt"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Điểm danh hàng ngày</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'billing'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('billing'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-file-invoice-dollar"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Tính tiền điện nước</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'costSharing'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('costSharing'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-handshake"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Chia tiền & Nhắc nhở</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'cleaningSchedule'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('cleaningSchedule'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-broom"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Lịch trực phòng</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'shoeRackManagement'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('shoeRackManagement'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-shoe-prints"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Quản lý kệ giày</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'adminCreateAccount'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('adminCreateAccount'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-user-plus"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Tạo tài khoản mới</span>}
-                              </button>
-                            </div>
+                          {/* --- Nhóm Quản Lý Chung --- */}
+                          <div className="pt-2">
+                            {!isSidebarCollapsed && <h3 className="sidebar-group-title">Quản Lý Chung</h3>}
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'residentManagement'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('residentManagement'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-users"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Quản lý người ở</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'attendanceTracking'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('attendanceTracking'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-calendar-alt"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Điểm danh hàng ngày</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'billing'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('billing'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-file-invoice-dollar"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Tính tiền điện nước</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'costSharing'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('costSharing'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-handshake"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Chia tiền & Nhắc nhở</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'cleaningSchedule'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('cleaningSchedule'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-broom"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Lịch trực phòng</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'shoeRackManagement'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('shoeRackManagement'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-shoe-prints"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Quản lý kệ giày</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'adminCreateAccount'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('adminCreateAccount'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-user-plus"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Tạo tài khoản mới</span>}
+                            </button>
+                          </div>
 
-                            {/* --- Nhóm Sinh Hoạt & Lưu Trữ --- */}
-                            <div className="pt-2">
-                              {!isSidebarCollapsed && <h3 className="sidebar-group-title">Sinh Hoạt & Lưu Trữ</h3>}
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'commonRoomInfo'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('commonRoomInfo'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-info-circle"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Thông tin phòng chung</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'roomMemories'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('roomMemories'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-camera"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Kỷ niệm phòng</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'formerResidents'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('formerResidents'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-user-graduate"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Thông tin tiền bối</span>}
-                              </button>
-                            </div>
+                          {/* --- Nhóm Sinh Hoạt & Lưu Trữ --- */}
+                          <div className="pt-2">
+                            {!isSidebarCollapsed && <h3 className="sidebar-group-title">Sinh Hoạt & Lưu Trữ</h3>}
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'commonRoomInfo'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('commonRoomInfo'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-info-circle"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Thông tin phòng chung</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'roomMemories'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('roomMemories'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-camera"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Kỷ niệm phòng</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'formerResidents'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('formerResidents'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-user-graduate"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Thông tin tiền bối</span>}
+                            </button>
+                          </div>
 
-                            {/* --- Nhóm Báo Cáo & Thống Kê --- */}
-                            <div className="pt-2">
-                              {!isSidebarCollapsed && <h3 className="sidebar-group-title">Báo Cáo & Thống Kê</h3>}
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'billHistory'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('billHistory'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-history"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Lịch sử hóa đơn</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'costSharingHistory'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('costSharingHistory'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-receipt"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Lịch sử chia tiền</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'consumptionStats'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('consumptionStats'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-chart-bar"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Thống kê tiêu thụ</span>}
-                              </button>
-                            </div>
-                          </>
-                        )}
+                          {/* --- Nhóm Báo Cáo & Thống Kê --- */}
+                          <div className="pt-2">
+                            {!isSidebarCollapsed && <h3 className="sidebar-group-title">Báo Cáo & Thống Kê</h3>}
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'billHistory'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('billHistory'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-history"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Lịch sử hóa đơn</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'costSharingHistory'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('costSharingHistory'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-receipt"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Lịch sử chia tiền</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'consumptionStats'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('consumptionStats'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-chart-bar"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Thống kê tiêu thụ</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium ...`}
+                              onClick={() => { setActiveSection('loginHistory'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-history"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Lịch sử đăng nhập</span>}
+                            </button>
+                          </div>
+                        </>
+                      )}
 
-                        {/* ===== ĐIỀU HƯỚNG CỦA MEMBER ===== */}
-                        {userId && userRole === 'member' && (
-                          <>
-                            {/* --- Nhóm Cá Nhân --- */}
-                            <div>
-                              {!isSidebarCollapsed && <h3 className="sidebar-group-title">Cá Nhân</h3>}
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'dashboard'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('dashboard'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-tachometer-alt"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Dashboard</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'notifications'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('notifications'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-bell"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Thông báo của tôi</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'memberCostSummary'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('memberCostSummary'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-money-bill-wave"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Chi phí của tôi</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'memberCleaningSchedule'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('memberCleaningSchedule'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-broom"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Lịch trực của tôi</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'feedback'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('feedback'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-lightbulb"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Hộp thư góp ý</span>}
-                              </button>
-                            </div>
-                            
-                            {/* --- Nhóm Sinh Hoạt Chung --- */}
-                            <div className="pt-2">
-                              {!isSidebarCollapsed && <h3 className="sidebar-group-title">Sinh Hoạt Chung</h3>}
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'attendanceTracking'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('attendanceTracking'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-calendar-alt"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Điểm danh</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'shoeRackManagement'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('shoeRackManagement'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-shoe-prints"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Thông tin kệ giày</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'commonRoomInfo'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('commonRoomInfo'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-info-circle"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Thông tin phòng chung</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'roomMemories'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('roomMemories'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-camera"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Kỷ niệm phòng</span>}
-                              </button>
-                              <button
-                                className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
-                                  activeSection === 'formerResidents'
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}
-                                onClick={() => { setActiveSection('formerResidents'); setIsSidebarOpen(false); }}
-                              >
-                                <i className="fas fa-user-graduate"></i>
-                                {!isSidebarCollapsed && <span className="ml-3">Thông tin tiền bối</span>}
-                              </button>
-                            </div>
-                          </>
-                        )}
-                    </nav>
-                </div>
-                
-                {/* Copyright */}
-                <div className={`p-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0 ${isSidebarCollapsed && 'hidden'}`}>
-                    <div className="text-center text-gray-500 dark:text-gray-400 text-xs">
-                        © Bản quyền thuộc về Nguyễn Huỳnh Phúc Khang 2025
-                    </div>
-                </div>
-            </aside>
-            
-            {/* ===== NÚT THU GỌN MỚI - NẰM NGOÀI SIDEBAR ===== */}
-            <button 
-                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
-                className={`hidden lg:block absolute top-1/2 -translate-y-1/2 z-30
-                            bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-300 
-                            border border-gray-200 dark:border-gray-600 rounded-full 
-                            w-8 h-8 flex items-center justify-center
-                            opacity-0 group-hover:opacity-100 transition-all duration-300
-                            ${isSidebarCollapsed ? 'left-16' : 'left-60'}`}
-                style={{ transform: 'translateY(-50%)' }}
-            >
-                <i className={`fas ${isSidebarCollapsed ? 'fa-angle-right' : 'fa-angle-left'}`}></i>
-            </button>
+                      {/* ===== ĐIỀU HƯỚNG CỦA MEMBER ===== */}
+                      {userId && userRole === 'member' && (
+                        <>
+                          {/* --- Nhóm Cá Nhân --- */}
+                          <div>
+                            {!isSidebarCollapsed && <h3 className="sidebar-group-title">Cá Nhân</h3>}
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'dashboard'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('dashboard'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-tachometer-alt"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Dashboard</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'notifications'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('notifications'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-bell"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Thông báo của tôi</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'memberCostSummary'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('memberCostSummary'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-money-bill-wave"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Chi phí của tôi</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'memberCleaningSchedule'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('memberCleaningSchedule'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-broom"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Lịch trực của tôi</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'feedback'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('feedback'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-lightbulb"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Hộp thư góp ý</span>}
+                            </button>
+                          </div>
+                          
+                          {/* --- Nhóm Sinh Hoạt Chung --- */}
+                          <div className="pt-2">
+                            {!isSidebarCollapsed && <h3 className="sidebar-group-title">Sinh Hoạt Chung</h3>}
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'attendanceTracking'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('attendanceTracking'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-calendar-alt"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Điểm danh</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'shoeRackManagement'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('shoeRackManagement'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-shoe-prints"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Thông tin kệ giày</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'commonRoomInfo'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('commonRoomInfo'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-info-circle"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Thông tin phòng chung</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'roomMemories'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('roomMemories'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-camera"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Kỷ niệm phòng</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'formerResidents'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('formerResidents'); setIsSidebarOpen(false); }}
+                            >
+                              <i className="fas fa-user-graduate"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Thông tin tiền bối</span>}
+                            </button>
+                          </div>
+                        </>
+                      )}
+                  </nav>
+              </div>
+              
+              {/* Copyright */}
+              <div className={`p-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0 ${isSidebarCollapsed && 'hidden'}`}>
+                  <div className="text-center text-gray-500 dark:text-gray-400 text-xs">
+                      © Bản quyền thuộc về Nguyễn Huỳnh Phúc Khang 2025
+                  </div>
+              </div>
+          </aside>
+          
+          {/* ===== NÚT THU GỌN MỚI - NẰM NGOÀI SIDEBAR ===== */}
+          <button 
+              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
+              className={`hidden lg:block absolute top-1/2 -translate-y-1/2 z-30
+                          bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-300 
+                          border border-gray-200 dark:border-gray-600 rounded-full 
+                          w-8 h-8 flex items-center justify-center
+                          opacity-0 group-hover:opacity-100 transition-all duration-300
+                          ${isSidebarCollapsed ? 'left-16' : 'left-60'}`}
+              style={{ transform: 'translateY(-50%)' }}
+          >
+              <i className={`fas ${isSidebarCollapsed ? 'fa-angle-right' : 'fa-angle-left'}`}></i>
+          </button>
 
-            {/* Lớp phủ */}
-            {isSidebarOpen && (
-                <div
-                    onClick={() => setIsSidebarOpen(false)}
-                    className="fixed inset-0 bg-black bg-opacity-50 z-10 lg:hidden"
-                    aria-hidden="true"
-                ></div>
-            )}
+          {/* Lớp phủ */}
+          {isSidebarOpen && (
+              <div
+                  onClick={() => setIsSidebarOpen(false)}
+                  className="fixed inset-0 bg-black bg-opacity-50 z-10 lg:hidden"
+                  aria-hidden="true"
+              ></div>
+          )}
 
-            {/* Main Content Area */}
-            <main className={`h-full p-4 transition-all duration-300 ease-in-out overflow-y-auto w-full ${isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
-                {userId ? (
-                    renderSection()
-                ) : (
-                  <div className="mb-8 p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg mx-auto max-w-lg">
+          {/* Main Content Area */}
+          <main className={`h-full p-4 transition-all duration-300 ease-in-out overflow-y-auto w-full ${isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
+              {userId ? (
+                  renderSection()
+              ) : (
+                <div className="mb-8 p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg mx-auto max-w-lg">
                   {/* Tab Navigation */}
                   <div className="flex justify-center mb-6 border-b border-gray-300 dark:border-gray-600">
                     <button
@@ -7750,11 +7837,11 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                       </>
                   )}
                 </div>
-                )}
-            </main>
-        </div>
+              )}
+          </main>
+      </div>
 
-      {/* Modals - Giữ chúng ở phạm vi toàn cục để chồng lên nhau */}
+      {/* MODAL CHI TIẾT HÓA ĐƠN ĐIỆN NƯỚC */}
       {selectedBillDetails &&
         userRole === 'admin' && ( // Chỉ hiển thị chi tiết hóa đơn cho admin
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -7821,422 +7908,60 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               </button>
             </div>
           </div>
-        )}
+      )}
 
-        {/* =================================================== */}
-        {/* ===== MODAL CHI TIẾT BÀI ĐĂNG KỶ NIỆM ===== */}
-        {/* =================================================== */}
-        {selectedMemoryDetails && (
+      {/* ===== MODAL CHI TIẾT BÀI ĐĂNG KỶ NIỆM ===== */}
+      {selectedMemoryDetails && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
+          onClick={() => setSelectedMemoryDetails(null)} // Đóng khi bấm ra ngoài
+        >
           <div 
-            className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
-            onClick={() => setSelectedMemoryDetails(null)} // Đóng khi bấm ra ngoài
+            className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()} // Ngăn không cho popup tự đóng khi bấm vào bên trong
           >
-            <div 
-              className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col"
-              onClick={(e) => e.stopPropagation()} // Ngăn không cho popup tự đóng khi bấm vào bên trong
-            >
-              {/* Header của Popup */}
-              <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-                <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
-                  {selectedMemoryDetails.eventName}
-                </h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  Ngày chụp: {selectedMemoryDetails.photoDate}
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Đăng bởi: {selectedMemoryDetails.uploadedByName || 'N/A'}
-                </p>
-              </div>
+            {/* Header của Popup */}
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
+                {selectedMemoryDetails.eventName}
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Ngày chụp: {selectedMemoryDetails.photoDate}
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Đăng bởi: {selectedMemoryDetails.uploadedByName || 'N/A'}
+              </p>
+            </div>
 
-              {/* Nội dung hình ảnh/video */}
-              <div className="flex-1 p-6 overflow-y-auto">
-                <div className="grid grid-cols-1 gap-4">
-                  {selectedMemoryDetails.files && selectedMemoryDetails.files.map((file, index) => (
-                    <div key={index}>
-                      {file.fileType === 'image' ? (
-                        <img src={file.fileUrl} alt={`File ${index + 1}`} className="w-full h-auto rounded-lg object-contain" />
-                      ) : (
-                        <video src={file.fileUrl} controls className="w-full h-auto rounded-lg"></video>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Footer của Popup */}
-              <div className="p-6 border-t border-gray-200 dark:border-gray-700">
-                <button
-                  onClick={() => setSelectedMemoryDetails(null)}
-                  className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
-                >
-                  Đóng
-                </button>
+            {/* Nội dung hình ảnh/video */}
+            <div className="flex-1 p-6 overflow-y-auto">
+              <div className="grid grid-cols-1 gap-4">
+                {selectedMemoryDetails.files && selectedMemoryDetails.files.map((file, index) => (
+                  <div key={index}>
+                    {file.fileType === 'image' ? (
+                      <img src={file.fileUrl} alt={`File ${index + 1}`} className="w-full h-auto rounded-lg object-contain" />
+                    ) : (
+                      <video src={file.fileUrl} controls className="w-full h-auto rounded-lg"></video>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
-          </div>
-        )}
 
-        {/* ===== MODAL CHI TIẾT CHIA TIỀN (ĐÃ NÂNG CẤP) ===== */}
-        {selectedCostSharingDetails && (userRole === 'admin') && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[95vh]">
-              <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center flex-shrink-0">
-                Chi tiết chia tiền
-              </h3>
-
-              {(() => {
-                // --- Bắt đầu khối tính toán ---
-                const individualCostsMap = selectedCostSharingDetails.individualCosts || {};
-                const totalBillAmount = selectedCostSharingDetails.relatedTotalBill || 0;
-
-                const totalPaidAmount = Object.values(individualCostsMap)
-                  .filter(details => details.isPaid)
-                  .reduce((sum, details) => sum + (details.cost || 0), 0);
-                  
-                const amountRemaining = totalBillAmount - totalPaidAmount;
-                
-                const paidPercentage = totalBillAmount > 0 ? (totalPaidAmount / totalBillAmount) * 100 : 0;
-                // --- Kết thúc khối tính toán ---
-
-                return (
-                  <>
-                    {/* ===== KHỐI TIẾN ĐỘ THANH TOÁN MỚI ===== */}
-                    <div className="mb-4 border-b pb-4 border-gray-200 dark:border-gray-700">
-                      <h4 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                        Tiến độ thanh toán
-                      </h4>
-                      <div className="w-full bg-gray-200 rounded-full h-4 dark:bg-gray-600 relative overflow-hidden">
-                        <div
-                          className="bg-green-500 h-4 rounded-full text-center text-white text-xs leading-4 flex items-center justify-center transition-all duration-500"
-                          style={{ width: `${paidPercentage}%` }}
-                        >
-                          {Math.round(paidPercentage)}%
-                        </div>
-                      </div>
-                      <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mt-2">
-                        <span>Đã đóng: <strong>{totalPaidAmount.toLocaleString('vi-VN')} VND</strong></span>
-                        <span>Còn lại: <strong>{amountRemaining.toLocaleString('vi-VN')} VND</strong></span>
-                      </div>
-                    </div>
-
-                    {/* Phần hiển thị chi tiết */}
-                    <div className="flex-grow overflow-y-auto">
-                      <div className="space-y-3 text-gray-700 dark:text-gray-300">
-                        <p><strong>Kỳ tính:</strong> {selectedCostSharingDetails.periodStart} đến {selectedCostSharingDetails.periodEnd}</p>
-                        <p><strong>Ngày tính:</strong> {selectedCostSharingDetails.calculatedDate?.toLocaleDateString('vi-VN') || 'N/A'}</p>
-                        <p><strong>Tổng ngày có mặt:</strong> {selectedCostSharingDetails.totalCalculatedDaysAllResidents} ngày</p>
-                        <p><strong>Chi phí TB 1 ngày/người:</strong> {selectedCostSharingDetails.costPerDayPerPerson?.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} VND</p>
-                        
-                        <p className="text-xl font-bold border-t pt-3 mt-3 border-gray-300 dark:border-gray-600">
-                          Số tiền mỗi người cần đóng:
-                        </p>
-                        
-                        <div className="max-h-40 overflow-y-auto pr-2 border rounded-lg border-gray-200 dark:border-gray-700">
-                          <ul className="space-y-2 py-2">
-                            {Object.entries(individualCostsMap).map(([residentId, data]) => {
-                              const residentName = residents.find(res => res.id === residentId)?.name || residentId;
-                              return (
-                                <li key={residentId} className="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-2 rounded-lg">
-                                  <span>{residentName}:</span>
-                                  <div className="flex items-center">
-                                      <span className="font-bold mr-2">{data.cost?.toLocaleString('vi-VN')} VND</span>
-                                      <input
-                                        type="checkbox"
-                                        checked={data.isPaid || false}
-                                        onChange={() => handleToggleIndividualPaymentStatus(selectedCostSharingDetails.id, residentId, data.isPaid || false)}
-                                        className="form-checkbox h-5 w-5 text-green-600 dark:text-green-400 rounded cursor-pointer"
-                                      />
-                                  </div>
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        </div>
-
-                        <p className="text-lg font-bold border-t pt-3 mt-3 border-gray-300 dark:border-gray-600">
-                          Quỹ phòng còn lại: 
-                          <span className={`font-bold ${selectedCostSharingDetails.remainingFund >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
-                            {' '}{selectedCostSharingDetails.remainingFund?.toLocaleString('vi-VN')} VND
-                          </span>
-                        </p>
-                      </div>
-                      {/* ===== KHỐI NÚT BẤM MỚI - BẮT ĐẦU ===== */}
-                      <div className="mt-6 flex-shrink-0 flex flex-col space-y-2">
-                        {/* Nút Thanh toán Online */}
-                        <button
-                          onClick={() => window.open('https://tracuu.hcmue.edu.vn/ktx', '_blank')} // <-- THAY ĐỔI LINK Ở ĐÂY
-                          className="w-full px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all"
-                        >
-                          <i className="fas fa-external-link-alt mr-2"></i>
-                          Đi đến trang Thanh toán
-                        </button>
-                      </div>
-                      {/* ===== KHỐI NÚT BẤM MỚI - KẾT THÚC ===== */}
-                    </div>
-                  </>
-                );
-              })()}
-              
+            {/* Footer của Popup */}
+            <div className="p-6 border-t border-gray-200 dark:border-gray-700">
               <button
-                onClick={() => setSelectedCostSharingDetails(null)}
-                className="mt-6 w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 flex-shrink-0"
+                onClick={() => setSelectedMemoryDetails(null)}
+                className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
               >
                 Đóng
               </button>
             </div>
           </div>
-        )}
-
-      {/* Upload/thay đổi avatar cho thành viên */}
-      {selectedResidentForAvatarUpload && userRole === 'admin' && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md">
-            <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
-              Cập nhật ảnh đại diện cho {selectedResidentForAvatarUpload.fullName}
-            </h3>
-            <div className="flex flex-col items-center space-y-4">
-              {selectedResidentForAvatarUpload.photoURL ? (
-                <img
-                  src={selectedResidentForAvatarUpload.photoURL}
-                  alt="Current Avatar"
-                  className="w-32 h-32 rounded-full object-cover shadow-lg border border-gray-200 dark:border-gray-700"
-                />
-              ) : (
-                <div className="w-32 h-32 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-6xl">
-                  <i className="fas fa-user-circle"></i>
-                </div>
-              )}
-              <div>
-                <label htmlFor="avatarUploadModalInput" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                  Chọn ảnh mới:
-                </label>
-                <input
-                  type="file"
-                  id="avatarUploadModalInput"
-                  accept="image/*"
-                  onChange={(e) => {
-                    setAvatarUploadModalFile(e.target.files[0]);
-                    setAvatarUploadModalError('');
-                  }}
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                />
-              </div>
-              {isUploadingAvatarModal && (
-                <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2">
-                  <div
-                    className="bg-blue-600 h-2.5 rounded-full"
-                    style={{ width: `${avatarUploadModalProgress}%` }}
-                  ></div>
-                </div>
-              )}
-              {avatarUploadModalError && (
-                <p className="text-red-500 text-sm text-center mt-2">{avatarUploadModalError}</p>
-              )}
-              <button
-                onClick={() => handleUploadResidentAvatar(selectedResidentForAvatarUpload.id)}
-                className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
-                disabled={isUploadingAvatarModal || !avatarUploadModalFile}
-              >
-                {isUploadingAvatarModal ? (
-                  <i className="fas fa-spinner fa-spin mr-2"></i>
-                ) : (
-                  <i className="fas fa-upload mr-2"></i>
-                )}
-                Tải lên
-              </button>
-              <button
-                onClick={() => {
-                  setSelectedResidentForAvatarUpload(null);
-                  setAvatarUploadModalFile(null);
-                  setAvatarUploadModalError('');
-                }}
-                className="w-full px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
-              >
-                Hủy
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {showGenerateScheduleModal &&
-        userRole === 'admin' && ( // Chỉ hiển thị modal lịch trình cho admin
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-lg">
-              <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
-                Tạo lịch trực phòng tự động
-              </h3>
-              <div className="space-y-4">
-                <label
-                  htmlFor="numDaysForSchedule"
-                  className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                >
-                  Số ngày bạn muốn tạo lịch:
-                </label>
-                <input
-                  type="number"
-                  id="numDaysForSchedule"
-                  value={numDaysForSchedule}
-                  onChange={(e) => setNumDaysForSchedule(parseInt(e.target.value) || 0)}
-                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700"
-                  min="1"
-                />
-                <button
-                  onClick={() => handleGenerateCleaningSchedule()}
-                  className="w-full px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl shadow-md hover:bg-indigo-700 transition-all duration-300"
-                  disabled={residents.filter((res) => res.isActive !== false).length === 0} // Vô hiệu hóa nếu không có cư dân hoạt động
-                >
-                  {isGeneratingSchedule ? (
-                    <i className="fas fa-spinner fa-spin mr-2"></i>
-                  ) : (
-                    <i className="fas fa-magic mr-2"></i>
-                  )}
-                  Tạo lịch
-                </button>
-
-                {generatedCleaningTasks.length > 0 && (
-                  <div className="mt-6">
-                    <h4 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-3">
-                      Lịch đã tạo (Xem trước):
-                    </h4>
-                    <div className="max-h-60 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-xl p-3 bg-gray-50 dark:bg-gray-700">
-                      <ul className="space-y-2">
-                        {generatedCleaningTasks.map((task, index) => (
-                          <li key={index} className="text-gray-700 dark:text-gray-300">
-                            <strong>{task.date}:</strong> {task.taskName} - {task.assignedToResidentName}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    <button
-                      onClick={handleSaveGeneratedTasks}
-                      className="w-full mt-4 px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all duration-300"
-                    >
-                      <i className="fas fa-save mr-2"></i> Lưu lịch đã tạo
-                    </button>
-                  </div>
-                )}
-
-                <button
-                  onClick={() => {
-                    setShowGenerateScheduleModal(false);
-                    setGeneratedCleaningTasks([]);
-                    setAuthError('');
-                  }}
-                  className="w-full mt-4 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
-                >
-                  Hủy
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-      {showNotificationsModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto">
-            <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">Thông báo</h3>
-            {notificationError && <p className="text-red-500 text-sm text-center mb-4">{notificationError}</p>}
-            {notifications.length === 0 ? (
-              <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa có thông báo nào.</p>
-            ) : (
-              <ul className="space-y-4">
-                {notifications.map((notification) => (
-                  <li
-                    key={notification.id}
-                    className={`p-4 rounded-xl shadow-sm border ${notification.isRead ? 'bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600' : 'bg-blue-50 dark:bg-blue-900 border-blue-200 dark:border-blue-700'} flex justify-between items-start cursor-pointer transition-all duration-200`}
-                    onClick={() => !notification.isRead && markNotificationAsRead(notification.id)} // Đánh dấu đã đọc khi nhấp vào
-                  >
-                    <div className="flex-1">
-                      <p
-                        className={`font-semibold ${notification.isRead ? 'text-gray-800 dark:text-gray-300' : 'text-blue-800 dark:text-blue-200'}`}
-                      >
-                        {notification.message}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        <i className="fas fa-clock mr-1"></i>
-                        {notification.createdAt instanceof Date
-                          ? notification.createdAt.toLocaleString('vi-VN')
-                          : 'Đang tải...'}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Loại: {notification.type}</p>
-                    </div>
-                    {userRole === 'admin' && ( // Chỉ admin mới có nút xóa
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteNotification(notification.id);
-                        }} // Ngăn chặn sự kiện nổi bọt
-                        className="ml-4 p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-800 rounded-full transition-colors"
-                      >
-                        <i className="fas fa-times"></i>
-                      </button>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-            <button
-              onClick={() => setShowNotificationsModal(false)}
-              className="mt-6 w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
-            >
-              Đóng
-            </button>
-          </div>
         </div>
       )}
 
-      {/* Modal Chi tiết Thông báo */}
-      {selectedNotificationDetails && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md">
-            <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">Chi tiết thông báo</h3>
-            <div className="space-y-3 text-gray-700 dark:text-gray-300">
-              <p>
-                <strong>Tiêu đề:</strong> {selectedNotificationDetails.title || 'Không có tiêu đề'}
-              </p>{' '}
-              {/* Có thể có title nếu bạn thêm vào hàm createNotification */}
-              <p>
-                <strong>Nội dung:</strong> {selectedNotificationDetails.message}
-              </p>
-              <p>
-                <strong>Loại:</strong> {selectedNotificationDetails.type}
-              </p>
-              <p>
-                <strong>Người gửi:</strong> {selectedNotificationDetails.createdBy || 'Hệ thống'}
-              </p>{' '}
-              {/* Bạn có thể cần tìm tên người gửi nếu cần */}
-              <p>
-                <strong>Người nhận:</strong>{' '}
-                {selectedNotificationDetails.recipientId === 'all'
-                  ? 'Tất cả'
-                  : allUsersData.find((u) => u.id === selectedNotificationDetails.recipientId)?.fullName ||
-                    selectedNotificationDetails.recipientId}
-              </p>
-              <p>
-                <strong>Thời gian:</strong>{' '}
-                {selectedNotificationDetails.createdAt instanceof Date
-                  ? selectedNotificationDetails.createdAt.toLocaleString('vi-VN')
-                  : 'N/A'}
-              </p>
-              <p>
-                <strong>Trạng thái:</strong>
-                <span
-                  className={`ml-2 px-2 py-1 rounded-full text-sm ${selectedNotificationDetails.isRead ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'}`}
-                >
-                  {selectedNotificationDetails.isRead ? 'Đã đọc' : 'Chưa đọc'}
-                </span>
-              </p>
-            </div>
-            <button
-              onClick={() => setSelectedNotificationDetails(null)}
-              className="mt-6 w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
-            >
-              Đóng
-            </button>
-          </div>
-        </div>
-      )}
-
+      {/* ===== MODAL CHỈNH SỬA BÀI ĐĂNG KỶ NIỆM ===== */}
       {editingMemory && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
@@ -8359,6 +8084,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
         </div>
       )}
 
+      {/* ===== MODAL TRÌNH XEM ẢNH/VIDEO KỶ NIỆM ===== */}
       {selectedMemoryForLightbox && (
         <div
           className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
@@ -8425,7 +8151,409 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
         </div>
       )}
 
-      {/* NEW: Modal chỉnh sửa thông tin thành viên trong "Thông tin phòng chung" */}
+      {/*  ===== MODAL HIỂN THỊ ẢNH/VIDEO PHÓNG TO (THU NHỎ) ===== */}
+      {selectedImageToZoom && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
+          onClick={() => setSelectedImageToZoom(null)}
+        >
+          <div
+            className="relative max-w-full max-h-full flex items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {' '}
+            {/* Ngăn chặn sự kiện nổi bọt trên nội dung */}
+            {selectedImageToZoom.fileType === 'video' ? ( // Hiển thị video nếu là video
+              <video
+                src={selectedImageToZoom.fileUrl}
+                controls
+                autoPlay
+                loop
+                className="max-w-full max-h-[90vh] object-contain shadow-lg rounded-lg"
+              ></video>
+            ) : (
+              // Hiển thị ảnh nếu là ảnh hoặc loại khác
+              <img
+                src={selectedImageToZoom.fileUrl}
+                alt={selectedImageToZoom.eventName || 'Phóng to kỷ niệm'}
+                className="max-w-full max-h-[90vh] object-contain shadow-lg rounded-lg"
+              />
+            )}
+            <button
+              onClick={() => setSelectedImageToZoom(null)}
+              className="absolute top-4 right-4 text-white text-3xl bg-gray-800 bg-opacity-50 rounded-full w-10 h-10 flex items-center justify-center hover:bg-opacity-75 transition-colors"
+            >
+              &times; {/* Dấu X để đóng */}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ===== MODAL CHI TIẾT CHIA TIỀN ===== */}
+      {selectedCostSharingDetails && (userRole === 'admin') && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[95vh]">
+            <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center flex-shrink-0">
+              Chi tiết chia tiền
+            </h3>
+
+            {(() => {
+              // --- Bắt đầu khối tính toán ---
+              const individualCostsMap = selectedCostSharingDetails.individualCosts || {};
+              const totalBillAmount = selectedCostSharingDetails.relatedTotalBill || 0;
+
+              const totalPaidAmount = Object.values(individualCostsMap)
+                .filter(details => details.isPaid)
+                .reduce((sum, details) => sum + (details.cost || 0), 0);
+                
+              const amountRemaining = totalBillAmount - totalPaidAmount;
+              
+              const paidPercentage = totalBillAmount > 0 ? (totalPaidAmount / totalBillAmount) * 100 : 0;
+              // --- Kết thúc khối tính toán ---
+
+              return (
+                <>
+                  {/* ===== KHỐI TIẾN ĐỘ THANH TOÁN MỚI ===== */}
+                  <div className="mb-4 border-b pb-4 border-gray-200 dark:border-gray-700">
+                    <h4 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                      Tiến độ thanh toán
+                    </h4>
+                    <div className="w-full bg-gray-200 rounded-full h-4 dark:bg-gray-600 relative overflow-hidden">
+                      <div
+                        className="bg-green-500 h-4 rounded-full text-center text-white text-xs leading-4 flex items-center justify-center transition-all duration-500"
+                        style={{ width: `${paidPercentage}%` }}
+                      >
+                        {Math.round(paidPercentage)}%
+                      </div>
+                    </div>
+                    <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mt-2">
+                      <span>Đã đóng: <strong>{totalPaidAmount.toLocaleString('vi-VN')} VND</strong></span>
+                      <span>Còn lại: <strong>{amountRemaining.toLocaleString('vi-VN')} VND</strong></span>
+                    </div>
+                  </div>
+
+                  {/* Phần hiển thị chi tiết */}
+                  <div className="flex-grow overflow-y-auto">
+                    <div className="space-y-3 text-gray-700 dark:text-gray-300">
+                      <p><strong>Kỳ tính:</strong> {selectedCostSharingDetails.periodStart} đến {selectedCostSharingDetails.periodEnd}</p>
+                      <p><strong>Ngày tính:</strong> {selectedCostSharingDetails.calculatedDate?.toLocaleDateString('vi-VN') || 'N/A'}</p>
+                      <p><strong>Tổng ngày có mặt:</strong> {selectedCostSharingDetails.totalCalculatedDaysAllResidents} ngày</p>
+                      <p><strong>Chi phí TB 1 ngày/người:</strong> {selectedCostSharingDetails.costPerDayPerPerson?.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} VND</p>
+                      
+                      <p className="text-xl font-bold border-t pt-3 mt-3 border-gray-300 dark:border-gray-600">
+                        Số tiền mỗi người cần đóng:
+                      </p>
+                      
+                      <div className="max-h-40 overflow-y-auto pr-2 border rounded-lg border-gray-200 dark:border-gray-700">
+                        <ul className="space-y-2 py-2">
+                          {Object.entries(individualCostsMap).map(([residentId, data]) => {
+                            const residentName = residents.find(res => res.id === residentId)?.name || residentId;
+                            return (
+                              <li key={residentId} className="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-2 rounded-lg">
+                                <span>{residentName}:</span>
+                                <div className="flex items-center">
+                                    <span className="font-bold mr-2">{data.cost?.toLocaleString('vi-VN')} VND</span>
+                                    <input
+                                      type="checkbox"
+                                      checked={data.isPaid || false}
+                                      onChange={() => handleToggleIndividualPaymentStatus(selectedCostSharingDetails.id, residentId, data.isPaid || false)}
+                                      className="form-checkbox h-5 w-5 text-green-600 dark:text-green-400 rounded cursor-pointer"
+                                    />
+                                </div>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+
+                      <p className="text-lg font-bold border-t pt-3 mt-3 border-gray-300 dark:border-gray-600">
+                        Quỹ phòng còn lại: 
+                        <span className={`font-bold ${selectedCostSharingDetails.remainingFund >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
+                          {' '}{selectedCostSharingDetails.remainingFund?.toLocaleString('vi-VN')} VND
+                        </span>
+                      </p>
+                    </div>
+                    {/* ===== KHỐI NÚT BẤM MỚI - BẮT ĐẦU ===== */}
+                    <div className="mt-6 flex-shrink-0 flex flex-col space-y-2">
+                      {/* Nút Thanh toán Online */}
+                      <button
+                        onClick={() => window.open('https://tracuu.hcmue.edu.vn/ktx', '_blank')} // <-- THAY ĐỔI LINK Ở ĐÂY
+                        className="w-full px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all"
+                      >
+                        <i className="fas fa-external-link-alt mr-2"></i>
+                        Đi đến trang Thanh toán
+                      </button>
+                    </div>
+                    {/* ===== KHỐI NÚT BẤM MỚI - KẾT THÚC ===== */}
+                  </div>
+                </>
+              );
+            })()}
+            
+            <button
+              onClick={() => setSelectedCostSharingDetails(null)}
+              className="mt-6 w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 flex-shrink-0"
+            >
+              Đóng
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ===== MODAL UPLOAD THAY ĐỔI AVATAR THÀNH VIÊN ===== */}
+      {selectedResidentForAvatarUpload && userRole === 'admin' && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md">
+            <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
+              Cập nhật ảnh đại diện cho {selectedResidentForAvatarUpload.fullName}
+            </h3>
+            <div className="flex flex-col items-center space-y-4">
+              {selectedResidentForAvatarUpload.photoURL ? (
+                <img
+                  src={selectedResidentForAvatarUpload.photoURL}
+                  alt="Current Avatar"
+                  className="w-32 h-32 rounded-full object-cover shadow-lg border border-gray-200 dark:border-gray-700"
+                />
+              ) : (
+                <div className="w-32 h-32 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-6xl">
+                  <i className="fas fa-user-circle"></i>
+                </div>
+              )}
+              <div>
+                <label htmlFor="avatarUploadModalInput" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                  Chọn ảnh mới:
+                </label>
+                <input
+                  type="file"
+                  id="avatarUploadModalInput"
+                  accept="image/*"
+                  onChange={(e) => {
+                    setAvatarUploadModalFile(e.target.files[0]);
+                    setAvatarUploadModalError('');
+                  }}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                />
+              </div>
+              {isUploadingAvatarModal && (
+                <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2">
+                  <div
+                    className="bg-blue-600 h-2.5 rounded-full"
+                    style={{ width: `${avatarUploadModalProgress}%` }}
+                  ></div>
+                </div>
+              )}
+              {avatarUploadModalError && (
+                <p className="text-red-500 text-sm text-center mt-2">{avatarUploadModalError}</p>
+              )}
+              <button
+                onClick={() => handleUploadResidentAvatar(selectedResidentForAvatarUpload.id)}
+                className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+                disabled={isUploadingAvatarModal || !avatarUploadModalFile}
+              >
+                {isUploadingAvatarModal ? (
+                  <i className="fas fa-spinner fa-spin mr-2"></i>
+                ) : (
+                  <i className="fas fa-upload mr-2"></i>
+                )}
+                Tải lên
+              </button>
+              <button
+                onClick={() => {
+                  setSelectedResidentForAvatarUpload(null);
+                  setAvatarUploadModalFile(null);
+                  setAvatarUploadModalError('');
+                }}
+                className="w-full px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
+              >
+                Hủy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== MODAL CRUD LỊCH TRÌNH CỦA ADMIN ===== */}
+      {showGenerateScheduleModal &&
+        userRole === 'admin' && ( // Chỉ hiển thị modal lịch trình cho admin
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-lg">
+              <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
+                Tạo lịch trực phòng tự động
+              </h3>
+              <div className="space-y-4">
+                <label
+                  htmlFor="numDaysForSchedule"
+                  className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                >
+                  Số ngày bạn muốn tạo lịch:
+                </label>
+                <input
+                  type="number"
+                  id="numDaysForSchedule"
+                  value={numDaysForSchedule}
+                  onChange={(e) => setNumDaysForSchedule(parseInt(e.target.value) || 0)}
+                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700"
+                  min="1"
+                />
+                <button
+                  onClick={() => handleGenerateCleaningSchedule()}
+                  className="w-full px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl shadow-md hover:bg-indigo-700 transition-all duration-300"
+                  disabled={residents.filter((res) => res.isActive !== false).length === 0} // Vô hiệu hóa nếu không có cư dân hoạt động
+                >
+                  {isGeneratingSchedule ? (
+                    <i className="fas fa-spinner fa-spin mr-2"></i>
+                  ) : (
+                    <i className="fas fa-magic mr-2"></i>
+                  )}
+                  Tạo lịch
+                </button>
+
+                {generatedCleaningTasks.length > 0 && (
+                  <div className="mt-6">
+                    <h4 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-3">
+                      Lịch đã tạo (Xem trước):
+                    </h4>
+                    <div className="max-h-60 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-xl p-3 bg-gray-50 dark:bg-gray-700">
+                      <ul className="space-y-2">
+                        {generatedCleaningTasks.map((task, index) => (
+                          <li key={index} className="text-gray-700 dark:text-gray-300">
+                            <strong>{task.date}:</strong> {task.taskName} - {task.assignedToResidentName}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <button
+                      onClick={handleSaveGeneratedTasks}
+                      className="w-full mt-4 px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all duration-300"
+                    >
+                      <i className="fas fa-save mr-2"></i> Lưu lịch đã tạo
+                    </button>
+                  </div>
+                )}
+
+                <button
+                  onClick={() => {
+                    setShowGenerateScheduleModal(false);
+                    setGeneratedCleaningTasks([]);
+                    setAuthError('');
+                  }}
+                  className="w-full mt-4 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
+                >
+                  Hủy
+                </button>
+              </div>
+            </div>
+          </div>
+      )}
+
+      {/* ===== MODAL CRUD THÔNG BÁO ===== */}
+      {showNotificationsModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto">
+            <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">Thông báo</h3>
+            {notificationError && <p className="text-red-500 text-sm text-center mb-4">{notificationError}</p>}
+            {notifications.length === 0 ? (
+              <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">Bạn chưa có thông báo nào.</p>
+            ) : (
+              <ul className="space-y-4">
+                {notifications.map((notification) => (
+                  <li
+                    key={notification.id}
+                    className={`p-4 rounded-xl shadow-sm border ${notification.isRead ? 'bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600' : 'bg-blue-50 dark:bg-blue-900 border-blue-200 dark:border-blue-700'} flex justify-between items-start cursor-pointer transition-all duration-200`}
+                    onClick={() => !notification.isRead && markNotificationAsRead(notification.id)} // Đánh dấu đã đọc khi nhấp vào
+                  >
+                    <div className="flex-1">
+                      <p
+                        className={`font-semibold ${notification.isRead ? 'text-gray-800 dark:text-gray-300' : 'text-blue-800 dark:text-blue-200'}`}
+                      >
+                        {notification.message}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        <i className="fas fa-clock mr-1"></i>
+                        {notification.createdAt instanceof Date
+                          ? notification.createdAt.toLocaleString('vi-VN')
+                          : 'Đang tải...'}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Loại: {notification.type}</p>
+                    </div>
+                    {userRole === 'admin' && ( // Chỉ admin mới có nút xóa
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteNotification(notification.id);
+                        }} // Ngăn chặn sự kiện nổi bọt
+                        className="ml-4 p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-800 rounded-full transition-colors"
+                      >
+                        <i className="fas fa-times"></i>
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <button
+              onClick={() => setShowNotificationsModal(false)}
+              className="mt-6 w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+            >
+              Đóng
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ===== MODAL XEM CHI TIẾT THÔNG BÁO ===== */}
+      {selectedNotificationDetails && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md">
+            <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">Chi tiết thông báo</h3>
+            <div className="space-y-3 text-gray-700 dark:text-gray-300">
+              <p>
+                <strong>Tiêu đề:</strong> {selectedNotificationDetails.title || 'Không có tiêu đề'}
+              </p>{' '}
+              {/* Có thể có title nếu bạn thêm vào hàm createNotification */}
+              <p>
+                <strong>Nội dung:</strong> {selectedNotificationDetails.message}
+              </p>
+              <p>
+                <strong>Loại:</strong> {selectedNotificationDetails.type}
+              </p>
+              <p>
+                <strong>Người gửi:</strong> {selectedNotificationDetails.createdBy || 'Hệ thống'}
+              </p>{' '}
+              {/* Bạn có thể cần tìm tên người gửi nếu cần */}
+              <p>
+                <strong>Người nhận:</strong>{' '}
+                {selectedNotificationDetails.recipientId === 'all'
+                  ? 'Tất cả'
+                  : allUsersData.find((u) => u.id === selectedNotificationDetails.recipientId)?.fullName ||
+                    selectedNotificationDetails.recipientId}
+              </p>
+              <p>
+                <strong>Thời gian:</strong>{' '}
+                {selectedNotificationDetails.createdAt instanceof Date
+                  ? selectedNotificationDetails.createdAt.toLocaleString('vi-VN')
+                  : 'N/A'}
+              </p>
+              <p>
+                <strong>Trạng thái:</strong>
+                <span
+                  className={`ml-2 px-2 py-1 rounded-full text-sm ${selectedNotificationDetails.isRead ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'}`}
+                >
+                  {selectedNotificationDetails.isRead ? 'Đã đọc' : 'Chưa đọc'}
+                </span>
+              </p>
+            </div>
+            <button
+              onClick={() => setSelectedNotificationDetails(null)}
+              className="mt-6 w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+            >
+              Đóng
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ===== MODAL CHỈNH SỬA THÔNG TIN CÁ NHÂN CỦA THÀNH VIÊN ===== */}
       {editingCommonResidentData && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
@@ -8563,44 +8691,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
         </div>
       )}
 
-      {/*  Modal hiển thị ảnh/video phóng to (Lightbox) */}
-      {selectedImageToZoom && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
-          onClick={() => setSelectedImageToZoom(null)}
-        >
-          <div
-            className="relative max-w-full max-h-full flex items-center justify-center"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {' '}
-            {/* Ngăn chặn sự kiện nổi bọt trên nội dung */}
-            {selectedImageToZoom.fileType === 'video' ? ( // Hiển thị video nếu là video
-              <video
-                src={selectedImageToZoom.fileUrl}
-                controls
-                autoPlay
-                loop
-                className="max-w-full max-h-[90vh] object-contain shadow-lg rounded-lg"
-              ></video>
-            ) : (
-              // Hiển thị ảnh nếu là ảnh hoặc loại khác
-              <img
-                src={selectedImageToZoom.fileUrl}
-                alt={selectedImageToZoom.eventName || 'Phóng to kỷ niệm'}
-                className="max-w-full max-h-[90vh] object-contain shadow-lg rounded-lg"
-              />
-            )}
-            <button
-              onClick={() => setSelectedImageToZoom(null)}
-              className="absolute top-4 right-4 text-white text-3xl bg-gray-800 bg-opacity-50 rounded-full w-10 h-10 flex items-center justify-center hover:bg-opacity-75 transition-colors"
-            >
-              &times; {/* Dấu X để đóng */}
-            </button>
-          </div>
-        </div>
-      )}
-
+      {/* ===== MODAL CHỈNH SỬA THÔNG TIN CÁ NHÂN CỦA TIỀN BỐI ===== */}
       {editingFormerResident && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col">
@@ -8769,7 +8860,8 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
           </div>
         </div>
       )}
-      {/* Forgot Password Modal */}
+
+      {/* ===== MODAL QUÊN MẬT KHẨU ===== */}
       {showForgotPasswordModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md">
@@ -8810,42 +8902,43 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
           </div>
         </div>
       )}
+
       {/* ===== MODAL CHI TIẾT GÓP Ý (ADMIN) ===== */}
-            {selectedFeedbackDetails && (
-              <div 
-                className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-                onClick={() => setSelectedFeedbackDetails(null)} // Đóng khi bấm ra ngoài
-              >
-                <div 
-                  className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col"
-                  onClick={(e) => e.stopPropagation()} // Ngăn không cho popup tự đóng khi bấm vào bên trong
-                >
-                  <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 flex-shrink-0">
-                    Chi tiết góp ý
-                  </h3>
-                  
-                  {/* Khung nội dung có thể cuộn */}
-                  <div className="flex-1 overflow-y-auto pr-2 border-t border-b py-4 border-gray-200 dark:border-gray-700">
-                    <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                      {selectedFeedbackDetails.content}
-                    </p>
-                  </div>
-                  
-                  {/* Thông tin người gửi */}
-                  <div className="mt-4 pt-4 text-sm text-gray-500 dark:text-gray-400 flex-shrink-0">
-                    <p><strong>Người gửi:</strong> {selectedFeedbackDetails.submittedByName}</p>
-                    <p><strong>Thời gian:</strong> {selectedFeedbackDetails.submittedAt?.toDate().toLocaleString('vi-VN')}</p>
-                  </div>
-                  
-                  <button 
-                    onClick={() => setSelectedFeedbackDetails(null)}
-                    className="w-full mt-6 p-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 flex-shrink-0"
-                  >
-                    Đóng
-                  </button>
-                </div>
-              </div>
-            )}
+      {selectedFeedbackDetails && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => setSelectedFeedbackDetails(null)} // Đóng khi bấm ra ngoài
+        >
+          <div 
+            className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()} // Ngăn không cho popup tự đóng khi bấm vào bên trong
+          >
+            <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 flex-shrink-0">
+              Chi tiết góp ý
+            </h3>
+            
+            {/* Khung nội dung có thể cuộn */}
+            <div className="flex-1 overflow-y-auto pr-2 border-t border-b py-4 border-gray-200 dark:border-gray-700">
+              <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                {selectedFeedbackDetails.content}
+              </p>
+            </div>
+            
+            {/* Thông tin người gửi */}
+            <div className="mt-4 pt-4 text-sm text-gray-500 dark:text-gray-400 flex-shrink-0">
+              <p><strong>Người gửi:</strong> {selectedFeedbackDetails.submittedByName}</p>
+              <p><strong>Thời gian:</strong> {selectedFeedbackDetails.submittedAt?.toDate().toLocaleString('vi-VN')}</p>
+            </div>
+            
+            <button 
+              onClick={() => setSelectedFeedbackDetails(null)}
+              className="w-full mt-6 p-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 flex-shrink-0"
+            >
+              Đóng
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Font Awesome for icons */}
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
