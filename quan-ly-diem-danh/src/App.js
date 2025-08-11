@@ -5500,17 +5500,20 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                 >
                   <i className="fas fa-exchange-alt text-xl"></i>
                 </button>
-                {/* ===== POPUP CHUYỂN THÀNH VIÊN SANG TIỀN BỐI ===== */}
+                {/* ===== POPUP CHUYỂN THÀNH VIÊN SANG TIỀN BỐI (ĐÃ CẬP NHẬT) ===== */}
                 {showMoveToFormerModal && (
                   <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4">
                     <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md">
                       <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
                         Chuyển thành viên sang Tiền bối
                       </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 text-center mb-4">
+                        Chỉ những thành viên đã được "Vô hiệu hóa" ở mục Quản lý người ở mới xuất hiện trong danh sách này.
+                      </p>
                       <div className="space-y-4">
                         <div>
                           <label htmlFor="residentToMove" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                            Chọn thành viên đang hoạt động:
+                            Chọn thành viên đã vô hiệu hóa:
                           </label>
                           <select
                             id="residentToMove"
@@ -5519,7 +5522,8 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                             className="shadow-sm appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500"
                           >
                             <option value="">-- Chọn một người --</option>
-                            {residents.filter(r => r.isActive).map(r => (
+                            {/* Sửa lại logic filter ở đây */}
+                            {residents.filter(r => r.isActive === false).map(r => (
                               <option key={r.id} value={r.id}>{r.name}</option>
                             ))}
                           </select>
@@ -5537,7 +5541,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                             onClick={handleMoveToFormerResidents}
                             className="w-1/2 px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700"
                           >
-                            Xác nhận
+                            Xác nhận chuyển
                           </button>
                         </div>
                       </div>
