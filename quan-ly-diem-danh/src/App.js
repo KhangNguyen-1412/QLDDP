@@ -1879,9 +1879,6 @@ useEffect(() => {
         });
       }
 
-      // 4. Xóa hồ sơ gốc ra khỏi residents
-      await deleteDoc(residentDocRef);
-
       alert(`Đã chuyển ${residentToMove.name} sang danh sách tiền bối thành công.`);
       setShowMoveToFormerModal(false);
       setSelectedResidentToMove('');
@@ -4007,103 +4004,96 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
           );
         //Case quản lý người ở
         case 'residentManagement':
-        return (
-          <div className="p-6 bg-purple-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-            <h2 className="text-2xl font-bold text-purple-800 dark:text-purple-200 mb-5">
-              Quản lý người trong phòng
-            </h2>
-            <div className="flex flex-col sm:flex-row gap-3 mb-4">
-              <input
-                type="text"
-                value={newResidentName}
-                onChange={(e) => {
-                  setNewResidentName(e.target.value);
-                  setAuthError('');
-                }}
-                className="flex-1 shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
-                placeholder="Nhập tên người trong phòng (tối đa 8 người)"
-                maxLength="30"
-              />
-              <button
-                onClick={handleAddResident}
-                className="px-6 py-2 bg-purple-600 text-white font-semibold rounded-xl shadow-md hover:bg-purple-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75"
-                disabled={residents.filter((res) => res.isActive !== false).length >= 8}
-              >
-                <i className="fas fa-user-plus mr-2"></i> Thêm
-              </button>
-            </div>
-            {residents.length > 0 && (
-              <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-inner max-h-screen-1/2 overflow-y-auto border border-gray-200 dark:border-gray-700">
-                <h3 className="text-xl font-semibold text-purple-700 dark:text-purple-200 mb-3">
-                  Danh sách người trong phòng:
-                </h3>
-                <div className="mb-4">
-                  <label className="inline-flex items-center">
-                    <input
-                      type="checkbox"
-                      className="form-checkbox h-5 w-5 text-purple-600 dark:text-purple-400 rounded"
-                      checked={showInactiveResidents}
-                      onChange={(e) => setShowInactiveResidents(e.target.checked)}
-                    />
-                    <span className="ml-2 text-gray-700 dark:text-gray-300">Hiển thị người đã vô hiệu hóa</span>
-                  </label>
-                </div>
-                <ul className="space-y-3">
-                  {residents.map((resident) => (
-                    <li
-                      key={resident.id}
-                      className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-600"
-                    >
-                      <div className="flex flex-col items-start">
-                        <span className="font-medium text-gray-700 dark:text-gray-300 text-base">
-                          {resident.name}
-                        </span>
-                        {resident.createdAt && typeof resident.createdAt.toDate === 'function' && (
-                          <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            Thêm vào: {resident.createdAt.toDate().toLocaleDateString('vi-VN')}
-                          </span>
-                        )}
-                        {resident.isActive === false && (
-                          <span className="text-xs text-red-500 dark:text-red-400 mt-1 font-semibold">
-                            (Đã vô hiệu hóa)
-                          </span>
-                        )}
-                        {resident.linkedUserId && (
-                          <span className="text-xs text-blue-500 dark:text-blue-400 mt-1">
-                            (Đã liên kết với Người dùng)
-                          </span>
-                        )}
-                      </div>
-                      {resident.isActive ? (
-                        <button
-                          onClick={() => handleToggleResidentActiveStatus(resident.id, resident.name, true)}
-                          className="ml-4 px-3 py-1 bg-red-500 text-white text-sm rounded-lg shadow-sm hover:bg-red-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-400"
-                        >
-                          Vô hiệu hóa
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleToggleResidentActiveStatus(resident.id, resident.name, false)}
-                          className="ml-4 px-3 py-1 bg-green-500 text-white text-sm rounded-lg shadow-sm hover:bg-green-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-400"
-                        >
-                          Kích hoạt lại
-                        </button>
-                      )}
-                      {resident.isActive && resident.linkedUserId && (
-                        <button
-                          onClick={() => handleMoveToFormerResidents(resident.id, resident.linkedUserId)}
-                          className="ml-2 px-3 py-1 bg-indigo-500 text-white text-sm rounded-lg shadow-sm hover:bg-indigo-600 transition-colors duration-200"
-                        >
-                          Chuyển tiền bối
-                        </button>
-                      )}
-                    </li>
-                  ))}
-                </ul>
+          return (
+            <div className="p-6 bg-purple-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-purple-800 dark:text-purple-200 mb-5">
+                Quản lý người trong phòng
+              </h2>
+              <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                <input
+                  type="text"
+                  value={newResidentName}
+                  onChange={(e) => {
+                    setNewResidentName(e.target.value);
+                    setAuthError('');
+                  }}
+                  className="flex-1 shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700"
+                  placeholder="Nhập tên người trong phòng (tối đa 8 người)"
+                  maxLength="30"
+                />
+                <button
+                  onClick={handleAddResident}
+                  className="px-6 py-2 bg-purple-600 text-white font-semibold rounded-xl shadow-md hover:bg-purple-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75"
+                  disabled={residents.filter((res) => res.isActive !== false).length >= 8}
+                >
+                  <i className="fas fa-user-plus mr-2"></i> Thêm
+                </button>
               </div>
-            )}
-          </div>
-        );
+              {residents.length > 0 && (
+                <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-inner max-h-screen-1/2 overflow-y-auto border border-gray-200 dark:border-gray-700">
+                  <h3 className="text-xl font-semibold text-purple-700 dark:text-purple-200 mb-3">
+                    Danh sách người trong phòng:
+                  </h3>
+                  <div className="mb-4">
+                    <label className="inline-flex items-center">
+                      <input
+                        type="checkbox"
+                        className="form-checkbox h-5 w-5 text-purple-600 dark:text-purple-400 rounded"
+                        checked={showInactiveResidents}
+                        onChange={(e) => setShowInactiveResidents(e.target.checked)}
+                      />
+                      <span className="ml-2 text-gray-700 dark:text-gray-300">Hiển thị người đã vô hiệu hóa</span>
+                    </label>
+                  </div>
+                  <ul className="space-y-3">
+                    {/* ===== SỬA LẠI THÀNH `displayedResidents` Ở ĐÂY ===== */}
+                    {displayedResidents.map((resident) => (
+                      <li
+                        key={resident.id}
+                        className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-600"
+                      >
+                        <div className="flex flex-col items-start">
+                          <span className="font-medium text-gray-700 dark:text-gray-300 text-base">
+                            {resident.name}
+                          </span>
+                          {resident.createdAt && typeof resident.createdAt.toDate === 'function' && (
+                            <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              Thêm vào: {resident.createdAt.toDate().toLocaleDateString('vi-VN')}
+                            </span>
+                          )}
+                          {resident.isActive === false && (
+                            <span className="text-xs text-red-500 dark:text-red-400 mt-1 font-semibold">
+                              (Đã vô hiệu hóa)
+                            </span>
+                          )}
+                          {resident.linkedUserId && (
+                            <span className="text-xs text-blue-500 dark:text-blue-400 mt-1">
+                              (Đã liên kết với Người dùng)
+                            </span>
+                          )}
+                        </div>
+                        {resident.isActive ? (
+                          <button
+                            onClick={() => handleToggleResidentActiveStatus(resident.id, resident.name, true)}
+                            className="ml-4 px-3 py-1 bg-red-500 text-white text-sm rounded-lg shadow-sm hover:bg-red-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-400"
+                          >
+                            Vô hiệu hóa
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleToggleResidentActiveStatus(resident.id, resident.name, false)}
+                            className="ml-4 px-3 py-1 bg-green-500 text-white text-sm rounded-lg shadow-sm hover:bg-green-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-400"
+                          >
+                            Kích hoạt lại
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          );
         //Case điểm danh
         case 'attendanceTracking':
           return (
@@ -4954,7 +4944,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                   </p>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {residents.map((resident) => {
+                    {residents.filter(res => res.isActive !== false).map((resident) => {
                       const linkedUser = allUsersData.find((user) => user.linkedResidentId === resident.id);
                       return (
                         <div key={resident.id} className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 flex flex-col justify-between transition-transform transform hover:scale-105 duration-300">
