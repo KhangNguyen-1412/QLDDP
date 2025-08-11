@@ -29,7 +29,6 @@ import {
 import { getStorage, ref, uploadBytesResumable, getDownloadURL} from 'firebase/storage'; // Thêm imports cho Firebase Storage
 import axios from 'axios';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { UAParser } from 'ua-parser-js';
 
 // Firebase Config - Moved outside the component to be a constant
 const firebaseConfig = {
@@ -139,7 +138,6 @@ function App() {
   const [loggedInResidentProfile, setLoggedInResidentProfile] = useState(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [residents, setResidents] = useState([]);
-  const [activeTab, setActiveTab] = useState('dashboard');
   const [newResidentName, setNewResidentName] = useState('');
   const [showInactiveResidents, setShowInactiveResidents] = useState(false);
   // Thêm vào danh sách useState của bạn
@@ -219,71 +217,6 @@ function App() {
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('theme') || 'light';
   });
-
-  const [selectedResident, setSelectedResident] = useState(null);
-  useEffect(() => {
-    if (!auth) return; 
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        // ... (code hiện tại của bạn để lấy user profile và role)
-        const userDocRef = doc(db, `artifacts/${currentAppId}/public/data/users`, user.uid);
-        const userDocSnap = await getDoc(userDocRef);
-        
-        if (userDocSnap.exists()) {
-          const userData = userDocSnap.data();
-          setCurrentUser(userData);
-          setUserRole(userData.role || 'member');
-
-          // --- PHẦN THÊM MỚI ---
-          // 2. Lấy thông tin thiết bị
-          const parser = new UAParser();
-          const result = parser.getResult();
-          const currentDevice = {
-            // Tạo một ID độc nhất cho thiết bị dựa trên thông tin của nó
-            id: `${result.browser.name}-${result.os.name}-${result.device.vendor || 'Unknown'}`.replace(/\s+/g, ''),
-            browser: `${result.browser.name} ${result.browser.version || ''}`.trim(),
-            os: `${result.os.name} ${result.os.version || ''}`.trim(),
-            device: result.device.vendor ? `${result.device.vendor} ${result.device.model}` : 'Desktop',
-            lastLoginAt: new Date() // Ghi lại thời gian đăng nhập lần cuối
-          };
-
-          // 3. Cập nhật thông tin thiết bị vào Firestore
-          const existingDevices = userData.devices || [];
-          const deviceIndex = existingDevices.findIndex(d => d.id === currentDevice.id);
-
-          let updatedDevices = [];
-          if (deviceIndex > -1) {
-            // Nếu thiết bị đã tồn tại, chỉ cập nhật thời gian đăng nhập
-            existingDevices[deviceIndex].lastLoginAt = currentDevice.lastLoginAt;
-            updatedDevices = [...existingDevices];
-          } else {
-            // Nếu là thiết bị mới, thêm vào danh sách
-            updatedDevices = [...existingDevices, currentDevice];
-          }
-
-          // Giới hạn chỉ lưu 5 thiết bị gần nhất để tránh danh sách quá dài
-          if (updatedDevices.length > 5) {
-            updatedDevices = updatedDevices.sort((a, b) => b.lastLoginAt - a.lastLoginAt).slice(0, 5);
-          }
-
-          await updateDoc(userDocRef, {
-            devices: updatedDevices
-          });
-          // --- KẾT THÚC PHẦN THÊM MỚI ---
-
-        } else {
-          // ... (xử lý khi không tìm thấy user doc)
-        }
-
-      } else {
-        setCurrentUser(null);
-        setUserRole(null);
-      }
-      setIsLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [currentAppId]); // Thêm currentAppId vào dependency array nếu cần
 
   //State cho feedback
   const [feedbackContent, setFeedbackContent] = useState('');
@@ -4892,72 +4825,108 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
             </div>
           );
           case 'commonRoomInfo':
-              // Giao diện này CHỈ hiển thị danh sách thẻ thành viên cho Admin
-              if (userRole === 'admin') {
-                  return (
-                      <div className="p-4 md:p-6">
-                          <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">
-                              Thông tin phòng chung
-                          </h2>
-                          {residents.length === 0 ? (
-                              <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
-                                  Chưa có người ở nào trong danh sách.
-                              </p>
-                          ) : (
-                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                  {residents.map((resident) => {
-                                      const linkedUser = allUsersData.find((user) => user.linkedResidentId === resident.id);
-                                      return (
-                                          // THÊM onClick VÀO ĐÂY ĐỂ XỬ LÝ KHI CLICK
-                                          <div
-                                              key={resident.id}
-                                              className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 flex flex-col justify-between transition-transform transform hover:scale-105 duration-300 cursor-pointer"
-                                              onClick={() => {
-                                                  // Lưu thông tin người được chọn vào state
-                                                  setSelectedResident({ ...resident, linkedUser });
-                                                  // Chuyển sang tab xem chi tiết
-                                                  setActiveTab('residentDetail');
-                                              }}
-                                          >
-                                              {/* Nội dung thẻ thành viên của bạn */}
-                                              <div className="flex items-start mb-4">
-                                                  <div className="relative group">
-                                                      {linkedUser?.photoURL ? (
-                                                          <img src={linkedUser.photoURL} alt="Avatar" className="w-16 h-16 rounded-full object-cover border-2 border-gray-200 dark:border-gray-600"/>
-                                                      ) : (
-                                                          <div className="w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-3xl text-gray-400">
-                                                              <i className="fas fa-user-circle"></i>
-                                                          </div>
-                                                      )}
-                                                      <span className={`absolute bottom-0 right-0 block h-4 w-4 rounded-full border-2 border-white dark:border-gray-800 ${resident.isActive ? 'bg-green-500' : 'bg-gray-400'}`}></span>
-                                                  </div>
-                                                  <div className="ml-4">
-                                                      <p className="font-bold text-lg text-gray-900 dark:text-white break-words">{linkedUser?.fullName || resident.name}</p>
-                                                      <p className="text-sm text-gray-500 dark:text-gray-400">{linkedUser?.role === 'admin' ? 'Quản trị viên' : 'Thành viên'}</p>
-                                                  </div>
-                                              </div>
-                                              <div className="space-y-3 text-sm">
-                                                  <div className="flex items-center text-gray-700 dark:text-gray-300">
-                                                      <i className="fas fa-id-badge w-5 text-center mr-2 text-blue-500"></i>
-                                                      <span>{linkedUser?.studentId || 'N/A'}</span>
-                                                  </div>
-                                                  <div className="flex items-center text-gray-700 dark:text-gray-300">
-                                                      <i className="fas fa-envelope w-5 text-center mr-2 text-blue-500"></i>
-                                                      <span>{linkedUser?.email || 'N/A'}</span>
-                                                  </div>
-                                                  <div className="flex items-center text-gray-700 dark:text-gray-300">
-                                                      <i className="fas fa-phone w-5 text-center mr-2 text-blue-500"></i>
-                                                      <span>{linkedUser?.phoneNumber || 'N/A'}</span>
-                                                  </div>
-                                              </div>
-                                          </div>
-                                      );
-                                  })}
+            // Phân quyền hiển thị ngay tại đây
+            if (userRole === 'admin') {
+              // ===== GIAO DIỆN "THẺ THÀNH VIÊN" CHO ADMIN =====
+              return (
+                <div className="p-4 md:p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg w-full">
+                  <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">
+                    Thông tin phòng chung
+                  </h2>
+                  {residents.length === 0 ? (
+                    <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
+                      Chưa có người ở nào trong danh sách.
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {residents.map((resident) => {
+                        const linkedUser = allUsersData.find((user) => user.linkedResidentId === resident.id);
+                        return (
+                          <div key={resident.id} className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 flex flex-col justify-between transition-transform transform hover:scale-105 duration-300">
+                            {/* Phần Header của Thẻ */}
+                            <div className="flex items-start mb-4">
+                              <div className="relative group"> {/* Thêm 'group' để tạo hiệu ứng hover */}
+                                {linkedUser?.photoURL ? (
+                                  <img src={linkedUser.photoURL} alt="Avatar" className="w-16 h-16 rounded-full object-cover border-2 border-gray-200 dark:border-gray-600"/>
+                                ) : (
+                                  <div className="w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-3xl text-gray-400">
+                                    <i className="fas fa-user-circle"></i>
+                                  </div>
+                                )}
+                                <span className={`absolute bottom-0 right-0 block h-4 w-4 rounded-full border-2 border-white dark:border-gray-800 ${resident.isActive ? 'bg-green-500' : 'bg-gray-400'}`}></span>
+                                
+                                {/* ===== NÚT THAY ĐỔI AVATAR ĐƯỢC THÊM VÀO ĐÂY ===== */}
+                                {linkedUser && (
+                                  <button 
+                                    onClick={() => setSelectedResidentForAvatarUpload(linkedUser)}
+                                    className="absolute inset-0 w-16 h-16 rounded-full bg-black bg-opacity-0 group-hover:bg-opacity-50 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                                    title="Thay đổi ảnh đại diện"
+                                  >
+                                    <i className="fas fa-camera text-xl"></i>
+                                  </button>
+                                )}
                               </div>
-                          )}
-                      </div>
-                  );
-              } else {
+                              <div className="ml-4">
+                                <p className="font-bold text-lg text-gray-900 dark:text-white break-words">{linkedUser?.fullName || resident.name}</p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">{linkedUser?.role === 'admin' ? 'Quản trị viên' : 'Thành viên'}</p>
+                              </div>
+                            </div>
+                            {/* Phần Thân của Thẻ - Chi tiết */}
+                            <div className="space-y-3 text-sm">
+                              <div className="flex items-center text-gray-700 dark:text-gray-300">
+                                <i className="fas fa-id-badge w-5 text-center mr-2 text-blue-500"></i>
+                                <span>{linkedUser?.studentId || 'N/A'}</span>
+                              </div>
+                              <div className="flex items-center text-gray-700 dark:text-gray-300">
+                                <i className="fas fa-envelope w-5 text-center mr-2 text-blue-500"></i>
+                                <span>{linkedUser?.email || 'N/A'}</span>
+                              </div>
+                              <div className="flex items-center text-gray-700 dark:text-gray-300">
+                                <i className="fas fa-phone w-5 text-center mr-2 text-blue-500"></i>
+                                <span>{linkedUser?.phoneNumber || 'N/A'}</span>
+                              </div>
+                            </div>
+                            {/* Phần Footer của Thẻ - Hành động (Admin) */}
+                            <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end space-x-2">
+                              {linkedUser && linkedUser.role === 'member' && (
+                                  <button
+                                    onClick={() => handleToggleAttendancePermission(linkedUser.id, linkedUser.canTakeAttendance || false)}
+                                    className={`px-3 py-1 text-white text-xs rounded-lg shadow-sm ${
+                                      linkedUser.canTakeAttendance 
+                                      ? 'bg-red-500 hover:bg-red-600' 
+                                      : 'bg-green-500 hover:bg-green-600'
+                                    }`}
+                                    title={linkedUser.canTakeAttendance ? 'Thu hồi quyền điểm danh' : 'Trao quyền điểm danh'}
+                                  >
+                                    <i className="fas fa-tasks"></i>
+                                  </button>
+                              )}
+                              <button
+                                onClick={() => handleEditCommonResidentDetails(resident)}
+                                className="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg shadow-sm hover:bg-blue-600"
+                                title="Điều chỉnh thông tin"
+                              >
+                                <i className="fas fa-edit"></i>
+                              </button>
+                              {/* NÚT NÂNG CẤP VAI TRÒ */}
+                              {linkedUser && linkedUser.role === 'member' && (
+                                  <button
+                                    onClick={() => handleUpgradeToAdmin(linkedUser.id)}
+                                    className="px-3 py-1 bg-green-500 text-white text-xs rounded-lg shadow-sm hover:bg-green-600"
+                                    title="Nâng cấp vai trò"
+                                  >
+                                    <i className="fas fa-user-shield"></i>
+                                  </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            } else {
               // ===== GIAO DIỆN BẢNG TRUYỀN THỐNG CHO MEMBER =====
               return (
                 <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
@@ -5005,139 +4974,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                   )}
                 </div>
               );
-            }
-            case 'residentDetail':
-            // Kiểm tra nếu không có ai được chọn thì không hiển thị gì
-            if (!selectedResident) {
-                return (
-                    <div className="p-6 text-center text-gray-500 italic">
-                        Vui lòng chọn một thành viên để xem chi tiết.
-                    </div>
-                );
-            }
-            
-            // Giao diện chi tiết của một thành viên
-            return (
-                <div className="p-4 md:p-6">
-                    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg max-w-4xl mx-auto">
-                        {/* Nút để quay lại danh sách */}
-                        <div className="flex justify-end mb-4">
-                            <button
-                                onClick={() => setActiveTab('commonRoomInfo')}
-                                className="text-sm font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                            >
-                                &larr; Quay lại danh sách
-                            </button>
-                        </div>
-
-                        {/* Phần thông tin cá nhân */}
-                        <div className="flex flex-col md:flex-row items-center md:items-start">
-                            <div className="relative group flex-shrink-0">
-                                {selectedResident.linkedUser?.photoURL ? (
-                                    <img src={selectedResident.linkedUser.photoURL} alt="Avatar" className="w-24 h-24 rounded-full object-cover border-4 border-gray-200 dark:border-gray-600"/>
-                                ) : (
-                                    <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-5xl text-gray-400">
-                                        <i className="fas fa-user-circle"></i>
-                                    </div>
-                                )}
-                                <button 
-                                    onClick={() => setSelectedResidentForAvatarUpload(selectedResident.linkedUser)}
-                                    className="absolute inset-0 w-24 h-24 rounded-full bg-black bg-opacity-0 group-hover:bg-opacity-50 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                                    title="Thay đổi ảnh đại diện"
-                                  >
-                                    <i className="fas fa-camera text-2xl"></i>
-                                  </button>
-                            </div>
-                            <div className="md:ml-6 mt-4 md:mt-0 text-center md:text-left">
-                                <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-100">
-                                    {selectedResident.linkedUser?.fullName || selectedResident.name}
-                                </h2>
-                                <p className="text-md text-gray-500 dark:text-gray-400">
-                                  {selectedResident.linkedUser?.role === 'admin' ? 'Quản trị viên' : 'Thành viên'}
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Các nút hành động */}
-                        <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end space-x-2">
-                            
-                            {/* Nút Cấp/Thu hồi quyền điểm danh */}
-                            {selectedResident.linkedUser && selectedResident.linkedUser.role === 'member' && (
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation(); // Ngăn không cho sự kiện click lan ra thẻ cha
-                                        handleToggleAttendancePermission(selectedResident.linkedUser.id, selectedResident.linkedUser.canTakeAttendance || false);
-                                    }}
-                                    className={`px-3 py-1 text-white text-xs rounded-lg shadow-sm ${
-                                        selectedResident.linkedUser.canTakeAttendance 
-                                        ? 'bg-red-500 hover:bg-red-600' 
-                                        : 'bg-green-500 hover:bg-green-600'
-                                    }`}
-                                    title={selectedResident.linkedUser.canTakeAttendance ? 'Thu hồi quyền điểm danh' : 'Trao quyền điểm danh'}
-                                >
-                                    <i className="fas fa-tasks"></i>
-                                </button>
-                            )}
-
-                            {/* Nút Điều chỉnh thông tin */}
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleEditCommonResidentDetails(selectedResident);
-                                }}
-                                className="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg shadow-sm hover:bg-blue-600"
-                                title="Điều chỉnh thông tin"
-                            >
-                                <i className="fas fa-edit"></i>
-                            </button>
-                            
-                            {/* Nút Nâng cấp vai trò */}
-                            {selectedResident.linkedUser && selectedResident.linkedUser.role === 'member' && (
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleUpgradeToAdmin(selectedResident.linkedUser.id);
-                                    }}
-                                    className="px-3 py-1 bg-green-500 text-white text-xs rounded-lg shadow-sm hover:bg-green-600"
-                                    title="Nâng cấp vai trò"
-                                >
-                                    <i className="fas fa-user-shield"></i>
-                                </button>
-                            )}
-
-                        </div>
-
-                        {/* LỊCH SỬ ĐĂNG NHẬP (ĐẶT ĐÚNG VỊ TRÍ) */}
-                        {selectedResident.linkedUser?.devices && selectedResident.linkedUser.devices.length > 0 && (
-                            <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                                <h4 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-3">
-                                    Lịch sử đăng nhập gần đây
-                                </h4>
-                                <ul className="space-y-3 max-h-60 overflow-y-auto pr-2">
-                                    {selectedResident.linkedUser.devices
-                                        .sort((a, b) => (b.lastLoginAt?.seconds || 0) - (a.lastLoginAt?.seconds || 0))
-                                        .map((device, index) => (
-                                            <li key={index} className="p-3 bg-gray-100 dark:bg-gray-900/50 rounded-lg flex items-center space-x-4">
-                                                <i className="fas fa-laptop-code text-xl text-gray-500"></i>
-                                                <div className="flex-1">
-                                                    <p className="font-semibold text-sm text-gray-800 dark:text-gray-200">
-                                                        {device.browser} trên {device.os}
-                                                    </p>
-                                                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                                                        Thiết bị: {device.device}
-                                                    </p>
-                                                </div>
-                                                <p className="text-xs text-gray-500 dark:text-gray-400 text-right">
-                                                    {new Date(device.lastLoginAt.seconds * 1000).toLocaleString('vi-VN')}
-                                                </p>
-                                            </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            );          
+            }          
             case 'roomMemories':
             return (
               <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
