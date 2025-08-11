@@ -29,6 +29,7 @@ import {
 import { getStorage, ref, uploadBytesResumable, getDownloadURL} from 'firebase/storage'; // Thêm imports cho Firebase Storage
 import axios from 'axios';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { QRCodeCanvas } from 'qrcode.react';
 
 // Firebase Config - Moved outside the component to be a constant
 const firebaseConfig = {
