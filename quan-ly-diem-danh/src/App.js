@@ -7510,11 +7510,9 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
       <div className="relative group flex flex-1 h-full">
           {/* Sidebar */}
           <aside
-              className={`flex-shrink-0 fixed inset-y-0 left-0 bg-white dark:bg-gray-800 shadow-lg transform ${
-                  isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-              } lg:relative lg:translate-x-0 transition-all duration-300 ease-in-out z-20 h-full flex flex-col ${
-                  isSidebarCollapsed ? 'lg:w-20' : 'lg:w-64'
-              }`}
+            className={`flex-shrink-0 fixed inset-y-0 left-0 w-64 bg-white dark:bg-gray-800 shadow-lg transform ${
+              isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+            } lg:relative lg:translate-x-0 transition-transform duration-300 ease-in-out z-20 h-full flex flex-col`}
           >
               {/* Khối nội dung chính của sidebar, có thể cuộn */}
               <div className="flex-1 overflow-y-auto overflow-x-hidden">
