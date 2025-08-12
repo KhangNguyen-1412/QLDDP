@@ -3779,6 +3779,49 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
     showInactiveResidents ? true : (res.status !== 'inactive')
   );
 
+  //State quản lý file ảnh và trạng thái xem ảnh phóng to
+  const [billReceiptFile, setBillReceiptFile] = useState(null);
+  const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
+  const [receiptToView, setReceiptToView] = useState(null); // Để xem ảnh phóng to
+
+  //Hàm chịu trách nhiệm tải ảnh lên Cloudinary và cập nhật lại đường dẫn vào đúng tài liệu hóa đơn trên Firestore.
+  const handleUploadBillReceipt = async () => {
+    if (!billReceiptFile || !selectedBillDetails || (userRole !== 'admin' && userRole !== 'developer')) {
+      alert('Vui lòng chọn file hoặc bạn không có quyền.');
+      return;
+    }
+    setIsUploadingReceipt(true);
+
+    const formData = new FormData();
+    formData.append('file', billReceiptFile);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET_AVATAR); // Có thể dùng chung preset
+    formData.append('folder', 'receipts'); // Lưu vào thư mục riêng
+
+    try {
+      const response = await axios.post(CLOUDINARY_API_URL_IMAGE_UPLOAD, formData);
+      const downloadURL = response.data.secure_url;
+
+      const billDocRef = doc(db, `artifacts/${currentAppId}/public/data/billHistory`, selectedBillDetails.id);
+      await updateDoc(billDocRef, {
+        receiptImageUrl: downloadURL,
+        receiptUploadedBy: userId,
+      });
+
+      // Cập nhật lại state để giao diện hiển thị ảnh mới ngay lập tức
+      setSelectedBillDetails(prevDetails => ({
+        ...prevDetails,
+        receiptImageUrl: downloadURL
+      }));
+      setBillReceiptFile(null);
+      alert('Đã tải lên ảnh hóa đơn thành công!');
+    } catch (error) {
+      console.error("Lỗi khi tải lên ảnh hóa đơn:", error);
+      alert('Đã xảy ra lỗi khi tải lên.');
+    } finally {
+      setIsUploadingReceipt(false);
+    }
+  };
+
   // Hàm renderSection để hiển thị các phần giao diện dựa trên vai trò người dùng
   const renderSection = () => {
     // Nếu chưa đăng nhập hoặc xác thực chưa sẵn sàng, hiển thị thông báo chung
@@ -8070,6 +8113,41 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                   </span>
                 </p>
               </div>
+              {/* ===== KHỐI HÌNH ẢNH HÓA ĐƠN MỚI ===== */}
+              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <h4 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Ảnh hóa đơn
+                </h4>
+                {selectedBillDetails.receiptImageUrl ? (
+                  <div className="text-center">
+                    <img 
+                      src={selectedBillDetails.receiptImageUrl} 
+                      alt="Ảnh hóa đơn" 
+                      className="w-full max-w-xs mx-auto rounded-lg cursor-pointer border"
+                      onClick={() => setReceiptToView(selectedBillDetails.receiptImageUrl)}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Bấm vào ảnh để xem kích thước đầy đủ</p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 italic">Chưa có ảnh hóa đơn.</p>
+                )}
+
+                <div className="mt-4">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setBillReceiptFile(e.target.files[0])}
+                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  />
+                  <button
+                    onClick={handleUploadBillReceipt}
+                    className="w-full mt-2 px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 disabled:bg-gray-400"
+                    disabled={!billReceiptFile || isUploadingReceipt}
+                  >
+                    {isUploadingReceipt ? 'Đang tải lên...' : 'Tải lên ảnh mới'}
+                  </button>
+                </div>              
+              </div>
               <button
                 onClick={() => setSelectedBillDetails(null)}
                 className="mt-6 w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
@@ -8079,6 +8157,21 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
             </div>
           </div>
       )}
+
+      {/* ===== POPUP XEM ẢNH HÓA ĐƠN PHÓNG TO ===== */}
+      {receiptToView && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4"
+          onClick={() => setReceiptToView(null)}
+        >
+          <img 
+            src={receiptToView} 
+            alt="Ảnh hóa đơn phóng to" 
+            className="max-w-full max-h-full object-contain"
+          />
+        </div>
+      )}
+
 
       {/* ===== MODAL CHI TIẾT BÀI ĐĂNG KỶ NIỆM ===== */}
       {selectedMemoryDetails && (
