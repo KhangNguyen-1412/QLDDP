@@ -8055,66 +8055,37 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
       </div>
 
       {/* MODAL CHI TIẾT HÓA ĐƠN ĐIỆN NƯỚC */}
-      {selectedBillDetails &&
-        userRole === 'admin' && ( // Chỉ hiển thị chi tiết hóa đơn cho admin
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md">
-              <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">Chi tiết hóa đơn</h3>
+      {selectedBillDetails && (userRole === 'admin' || userRole === 'developer') && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[95vh]">
+            <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center flex-shrink-0">
+              Chi tiết hóa đơn
+            </h3>
+            
+            {/* Khung nội dung có thể cuộn */}
+            <div className="flex-1 overflow-y-auto pr-2">
+              {/* Phần thông tin chi tiết hóa đơn */}
               <div className="space-y-3 text-gray-700 dark:text-gray-300">
-                <div className="flex-1 overflow-y-auto pr-2 space-y-3 text-gray-700 dark:text-gray-300">
-                <p>
-                  <strong>Tháng:</strong> {selectedBillDetails.billingMonth || 'N/A'}
-                </p>
-                <p>
-                  <strong>Ngày tính:</strong>{' '}
-                  {selectedBillDetails.billDate && selectedBillDetails.billDate instanceof Date
-                    ? selectedBillDetails.billDate.toLocaleDateString('vi-VN')
-                    : 'N/A'}
-                </p>
-                <p>
-                  <strong>Người ghi nhận:</strong> {selectedBillDetails.recordedBy}
-                </p>
-                <p>
-                  <strong>Điện (Đầu):</strong> {selectedBillDetails.electricityStartReading} KW
-                </p>
-                <p>
-                  <strong>Điện (Cuối):</strong> {selectedBillDetails.electricityEndReading} KW
-                </p>
-                <p>
-                  <strong>Tiêu thụ điện:</strong> {selectedBillDetails.electricityConsumption} KW
-                </p>
-                <p>
-                  <strong>Tiền điện:</strong> {selectedBillDetails.electricityCost?.toLocaleString('vi-VN')} VND
-                </p>
-                <p>
-                  <strong>Nước (Đầu):</strong> {selectedBillDetails.waterStartReading} m³
-                </p>
-                <p>
-                  <strong>Nước (Cuối):</strong> {selectedBillDetails.waterEndReading} m³
-                </p>
-                <p>
-                  <strong>Tiêu thụ nước:</strong> {selectedBillDetails.waterConsumption} m³
-                </p>
-                <p>
-                  <strong>Tiền nước:</strong> {selectedBillDetails.waterCost?.toLocaleString('vi-VN')} VND
-                </p>
+                <p><strong>Tháng:</strong> {selectedBillDetails.billingMonth || 'N/A'}</p>
+                <p><strong>Ngày tính:</strong> {selectedBillDetails.billDate?.toLocaleDateString('vi-VN') || 'N/A'}</p>
+                <p><strong>Điện (Đầu):</strong> {selectedBillDetails.electricityStartReading} KW</p>
+                <p><strong>Điện (Cuối):</strong> {selectedBillDetails.electricityEndReading} KW</p>
+                <p><strong>Tiền điện:</strong> {selectedBillDetails.electricityCost?.toLocaleString('vi-VN')} VND</p>
+                <p><strong>Nước (Đầu):</strong> {selectedBillDetails.waterStartReading} m³</p>
+                <p><strong>Nước (Cuối):</strong> {selectedBillDetails.waterEndReading} m³</p>
+                <p><strong>Tiền nước:</strong> {selectedBillDetails.waterCost?.toLocaleString('vi-VN')} VND</p>
                 <p className="text-xl font-bold border-t pt-3 mt-3 border-gray-300 dark:border-gray-600">
                   Tổng cộng: {selectedBillDetails.totalCost?.toLocaleString('vi-VN')} VND
                 </p>
                 <p className="text-lg font-bold">
                   Trạng thái:{' '}
-                  <span
-                    className={
-                      selectedBillDetails.isPaid
-                        ? 'text-green-600 dark:text-green-400'
-                        : 'text-red-500 dark:text-red-400'
-                    }
-                  >
+                  <span className={selectedBillDetails.isPaid ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}>
                     {selectedBillDetails.isPaid ? 'Đã trả' : 'Chưa trả'}
                   </span>
                 </p>
               </div>
-              {/* ===== KHỐI HÌNH ẢNH HÓA ĐƠN MỚI ===== */}
+
+              {/* ===== KHỐI HÌNH ẢNH HÓA ĐƠN ===== */}
               <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                 <h4 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
                   Ảnh hóa đơn
@@ -8132,7 +8103,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                 ) : (
                   <p className="text-sm text-gray-500 italic">Chưa có ảnh hóa đơn.</p>
                 )}
-
+                
                 <div className="mt-4">
                   <input
                     type="file"
@@ -8147,19 +8118,19 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                   >
                     {isUploadingReceipt ? 'Đang tải lên...' : 'Tải lên ảnh mới'}
                   </button>
-                </div>              
+                </div>
               </div>
-              <button
-                onClick={() => setSelectedBillDetails(null)}
-                className="mt-6 w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
-              >
-                Đóng
-              </button>
             </div>
-          </div>
-          </div>
-      )}
 
+            <button
+              onClick={() => setSelectedBillDetails(null)}
+              className="mt-6 w-full px-6 py-3 bg-gray-500 text-white font-semibold rounded-xl flex-shrink-0"
+            >
+              Đóng
+            </button>
+          </div>
+        </div>
+      )}
       {/* ===== POPUP XEM ẢNH HÓA ĐƠN PHÓNG TO ===== */}
       {receiptToView && (
         <div 
