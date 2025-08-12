@@ -8061,6 +8061,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
             <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md">
               <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">Chi tiết hóa đơn</h3>
               <div className="space-y-3 text-gray-700 dark:text-gray-300">
+                <div className="flex-1 overflow-y-auto pr-2 space-y-3 text-gray-700 dark:text-gray-300">
                 <p>
                   <strong>Tháng:</strong> {selectedBillDetails.billingMonth || 'N/A'}
                 </p>
@@ -8155,6 +8156,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                 Đóng
               </button>
             </div>
+          </div>
           </div>
       )}
 
