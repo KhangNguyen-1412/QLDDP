@@ -218,6 +218,76 @@ function App() {
     return localStorage.getItem('theme') || 'light';
   });
 
+  const [pendingResidents, setPendingResidents] = useState([]); // Danh sách thành viên chờ
+  const [newPendingResidentName, setNewPendingResidentName] = useState('');
+
+  useEffect(() => {
+    if (db && (userRole === 'admin' || userRole === 'developer')) {
+      const pendingQuery = query(collection(db, `artifacts/${currentAppId}/public/data/pendingResidents`), orderBy('createdAt', 'asc'));
+      
+      const unsubscribe = onSnapshot(pendingQuery, (snapshot) => {
+        const pendingList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setPendingResidents(pendingList);
+      });
+
+      return () => unsubscribe();
+    }
+  }, [db, userRole]);
+
+  // Hàm thêm thành viên mới vào danh sách chờ
+const handleAddPendingResident = async () => {
+  if (!newPendingResidentName.trim()) {
+    alert('Vui lòng nhập tên thành viên chờ.');
+    return;
+  }
+  
+  const pendingResidentsRef = collection(db, `artifacts/${currentAppId}/public/data/pendingResidents`);
+  try {
+    await addDoc(pendingResidentsRef, {
+      name: newPendingResidentName.trim(),
+      createdAt: serverTimestamp(),
+    });
+    setNewPendingResidentName('');
+    alert('Đã thêm thành viên vào danh sách chờ thành công!');
+  } catch (error) {
+    console.error("Lỗi khi thêm thành viên chờ:", error);
+    alert('Đã xảy ra lỗi.');
+  }
+};
+
+// Hàm chuyển một thành viên từ danh sách chờ vào danh sách chính thức
+  const handleMoveInPendingResident = async (pendingResident) => {
+    const activeResidentsCount = residents.filter(res => res.status !== 'inactive').length;
+    if (activeResidentsCount >= 8) {
+      alert('Phòng đã đủ 8 người. Vui lòng hoàn tất thủ tục cho một thành viên cũ trước khi chuyển thành viên mới vào.');
+      return;
+    }
+
+    if (!window.confirm(`Bạn có chắc chắn muốn chuyển "${pendingResident.name}" vào danh sách thành viên chính thức?`)) {
+      return;
+    }
+
+    try {
+      // Thêm vào danh sách residents chính thức
+      const residentsRef = collection(db, `artifacts/${currentAppId}/public/data/residents`);
+      await addDoc(residentsRef, {
+        name: pendingResident.name,
+        status: 'active', // Trạng thái ban đầu là active
+        createdAt: serverTimestamp(),
+        addedBy: userId,
+      });
+
+      // Xóa khỏi danh sách pendingResidents
+      const pendingDocRef = doc(db, `artifacts/${currentAppId}/public/data/pendingResidents`, pendingResident.id);
+      await deleteDoc(pendingDocRef);
+
+      alert(`Đã chuyển "${pendingResident.name}" vào phòng thành công!`);
+    } catch (error) {
+      console.error("Lỗi khi chuyển thành viên vào phòng:", error);
+      alert('Đã xảy ra lỗi.');
+    }
+  };
+
   //State cho feedback
   const [feedbackContent, setFeedbackContent] = useState('');
   const [allFeedback, setAllFeedback] = useState([]); // Chỉ dành cho admin
@@ -3037,157 +3107,139 @@ const handleUpdateFormerResident = async (e) => {
 
   // Tính toán số ngày có mặt trong một khoảng thời gian và chi phí cá nhân
   const calculateAttendanceDays = async () => {
-    setAuthError('');
-    setBillingError('');
-    if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) {
-      // Chỉ admin mới có thể tính toán điểm danh và chi phí
-      setAuthError('Hệ thống chưa sẵn sàng hoặc bạn không có quyền.');
-      return;
-    }
-    if (!startDate || !endDate) {
-      setAuthError('Vui lòng chọn ngày bắt đầu và ngày kết thúc để tính toán điểm danh.');
-      return;
-    }
-
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    if (start > end) {
-      setAuthError('Ngày bắt đầu không được lớn hơn ngày kết thúc.');
-      return;
-    }
-
-    // Đảm bảo totalCost hợp lệ trước khi tiến hành tính toán chi phí
-    if (totalCost <= 0) {
-      setBillingError('Vui lòng tính toán tổng chi phí điện nước trước khi chia tiền.');
-      return;
-    }
-
-    const dailyPresenceCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/dailyPresence`);
-
-    const daysPresentPerResident = {};
-    let totalDaysAcrossAllResidentsLocal = 0;
-    const individualCalculatedCostsLocal = {}; // Sẽ lưu { residentId: { cost: X, isPaid: false, daysPresent: Z } }
-
-    let calculatedCostPerDayLocal = 0; // <-- Khai báo biến này ở scope rộng hơn
-    let calculatedRemainingFund = 0; // <-- Khai báo biến này ở scope rộng hơn
-
-    try {
-      // Lấy các bản ghi điểm danh hàng ngày trong khoảng thời gian đã chọn
-      const q = query(
-        dailyPresenceCollectionRef,
-        where('date', '>=', formatDate(start)),
-        where('date', '<=', formatDate(end)),
-      );
-      const querySnapshot = await getDocs(q);
-
-      for (const resident of residents) {
-        // Khởi tạo daysPresent cho mỗi cư dân
-        daysPresentPerResident[resident.id] = 0;
+      setAuthError('');
+      setBillingError('');
+      if (!db || !userId || !(userRole === 'admin' || userRole === 'developer' || userId === 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) {
+          setAuthError('Hệ thống chưa sẵn sàng hoặc bạn không có quyền.');
+          return;
+      }
+      if (!startDate || !endDate) {
+          setAuthError('Vui lòng chọn ngày bắt đầu và ngày kết thúc để tính toán.');
+          return;
+      }
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      if (start > end) {
+          setAuthError('Ngày bắt đầu không được lớn hơn ngày kết thúc.');
+          return;
+      }
+      if (totalCost <= 0) {
+          setBillingError('Vui lòng tính toán tổng chi phí điện nước trước khi chia tiền.');
+          return;
       }
 
-      // Điền daysPresentPerResident từ snapshot đã lấy
-      querySnapshot.forEach((docSnap) => {
-        const data = docSnap.data();
-        if (residents.some((res) => res.id === data.residentId) && data.status === 1) {
-          daysPresentPerResident[data.residentId]++;
-        }
-      });
+      // ===== BẮT ĐẦU THAY ĐỔI =====
+      // 1. Tạo danh sách tổng hợp bao gồm cả thành viên chính thức và thành viên chờ
+      const allMembersToCalculate = [
+          ...residents.filter(r => r.status !== 'inactive'), 
+          ...pendingResidents
+      ];
+      // ===== KẾT THÚC THAY ĐỔI =====
 
-      // Tính tổng số ngày trên tất cả các cư dân từ các ngày đã đếm
-      for (const residentId in daysPresentPerResident) {
-        totalDaysAcrossAllResidentsLocal += daysPresentPerResident[residentId];
-      }
+      const dailyPresenceCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/dailyPresence`);
+      const daysPresentPerResident = {};
+      let totalDaysAcrossAllResidentsLocal = 0;
+      const individualCalculatedCostsLocal = {};
+      let calculatedCostPerDayLocal = 0;
+      let calculatedRemainingFund = 0;
 
-      setCalculatedDaysPresent(daysPresentPerResident);
-      setTotalCalculatedDaysAllResidents(totalDaysAcrossAllResidentsLocal);
+      try {
+          const q = query(
+              dailyPresenceCollectionRef,
+              where('date', '>=', formatDate(start)),
+              where('date', '<=', formatDate(end))
+          );
+          const querySnapshot = await getDocs(q);
 
-      let totalRoundedIndividualCosts = 0;
+          // Khởi tạo ngày có mặt cho TẤT CẢ thành viên (cả chính thức và chờ)
+          for (const member of allMembersToCalculate) {
+              daysPresentPerResident[member.id] = 0;
+          }
 
-      // Tính toán chi phí cá nhân dựa trên totalCost và totalDaysAcrossAllResidents
-      if (totalDaysAcrossAllResidentsLocal > 0 && totalCost > 0) {
-        calculatedCostPerDayLocal = totalCost / totalDaysAcrossAllResidentsLocal; // Gán vào biến đã khai báo
-        setCostPerDayPerPerson(calculatedCostPerDayLocal);
-        residents.forEach((resident) => {
-          const days = daysPresentPerResident[resident.id] || 0; // Lấy số ngày có mặt
-          const rawCost = days * calculatedCostPerDayLocal;
-          const roundedCost = Math.round(rawCost / 1000) * 1000;
+          // Đếm ngày có mặt từ dữ liệu điểm danh
+          querySnapshot.forEach((docSnap) => {
+              const data = docSnap.data();
+              if (allMembersToCalculate.some((member) => member.id === data.residentId) && data.status === 1) {
+                  daysPresentPerResident[data.residentId]++;
+              }
+          });
 
-          // Lưu chi phí, trạng thái đã thanh toán và SỐ NGÀY CÓ MẶT
-          individualCalculatedCostsLocal[resident.id] = {
-            cost: roundedCost,
-            isPaid: false,
-            daysPresent: days, // LƯU SỐ NGÀY CÓ MẶT VÀO ĐÂY
-          };
-          totalRoundedIndividualCosts += roundedCost;
-        });
-      } else {
-        setCostPerDayPerPerson(0);
-        residents.forEach((resident) => {
-          individualCalculatedCostsLocal[resident.id] = { cost: 0, isPaid: false, daysPresent: 0 }; // Mặc định daysPresent
-        });
-      }
-      setIndividualCosts(individualCalculatedCostsLocal);
+          // Tính tổng số ngày có mặt
+          for (const memberId in daysPresentPerResident) {
+              totalDaysAcrossAllResidentsLocal += daysPresentPerResident[memberId];
+          }
 
-      // Lấy số tiền dư/thiếu của tháng hiện tại
-      const currentMonthSurplusOrDeficit = totalCost - totalRoundedIndividualCosts;
+          setCalculatedDaysPresent(daysPresentPerResident);
+          setTotalCalculatedDaysAllResidents(totalDaysAcrossAllResidentsLocal);
+          let totalRoundedIndividualCosts = 0;
 
-      // Lấy số tiền quỹ hiện tại (đã có trong state) và cộng dồn
-      // Nếu chưa có lịch sử chia tiền, quỹ hiện tại là 0
-      const previousRemainingFund = costSharingHistory.length > 0 ? (costSharingHistory[0].remainingFund || 0) : 0;
-      calculatedRemainingFund = previousRemainingFund + currentMonthSurplusOrDeficit;
+          // Tính chi phí cá nhân cho TẤT CẢ thành viên
+          if (totalDaysAcrossAllResidentsLocal > 0 && totalCost > 0) {
+              calculatedCostPerDayLocal = totalCost / totalDaysAcrossAllResidentsLocal;
+              setCostPerDayPerPerson(calculatedCostPerDayLocal);
+              
+              allMembersToCalculate.forEach((member) => {
+                  const days = daysPresentPerResident[member.id] || 0;
+                  const rawCost = days * calculatedCostPerDayLocal;
+                  const roundedCost = Math.round(rawCost / 1000) * 1000;
+                  individualCalculatedCostsLocal[member.id] = {
+                      cost: roundedCost,
+                      isPaid: false,
+                      daysPresent: days,
+                  };
+                  totalRoundedIndividualCosts += roundedCost;
+              });
+          } else {
+              setCostPerDayPerPerson(0);
+              allMembersToCalculate.forEach((member) => {
+                  individualCalculatedCostsLocal[member.id] = { cost: 0, isPaid: false, daysPresent: 0 };
+              });
+          }
+          setIndividualCosts(individualCalculatedCostsLocal);
 
-      setRemainingFund(calculatedRemainingFund);
-      // Lưu tóm tắt chia sẻ chi phí vào lịch sử bằng cách sử dụng các biến cục bộ
-      const costSharingHistoryCollectionRef = collection(
-        db,
-        `artifacts/${currentAppId}/public/data/costSharingHistory`,
-      );
-      const newCostSharingDocRef = await addDoc(costSharingHistoryCollectionRef, {
-        // Lấy ref của tài liệu mới
-        periodStart: startDate,
-        periodEnd: endDate,
-        totalCalculatedDaysAllResidents: totalDaysAcrossAllResidentsLocal,
-        costPerDayPerPerson: calculatedCostPerDayLocal, // Sử dụng biến đã khai báo
-        individualCosts: individualCalculatedCostsLocal, // Lưu dưới dạng map các đối tượng {cost, isPaid, daysPresent}
-        remainingFund: calculatedRemainingFund, // Sử dụng biến đã khai báo
-        calculatedBy: userId,
-        calculatedDate: serverTimestamp(),
-        relatedTotalBill: totalCost,
-      });
+          // Cập nhật quỹ phòng
+          const currentMonthSurplusOrDeficit = totalCost - totalRoundedIndividualCosts;
+          const previousRemainingFund = costSharingHistory.length > 0 ? (costSharingHistory[0].remainingFund || 0) : 0;
+          calculatedRemainingFund = previousRemainingFund + currentMonthSurplusOrDeficit;
+          setRemainingFund(calculatedRemainingFund);
+          
+          // Lưu lịch sử chia tiền
+          const costSharingHistoryCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/costSharingHistory`);
+          const newCostSharingDocRef = await addDoc(costSharingHistoryCollectionRef, {
+              periodStart: startDate,
+              periodEnd: endDate,
+              totalCalculatedDaysAllResidents: totalDaysAcrossAllResidentsLocal,
+              costPerDayPerPerson: calculatedCostPerDayLocal,
+              individualCosts: individualCalculatedCostsLocal,
+              remainingFund: calculatedRemainingFund,
+              calculatedBy: userId,
+              calculatedDate: serverTimestamp(),
+              relatedTotalBill: totalCost,
+          });
 
-      console.log('Đã tính toán số ngày có mặt và chi phí trung bình.');
+          console.log('Đã tính toán số ngày có mặt và chi phí trung bình.');
 
-      // TẠO THÔNG BÁO TIỀN ĐIỆN NƯỚC CHO TỪNG THÀNH VIÊN (Đoạn này đã đúng)
-      for (const resident of residents.filter((res) => res.isActive)) {
-        const userLinkedToResident = allUsersData.find((user) => user.linkedResidentId === resident.id);
-        if (userLinkedToResident) {
-          const cost = individualCalculatedCostsLocal[resident.id]?.cost || 0;
-          const message = `Bạn có hóa đơn tiền điện nước cần đóng ${cost.toLocaleString('vi-VN')} VND cho kỳ từ ${startDate} đến ${endDate}.`;
+          // Tạo thông báo cho TẤT CẢ thành viên (chỉ những ai có tài khoản)
+          for (const member of allMembersToCalculate) {
+              const userLinkedToResident = allUsersData.find((user) => user.linkedResidentId === member.id);
+              if (userLinkedToResident) {
+                  const cost = individualCalculatedCostsLocal[member.id]?.cost || 0;
+                  const message = `Bạn có hóa đơn tiền điện nước cần đóng ${cost.toLocaleString('vi-VN')} VND cho kỳ từ ${startDate} đến ${endDate}.`;
+                  await createNotification(
+                      userLinkedToResident.id, 'payment', message, userId, newCostSharingDocRef.id, 'Hóa đơn tiền điện nước'
+                  );
+              }
+          }
+          
+          // Tạo thông báo chung
           await createNotification(
-            userLinkedToResident.id,
-            'payment',
-            message,
-            userId,
-            newCostSharingDocRef.id,
-            'Hóa đơn tiền điện nước',
-          ); // Thêm title
-        }
+              'all', 'payment', `Hóa đơn điện nước mới cho kỳ ${startDate} đến ${endDate} đã được tính.`, userId, newCostSharingDocRef.id, 'Thông báo hóa đơn chung'
+          );
+      } catch (error) {
+          console.error('Lỗi khi tính toán ngày có mặt và chi phí:', error);
+          setBillingError(`Lỗi khi tính toán: ${error.message}`);
       }
-      // Tạo thông báo chung cho admin
-      await createNotification(
-        'all',
-        'payment',
-        `Hóa đơn điện nước mới cho kỳ ${startDate} đến ${endDate} đã được tính.`,
-        userId,
-        newCostSharingDocRef.id,
-        'Thông báo hóa đơn chung',
-      ); // Thêm title
-    } catch (error) {
-      console.error('Lỗi khi tính toán ngày có mặt và chi phí:', error);
-      setBillingError(`Lỗi khi tính toán: ${error.message}`);
-    }
   };
-
   // Hàm để tạo nhắc nhở thanh toán bằng Gemini API
   const generatePaymentReminder = async () => {
     setAuthError('');
@@ -3997,274 +4049,290 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               )}
             </div>
           );
-          case 'attendanceTracking':
-            return (
-              <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-                <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">
-                  {userRole === 'admin' ? 'Điểm danh theo tháng' : 'Điểm danh của tôi'}
-                </h2>
-                <div className="mb-6 flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4">
-                  <label htmlFor="monthSelector" className="font-semibold text-gray-700 dark:text-gray-300 text-lg">
-                    Chọn tháng:
-                  </label>
-                  <input
-                    type="month"
-                    id="monthSelector"
-                    value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(e.target.value)}
-                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700"
-                  />
-                </div>
+        case 'attendanceTracking': { // Bọc trong {} để có thể khai báo biến
+            // Gộp danh sách thành viên chính thức và thành viên chờ
+            const allMembersToDisplay = [
+                ...residents.filter(res => showInactiveResidents ? true : res.status !== 'inactive'), 
+                ...pendingResidents
+            ];
 
-                {/* ===== KHUNG CHỨA CÓ THANH CUỘN NGANG ===== */}
-                <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-                  {displayedResidents.length === 0 ? (
-                    <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
-                      Chưa có người ở nào để điểm danh.
-                    </p>
-                  ) : (
-                    <table className="min-w-full bg-white dark:bg-gray-800">
-                      <thead>
-                        <tr>
-                          <th className="py-3 px-4 text-left sticky left-0 z-10 bg-green-100 dark:bg-gray-700 border-r border-green-200 dark:border-gray-600 text-green-800 dark:text-green-200 uppercase text-sm font-semibold">
-                            Tên
-                          </th>
-                          {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map((day) => (
-                            <th
-                              key={day}
-                              className="py-3 px-2 text-center border-l border-green-200 dark:border-gray-600 text-green-800 dark:text-green-200 uppercase text-sm leading-normal"
-                            >
-                              {day}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
-                        {displayedResidents.map((resident) => {
-                          const isMyRow = loggedInResidentProfile && resident.id === loggedInResidentProfile.id;
-                          return (
-                            <tr
-                              key={resident.id}
-                              className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
-                            >
-                              <td className="py-3 px-6 text-left whitespace-nowrap font-medium sticky left-0 bg-white dark:bg-gray-800 z-10 border-r border-gray-200 dark:border-gray-700">
-                                {resident.name}
-                              </td>
-                              {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map((day) => {
-                                const dayString = String(day).padStart(2, '0');
-                                const isPresent = monthlyAttendanceData[resident.id]?.[dayString] === 1;
-                                return (
-                                  <td
-                                    key={day}
-                                    className="py-3 px-2 text-center border-l border-gray-200 dark:border-gray-700"
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={isPresent}
-                                      onChange={() => handleToggleDailyPresence(resident.id, day)}
-                                      disabled={userRole === 'member' && !isMyRow}
-                                      className="form-checkbox h-5 w-5 rounded focus:ring-green-500 cursor-pointer text-green-600 dark:text-green-400 dark:disabled:bg-slate-500 dark:disabled:border-slate-400 dark:disabled:checked:bg-yellow-600 dark:disabled:checked:border-transparent"
-                                    />
-                                  </td>
-                                );
-                              })}
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+            return (
+                <div className="p-4 md:p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg w-full">
+                    <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">
+                        {(userRole === 'admin' || userRole === 'developer') ? 'Điểm danh theo tháng' : 'Điểm danh của tôi'}
+                    </h2>
+                    <div className="mb-6 flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4">
+                        <label htmlFor="monthSelector" className="font-semibold text-gray-700 dark:text-gray-300 text-lg">
+                            Chọn tháng:
+                        </label>
+                        <input
+                            type="month"
+                            id="monthSelector"
+                            value={selectedMonth}
+                            onChange={(e) => setSelectedMonth(e.target.value)}
+                            className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-green-500 bg-white dark:bg-gray-700"
+                        />
+                    </div>
+
+                    <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                        {allMembersToDisplay.length === 0 ? (
+                            <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
+                                Chưa có người ở nào để điểm danh.
+                            </p>
+                        ) : (
+                            <table className="w-full border-collapse">
+                                <thead>
+                                    <tr className="bg-green-100 dark:bg-gray-700">
+                                        <th className="py-3 px-4 text-left sticky left-0 z-10 bg-green-100 dark:bg-gray-700 border-r border-green-200 dark:border-gray-600 text-green-800 dark:text-green-200 uppercase text-sm font-semibold">
+                                            Tên
+                                        </th>
+                                        {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map((day) => (
+                                            <th
+                                                key={day}
+                                                className="py-3 px-2 text-center border-l border-green-200 dark:border-gray-600 text-green-800 dark:text-green-200 uppercase text-sm font-semibold"
+                                            >
+                                                {day}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody className="text-gray-700 dark:text-gray-300 text-sm">
+                                    {allMembersToDisplay.map((resident) => {
+                                        // `resident` ở đây có thể là từ `residents` hoặc `pendingResidents`
+                                        const isMyRow = loggedInResidentProfile && resident.id === loggedInResidentProfile.id;
+                                        const canAdminister = userRole === 'admin' || userRole === 'developer' || (allUsersData.find(u => u.id === userId)?.canTakeAttendance);
+
+                                        return (
+                                            <tr
+                                                key={resident.id}
+                                                className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+                                            >
+                                                <td className="py-3 px-4 text-left whitespace-nowrap font-medium sticky left-0 z-10 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+                                                    {resident.name}
+                                                    {pendingResidents.some(p => p.id === resident.id) && <span className="text-xs text-cyan-500 ml-2">(Chờ)</span>}
+                                                </td>
+                                                {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map((day) => {
+                                                    const dayString = String(day).padStart(2, '0');
+                                                    const isPresent = monthlyAttendanceData[resident.id]?.[dayString] === 1;
+                                                    return (
+                                                        <td
+                                                            key={day}
+                                                            className="py-3 px-2 text-center border-l border-gray-200 dark:border-gray-700"
+                                                        >
+                                                            <div className="relative flex justify-center group">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={isPresent}
+                                                                    onChange={() => handleToggleDailyPresence(resident.id, day)}
+                                                                    disabled={!canAdminister && !isMyRow}
+                                                                    className="form-checkbox h-5 w-5 rounded focus:ring-green-500 cursor-pointer text-green-600 disabled:checked:bg-red-500 dark:text-green-400 dark:disabled:bg-slate-700 dark:disabled:checked:bg-yellow-600 dark:disabled:checked:border-transparent"
+                                                                />
+                                                                <div className="absolute bottom-full mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity duration-300 pointer-events-none whitespace-nowrap">
+                                                                  {isPresent ? 'Có mặt' : 'Vắng'}
+                                                                  <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-gray-800"></div>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    );
+                                                })}
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+                </div>
+            );
+        }        
+        case 'billing':
+            return (
+              // Container chính cho toàn bộ mục, dùng space-y để tạo khoảng cách giữa các khối
+              <div className="space-y-8">
+
+                {/* ===== KHỐI 1: TÍNH TIỀN ĐIỆN NƯỚC ===== */}
+                <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+                  <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">Tính tiền điện nước</h2>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    {/* Electricity */}
+                    <div>
+                      <label htmlFor="lastElectricityReading" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                        Chỉ số điện cuối cùng (KW):
+                      </label>
+                      <input
+                        type="number"
+                        id="lastElectricityReading"
+                        value={lastElectricityReading}
+                        readOnly
+                        className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 bg-gray-100 dark:bg-gray-600 cursor-not-allowed"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="currentElectricityReading" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                        Chỉ số điện hiện tại (KW):
+                      </label>
+                      <input
+                        type="number"
+                        id="currentElectricityReading"
+                        value={currentElectricityReading}
+                        onChange={(e) => { setCurrentElectricityReading(e.target.value); setBillingError(''); }}
+                        className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 bg-white dark:bg-gray-700"
+                        placeholder="Nhập chỉ số hiện tại"
+                      />
+                    </div>
+
+                    {/* Water */}
+                    <div>
+                      <label htmlFor="lastWaterReading" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                        Chỉ số nước cuối cùng (m³):
+                      </label>
+                      <input
+                        type="number"
+                        id="lastWaterReading"
+                        value={lastWaterReading}
+                        readOnly
+                        className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 bg-gray-100 dark:bg-gray-600 cursor-not-allowed"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="currentWaterReading" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                        Chỉ số nước hiện tại (m³):
+                      </label>
+                      <input
+                        type="number"
+                        id="currentWaterReading"
+                        value={currentWaterReading}
+                        onChange={(e) => { setCurrentWaterReading(e.target.value); setBillingError(''); }}
+                        className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 bg-white dark:bg-gray-700"
+                        placeholder="Nhập chỉ số hiện tại"
+                      />
+                    </div>
+                  </div>
+                  
+                  <button
+                    onClick={calculateBill}
+                    className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all"
+                  >
+                    <i className="fas fa-calculator mr-2"></i> Tính toán chi phí
+                  </button>
+
+                  {totalCost > 0 && (
+                    <div className="mt-6 bg-blue-100 dark:bg-gray-800 p-4 rounded-xl text-lg font-semibold">
+                      <p>Tiền điện: <span className="text-blue-700 dark:text-blue-300">{electricityCost.toLocaleString('vi-VN')} VND</span></p>
+                      <p>Tiền nước: <span className="text-blue-700 dark:text-blue-300">{waterCost.toLocaleString('vi-VN')} VND</span></p>
+                      <p className="border-t pt-3 mt-3 text-xl font-bold">
+                        Tổng cộng: <span className="text-blue-800 dark:text-blue-200">{totalCost.toLocaleString('vi-VN')} VND</span>
+                      </p>
+                    </div>
                   )}
                 </div>
+
+                {/* ===== KHỐI 2: CÀI ĐẶT GIÁ ĐIỆN & NƯỚC ===== */}
+                <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+                  <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">
+                    Cài đặt giá điện & nước
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                    <div>
+                      <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                        Giá điện hiện tại (VND/KW):
+                      </label>
+                      <input
+                        type="text"
+                        value={`${electricityRate.toLocaleString('vi-VN')} VND`}
+                        readOnly
+                        className="shadow-sm border rounded-xl w-full py-2 px-4 bg-gray-100 dark:bg-gray-600 cursor-not-allowed"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                        Giá nước hiện tại (VND/m³):
+                      </label>
+                      <input
+                        type="text"
+                        value={`${waterRate.toLocaleString('vi-VN')} VND`}
+                        readOnly
+                        className="shadow-sm border rounded-xl w-full py-2 px-4 bg-gray-100 dark:bg-gray-600 cursor-not-allowed"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="newElecRate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                        Nhập giá điện mới:
+                      </label>
+                      <input
+                        type="number"
+                        id="newElecRate"
+                        value={newElectricityRate}
+                        onChange={(e) => setNewElectricityRate(e.target.value)}
+                        className="shadow-sm border rounded-xl w-full py-2 px-4 bg-white dark:bg-gray-700"
+                        placeholder="Ví dụ: 2600"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="newWatRate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                        Nhập giá nước mới:
+                      </label>
+                      <input
+                        type="number"
+                        id="newWatRate"
+                        value={newWaterRate}
+                        onChange={(e) => setNewWaterRate(e.target.value)}
+                        className="shadow-sm border rounded-xl w-full py-2 px-4 bg-white dark:bg-gray-700"
+                        placeholder="Ví dụ: 4500"
+                      />
+                    </div>
+                  </div>
+                  {billingError && <p className="text-red-500 text-sm text-center mb-4">{billingError}</p>}
+                  <button
+                    onClick={handleUpdateRates}
+                    className="w-full px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all"
+                  >
+                    Lưu thay đổi giá
+                  </button>
+                </div>
+                {/* ===== KHỐI 3: CÀI ĐẶT MÃ QR THANH TOÁN ===== */}
+                <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+                  <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">
+                    Cài đặt QR Thanh toán
+                  </h2>
+                  <div className="flex flex-col md:flex-row items-center gap-6">
+                    {/* Phần xem trước QR */}
+                    <div className="flex-shrink-0">
+                      <p className="text-center text-sm font-semibold mb-2">Mã QR hiện tại:</p>
+                      {qrCodeUrl ? (
+                        <img src={qrCodeUrl} alt="Mã QR thanh toán" className="w-40 h-40 object-contain border rounded-lg bg-white"/>
+                      ) : (
+                        <div className="w-40 h-40 border rounded-lg bg-gray-100 flex items-center justify-center text-gray-400">
+                          Chưa có mã QR
+                        </div>
+                      )}
+                    </div>
+                    {/* Phần tải lên */}
+                    <div className="flex-1 w-full">
+                      <label htmlFor="qrCodeFile" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                        Tải lên mã QR mới:
+                      </label>
+                      <input
+                        type="file"
+                        id="qrCodeFile"
+                        accept="image/*"
+                        onChange={(e) => setNewQrCodeFile(e.target.files[0])}
+                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      />
+                      <button
+                        onClick={handleUploadQrCode}
+                        className="w-full mt-4 px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700"
+                        disabled={isUploadingQrCode || !newQrCodeFile}
+                      >
+                        {isUploadingQrCode ? 'Đang tải lên...' : 'Lưu mã QR mới'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
               </div>
             );
-            case 'billing':
-              return (
-                // Container chính cho toàn bộ mục, dùng space-y để tạo khoảng cách giữa các khối
-                <div className="space-y-8">
-
-                  {/* ===== KHỐI 1: TÍNH TIỀN ĐIỆN NƯỚC ===== */}
-                  <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-                    <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">Tính tiền điện nước</h2>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                      {/* Electricity */}
-                      <div>
-                        <label htmlFor="lastElectricityReading" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                          Chỉ số điện cuối cùng (KW):
-                        </label>
-                        <input
-                          type="number"
-                          id="lastElectricityReading"
-                          value={lastElectricityReading}
-                          readOnly
-                          className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 bg-gray-100 dark:bg-gray-600 cursor-not-allowed"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="currentElectricityReading" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                          Chỉ số điện hiện tại (KW):
-                        </label>
-                        <input
-                          type="number"
-                          id="currentElectricityReading"
-                          value={currentElectricityReading}
-                          onChange={(e) => { setCurrentElectricityReading(e.target.value); setBillingError(''); }}
-                          className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 bg-white dark:bg-gray-700"
-                          placeholder="Nhập chỉ số hiện tại"
-                        />
-                      </div>
-
-                      {/* Water */}
-                      <div>
-                        <label htmlFor="lastWaterReading" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                          Chỉ số nước cuối cùng (m³):
-                        </label>
-                        <input
-                          type="number"
-                          id="lastWaterReading"
-                          value={lastWaterReading}
-                          readOnly
-                          className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 bg-gray-100 dark:bg-gray-600 cursor-not-allowed"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="currentWaterReading" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                          Chỉ số nước hiện tại (m³):
-                        </label>
-                        <input
-                          type="number"
-                          id="currentWaterReading"
-                          value={currentWaterReading}
-                          onChange={(e) => { setCurrentWaterReading(e.target.value); setBillingError(''); }}
-                          className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 bg-white dark:bg-gray-700"
-                          placeholder="Nhập chỉ số hiện tại"
-                        />
-                      </div>
-                    </div>
-                    
-                    <button
-                      onClick={calculateBill}
-                      className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all"
-                    >
-                      <i className="fas fa-calculator mr-2"></i> Tính toán chi phí
-                    </button>
-
-                    {totalCost > 0 && (
-                      <div className="mt-6 bg-blue-100 dark:bg-gray-800 p-4 rounded-xl text-lg font-semibold">
-                        <p>Tiền điện: <span className="text-blue-700 dark:text-blue-300">{electricityCost.toLocaleString('vi-VN')} VND</span></p>
-                        <p>Tiền nước: <span className="text-blue-700 dark:text-blue-300">{waterCost.toLocaleString('vi-VN')} VND</span></p>
-                        <p className="border-t pt-3 mt-3 text-xl font-bold">
-                          Tổng cộng: <span className="text-blue-800 dark:text-blue-200">{totalCost.toLocaleString('vi-VN')} VND</span>
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* ===== KHỐI 2: CÀI ĐẶT GIÁ ĐIỆN & NƯỚC ===== */}
-                  <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-                    <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">
-                      Cài đặt giá điện & nước
-                    </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-                      <div>
-                        <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                          Giá điện hiện tại (VND/KW):
-                        </label>
-                        <input
-                          type="text"
-                          value={`${electricityRate.toLocaleString('vi-VN')} VND`}
-                          readOnly
-                          className="shadow-sm border rounded-xl w-full py-2 px-4 bg-gray-100 dark:bg-gray-600 cursor-not-allowed"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                          Giá nước hiện tại (VND/m³):
-                        </label>
-                        <input
-                          type="text"
-                          value={`${waterRate.toLocaleString('vi-VN')} VND`}
-                          readOnly
-                          className="shadow-sm border rounded-xl w-full py-2 px-4 bg-gray-100 dark:bg-gray-600 cursor-not-allowed"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="newElecRate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                          Nhập giá điện mới:
-                        </label>
-                        <input
-                          type="number"
-                          id="newElecRate"
-                          value={newElectricityRate}
-                          onChange={(e) => setNewElectricityRate(e.target.value)}
-                          className="shadow-sm border rounded-xl w-full py-2 px-4 bg-white dark:bg-gray-700"
-                          placeholder="Ví dụ: 2600"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="newWatRate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                          Nhập giá nước mới:
-                        </label>
-                        <input
-                          type="number"
-                          id="newWatRate"
-                          value={newWaterRate}
-                          onChange={(e) => setNewWaterRate(e.target.value)}
-                          className="shadow-sm border rounded-xl w-full py-2 px-4 bg-white dark:bg-gray-700"
-                          placeholder="Ví dụ: 4500"
-                        />
-                      </div>
-                    </div>
-                    {billingError && <p className="text-red-500 text-sm text-center mb-4">{billingError}</p>}
-                    <button
-                      onClick={handleUpdateRates}
-                      className="w-full px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all"
-                    >
-                      Lưu thay đổi giá
-                    </button>
-                  </div>
-                  {/* ===== KHỐI 3: CÀI ĐẶT MÃ QR THANH TOÁN ===== */}
-                  <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-                    <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">
-                      Cài đặt QR Thanh toán
-                    </h2>
-                    <div className="flex flex-col md:flex-row items-center gap-6">
-                      {/* Phần xem trước QR */}
-                      <div className="flex-shrink-0">
-                        <p className="text-center text-sm font-semibold mb-2">Mã QR hiện tại:</p>
-                        {qrCodeUrl ? (
-                          <img src={qrCodeUrl} alt="Mã QR thanh toán" className="w-40 h-40 object-contain border rounded-lg bg-white"/>
-                        ) : (
-                          <div className="w-40 h-40 border rounded-lg bg-gray-100 flex items-center justify-center text-gray-400">
-                            Chưa có mã QR
-                          </div>
-                        )}
-                      </div>
-                      {/* Phần tải lên */}
-                      <div className="flex-1 w-full">
-                        <label htmlFor="qrCodeFile" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                          Tải lên mã QR mới:
-                        </label>
-                        <input
-                          type="file"
-                          id="qrCodeFile"
-                          accept="image/*"
-                          onChange={(e) => setNewQrCodeFile(e.target.files[0])}
-                          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                        />
-                        <button
-                          onClick={handleUploadQrCode}
-                          className="w-full mt-4 px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700"
-                          disabled={isUploadingQrCode || !newQrCodeFile}
-                        >
-                          {isUploadingQrCode ? 'Đang tải lên...' : 'Lưu mã QR mới'}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                </div>
-              );
         case 'costSharing':
           return (
             <div className="p-6 bg-orange-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
@@ -4824,7 +4892,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               )}
             </div>
           );
-          case 'commonRoomInfo':
+        case 'commonRoomInfo':
             // Phân quyền hiển thị ngay tại đây
             if (userRole === 'admin') {
               // ===== GIAO DIỆN "THẺ THÀNH VIÊN" CHO ADMIN =====
@@ -4975,232 +5043,232 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 </div>
               );
             }          
-            case 'roomMemories':
-            return (
-              <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-                {/* ===== TIÊU ĐỀ VÀ NÚT BẤM MỚI ===== */}
-                <div className="flex justify-between items-center mb-5">
-                  <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200">Kỷ niệm phòng</h2>
-                  <button
-                    onClick={() => setShowAddMemoryModal(true)}
-                    className="bg-yellow-500 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:bg-yellow-600 transition-transform transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
-                    title="Đăng kỷ niệm mới"
-                  >
-                    <i className="fas fa-plus text-xl"></i>
-                  </button>
-                </div>
+        case 'roomMemories':
+        return (
+          <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+            {/* ===== TIÊU ĐỀ VÀ NÚT BẤM MỚI ===== */}
+            <div className="flex justify-between items-center mb-5">
+              <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200">Kỷ niệm phòng</h2>
+              <button
+                onClick={() => setShowAddMemoryModal(true)}
+                className="bg-yellow-500 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:bg-yellow-600 transition-transform transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+                title="Đăng kỷ niệm mới"
+              >
+                <i className="fas fa-plus text-xl"></i>
+              </button>
+            </div>
 
-                {/* Phần lọc và tìm kiếm */}
-                <div className="mb-4 flex flex-col sm:flex-row items-center justify-between space-y-3 sm:space-y-0 sm:space-x-4">
-                  <input
-                    type="text"
-                    placeholder="Tìm kiếm theo tên sự kiện..."
-                    value={searchTermMemory}
-                    onChange={(e) => setSearchTermMemory(e.target.value)}
-                    className="flex-grow shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full sm:w-auto py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white dark:bg-gray-700"
-                  />
-                  <select
-                    value={filterUploaderMemory}
-                    onChange={(e) => setFilterUploaderMemory(e.target.value)}
-                    className="shadow-sm border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white dark:bg-gray-700"
-                  >
-                    <option value="all">Tất cả người đăng</option>
-                    {allUsersData
-                      .filter((user) => user.role === 'member' || user.role === 'admin')
-                      .map((user) => (
-                        <option key={user.id} value={user.id}>
-                          {user.fullName || user.email}
-                        </option>
-                      ))}
-                  </select>
-                </div>
+            {/* Phần lọc và tìm kiếm */}
+            <div className="mb-4 flex flex-col sm:flex-row items-center justify-between space-y-3 sm:space-y-0 sm:space-x-4">
+              <input
+                type="text"
+                placeholder="Tìm kiếm theo tên sự kiện..."
+                value={searchTermMemory}
+                onChange={(e) => setSearchTermMemory(e.target.value)}
+                className="flex-grow shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full sm:w-auto py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white dark:bg-gray-700"
+              />
+              <select
+                value={filterUploaderMemory}
+                onChange={(e) => setFilterUploaderMemory(e.target.value)}
+                className="shadow-sm border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white dark:bg-gray-700"
+              >
+                <option value="all">Tất cả người đăng</option>
+                {allUsersData
+                  .filter((user) => user.role === 'member' || user.role === 'admin')
+                  .map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.fullName || user.email}
+                    </option>
+                  ))}
+              </select>
+            </div>
 
-                {/* Danh sách kỷ niệm */}
-                {memories.length === 0 ? (
-                  <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
-                    Chưa có kỷ niệm nào được thêm.
-                  </p>
-                ) : (
-                  <div className="max-h-[600px] overflow-y-auto p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {memories.map((memory) => (
-                        <div
-                          key={memory.id}
-                          className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden transition-transform transform hover:scale-105 duration-200"
-                          onClick={() => setSelectedMemoryDetails(memory)}
-                        >
-                          <div className="relative aspect-video bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                            {memory.files && memory.files.length > 0 ? (
-                              <>
-                                {memory.files[0].fileType === 'image' ? (
-                                  <img
-                                    src={memory.files[0].fileUrl}
-                                    alt={memory.eventName}
-                                    className="w-full h-full object-cover cursor-pointer"
-                                    onClick={() => setSelectedMemoryForLightbox(memory)}
-                                  />
-                                ) : (
-                                  <video
-                                    src={memory.files[0].fileUrl}
-                                    controls
-                                    className="w-full h-full object-cover"
-                                    onClick={() => setSelectedMemoryForLightbox(memory)}
-                                  />
-                                )}
-                                {memory.files.length > 1 && (
-                                  <span className="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded-full">
-                                    {memory.files.length} ảnh/video
-                                  </span>
-                                )}
-                              </>
+            {/* Danh sách kỷ niệm */}
+            {memories.length === 0 ? (
+              <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
+                Chưa có kỷ niệm nào được thêm.
+              </p>
+            ) : (
+              <div className="max-h-[600px] overflow-y-auto p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {memories.map((memory) => (
+                    <div
+                      key={memory.id}
+                      className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden transition-transform transform hover:scale-105 duration-200"
+                      onClick={() => setSelectedMemoryDetails(memory)}
+                    >
+                      <div className="relative aspect-video bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                        {memory.files && memory.files.length > 0 ? (
+                          <>
+                            {memory.files[0].fileType === 'image' ? (
+                              <img
+                                src={memory.files[0].fileUrl}
+                                alt={memory.eventName}
+                                className="w-full h-full object-cover cursor-pointer"
+                                onClick={() => setSelectedMemoryForLightbox(memory)}
+                              />
                             ) : (
-                              <div className="text-gray-500 dark:text-gray-400">Không có ảnh</div>
+                              <video
+                                src={memory.files[0].fileUrl}
+                                controls
+                                className="w-full h-full object-cover"
+                                onClick={() => setSelectedMemoryForLightbox(memory)}
+                              />
                             )}
-                          </div>
-                          <div className="p-4">
-                            <h3 className="font-bold text-lg text-gray-800 dark:text-gray-200 mb-2 truncate">
-                              {memory.eventName}
-                            </h3>
-                            <p className="text-gray-600 dark:text-gray-400 text-sm mb-1">
-                              Ngày chụp: {memory.photoDate}
-                            </p>
-                            <p className="text-gray-600 dark:text-gray-400 text-sm mb-3">
-                              Đăng bởi:{' '}
-                              <span className="font-medium">
-                                {memory.uploadedByName ||
-                                  allUsersData.find((u) => u.id === memory.uploadedBy)?.fullName ||
-                                  'Người dùng ẩn danh'}
+                            {memory.files.length > 1 && (
+                              <span className="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded-full">
+                                {memory.files.length} ảnh/video
                               </span>
-                            </p>
-                            {(userRole === 'admin' || userId === memory.uploadedBy) && (
-                              <div className="flex justify-end space-x-2">
-                                <button
-                                  onClick={() => handleEditMemory(memory)}
-                                  className="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600 transition-colors"
-                                >
-                                  Chỉnh sửa
-                                </button>
-                                <button
-                                  onClick={() =>
-                                    handleDeleteMemory(memory.id, memory.files, memory.uploadedBy)
-                                  }
-                                  className="px-3 py-1 bg-red-500 text-white text-xs rounded-lg hover:bg-red-600 transition-colors"
-                                >
-                                  Xóa
-                                </button>
-                              </div>
                             )}
+                          </>
+                        ) : (
+                          <div className="text-gray-500 dark:text-gray-400">Không có ảnh</div>
+                        )}
+                      </div>
+                      <div className="p-4">
+                        <h3 className="font-bold text-lg text-gray-800 dark:text-gray-200 mb-2 truncate">
+                          {memory.eventName}
+                        </h3>
+                        <p className="text-gray-600 dark:text-gray-400 text-sm mb-1">
+                          Ngày chụp: {memory.photoDate}
+                        </p>
+                        <p className="text-gray-600 dark:text-gray-400 text-sm mb-3">
+                          Đăng bởi:{' '}
+                          <span className="font-medium">
+                            {memory.uploadedByName ||
+                              allUsersData.find((u) => u.id === memory.uploadedBy)?.fullName ||
+                              'Người dùng ẩn danh'}
+                          </span>
+                        </p>
+                        {(userRole === 'admin' || userId === memory.uploadedBy) && (
+                          <div className="flex justify-end space-x-2">
+                            <button
+                              onClick={() => handleEditMemory(memory)}
+                              className="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600 transition-colors"
+                            >
+                              Chỉnh sửa
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleDeleteMemory(memory.id, memory.files, memory.uploadedBy)
+                              }
+                              className="px-3 py-1 bg-red-500 text-white text-xs rounded-lg hover:bg-red-600 transition-colors"
+                            >
+                              Xóa
+                            </button>
                           </div>
-                        </div>
-                      ))}
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
-
-                {/* Pagination Controls */}
-                {totalMemoriesCount > itemsPerPageMemories && (
-                  <div className="flex justify-center items-center space-x-4 mt-8">
-                    <button
-                      onClick={() => setCurrentPageMemories((prev) => Math.max(1, prev - 1))}
-                      disabled={currentPageMemories === 1}
-                      className="px-4 py-2 bg-yellow-500 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      Trang trước
-                    </button>
-                    <span className="text-gray-800 dark:text-gray-200 font-medium">
-                      Trang {currentPageMemories} / {totalPagesMemories}
-                    </span>
-                    <button
-                      onClick={() => setCurrentPageMemories((prev) => Math.min(totalPagesMemories, prev + 1))}
-                      disabled={currentPageMemories === totalPagesMemories}
-                      className="px-4 py-2 bg-yellow-500 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      Trang sau
-                    </button>
-                  </div>
-                )}
-
-                {/* POPUP ĐĂNG KỶ NIỆM MỚI */}
-                {showAddMemoryModal && (
-                  <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-                      <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
-                        Đăng Kỷ niệm mới
-                      </h3>
-                      <form onSubmit={handleAddMemory} className="space-y-4">
-                        <div>
-                          <label htmlFor="eventName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                            Tên sự kiện:
-                          </label>
-                          <input
-                            type="text"
-                            id="eventName"
-                            value={newMemoryEventName}
-                            onChange={(e) => setNewMemoryEventName(e.target.value)}
-                            className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white dark:bg-gray-700"
-                            placeholder="Ví dụ: Sinh nhật Duy, Chuyến đi Vũng Tàu"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor="photoDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                            Ngày chụp/quay:
-                          </label>
-                          <input
-                            type="date"
-                            id="photoDate"
-                            value={newMemoryPhotoDate}
-                            onChange={(e) => setNewMemoryPhotoDate(e.target.value)}
-                            className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white dark:bg-gray-700"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor="memoryImageFile" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                            Chọn ảnh/video:
-                          </label>
-                          <input
-                            type="file"
-                            id="memoryImageFile"
-                            accept="image/*,video/*"
-                            multiple
-                            onChange={(e) => setNewMemoryImageFile(Array.from(e.target.files))}
-                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-50 file:text-yellow-700 hover:file:bg-yellow-100"
-                            required
-                          />
-                          {isUploadingMemory && (
-                            <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2">
-                              <div className="bg-yellow-600 h-2.5 rounded-full" style={{ width: `${uploadProgress}%` }}></div>
-                            </div>
-                          )}
-                          {uploadProgress > 0 && uploadProgress < 100 && (
-                            <p className="text-gray-500 dark:text-gray-400 text-sm mt-1 text-right">{uploadProgress}% tải lên</p>
-                          )}
-                        </div>
-                        {memoryError && <p className="text-red-500 text-sm text-center mt-4">{memoryError}</p>}
-                        <div className="flex space-x-4 mt-6">
-                            <button
-                              type="button"
-                              onClick={() => setShowAddMemoryModal(false)}
-                              className="w-1/2 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
-                            >
-                              Hủy
-                            </button>
-                            <button
-                              type="submit"
-                              className="w-1/2 px-6 py-3 bg-yellow-600 text-white font-semibold rounded-xl shadow-md hover:bg-yellow-700 transition-all duration-300"
-                              disabled={isUploadingMemory}
-                            >
-                              {isUploadingMemory ? <i className="fas fa-spinner fa-spin"></i> : 'Đăng'}
-                            </button>
-                        </div>
-                      </form>
-                    </div>
-                  </div>
-                )}
+                  ))}
+                </div>
               </div>
-            );          
-            case 'formerResidents':
+            )}
+
+            {/* Pagination Controls */}
+            {totalMemoriesCount > itemsPerPageMemories && (
+              <div className="flex justify-center items-center space-x-4 mt-8">
+                <button
+                  onClick={() => setCurrentPageMemories((prev) => Math.max(1, prev - 1))}
+                  disabled={currentPageMemories === 1}
+                  className="px-4 py-2 bg-yellow-500 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Trang trước
+                </button>
+                <span className="text-gray-800 dark:text-gray-200 font-medium">
+                  Trang {currentPageMemories} / {totalPagesMemories}
+                </span>
+                <button
+                  onClick={() => setCurrentPageMemories((prev) => Math.min(totalPagesMemories, prev + 1))}
+                  disabled={currentPageMemories === totalPagesMemories}
+                  className="px-4 py-2 bg-yellow-500 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Trang sau
+                </button>
+              </div>
+            )}
+
+            {/* POPUP ĐĂNG KỶ NIỆM MỚI */}
+            {showAddMemoryModal && (
+              <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4">
+                <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+                  <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
+                    Đăng Kỷ niệm mới
+                  </h3>
+                  <form onSubmit={handleAddMemory} className="space-y-4">
+                    <div>
+                      <label htmlFor="eventName" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                        Tên sự kiện:
+                      </label>
+                      <input
+                        type="text"
+                        id="eventName"
+                        value={newMemoryEventName}
+                        onChange={(e) => setNewMemoryEventName(e.target.value)}
+                        className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white dark:bg-gray-700"
+                        placeholder="Ví dụ: Sinh nhật Duy, Chuyến đi Vũng Tàu"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="photoDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                        Ngày chụp/quay:
+                      </label>
+                      <input
+                        type="date"
+                        id="photoDate"
+                        value={newMemoryPhotoDate}
+                        onChange={(e) => setNewMemoryPhotoDate(e.target.value)}
+                        className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white dark:bg-gray-700"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="memoryImageFile" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
+                        Chọn ảnh/video:
+                      </label>
+                      <input
+                        type="file"
+                        id="memoryImageFile"
+                        accept="image/*,video/*"
+                        multiple
+                        onChange={(e) => setNewMemoryImageFile(Array.from(e.target.files))}
+                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-50 file:text-yellow-700 hover:file:bg-yellow-100"
+                        required
+                      />
+                      {isUploadingMemory && (
+                        <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2">
+                          <div className="bg-yellow-600 h-2.5 rounded-full" style={{ width: `${uploadProgress}%` }}></div>
+                        </div>
+                      )}
+                      {uploadProgress > 0 && uploadProgress < 100 && (
+                        <p className="text-gray-500 dark:text-gray-400 text-sm mt-1 text-right">{uploadProgress}% tải lên</p>
+                      )}
+                    </div>
+                    {memoryError && <p className="text-red-500 text-sm text-center mt-4">{memoryError}</p>}
+                    <div className="flex space-x-4 mt-6">
+                        <button
+                          type="button"
+                          onClick={() => setShowAddMemoryModal(false)}
+                          className="w-1/2 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
+                        >
+                          Hủy
+                        </button>
+                        <button
+                          type="submit"
+                          className="w-1/2 px-6 py-3 bg-yellow-600 text-white font-semibold rounded-xl shadow-md hover:bg-yellow-700 transition-all duration-300"
+                          disabled={isUploadingMemory}
+                        >
+                          {isUploadingMemory ? <i className="fas fa-spinner fa-spin"></i> : 'Đăng'}
+                        </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+          </div>
+        );          
+        case 'formerResidents':
               const filteredFormerResidents = formerResidents.filter(resident =>
                 (resident.name?.toLowerCase().includes(searchTermFormerResident.toLowerCase())) ||
                 (resident.studentId?.toLowerCase().includes(searchTermFormerResident.toLowerCase()))
@@ -5694,7 +5762,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                 </div>
               </div>
             );
-
           case 'passwordSettings': // MỤC MỚI: Chỉ hiển thị phần đổi mật khẩu
             return (
               <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
@@ -5833,7 +5900,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                         </div>
                     </div>
                 );
-        case 'consumptionStats': //Thống kê tiêu thụ
+          case 'consumptionStats': //Thống kê tiêu thụ
           return (
             <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
               <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 mb-5">Thống kê tiêu thụ theo tháng</h2>
@@ -5934,6 +6001,42 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
               </div>
             );
           }
+          case 'pendingResidents':
+            return (
+              <div className="p-6 bg-cyan-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+                <h2 className="text-2xl font-bold text-cyan-800 dark:text-cyan-200 mb-5">
+                  Quản lý Thành viên chờ
+                </h2>
+                <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                  <input
+                    type="text"
+                    value={newPendingResidentName}
+                    onChange={(e) => setNewPendingResidentName(e.target.value)}
+                    className="flex-1 shadow-sm border rounded-xl py-2 px-4 ..."
+                    placeholder="Nhập tên thành viên mới..."
+                  />
+                  <button
+                    onClick={handleAddPendingResident}
+                    className="px-6 py-2 bg-cyan-600 text-white font-semibold rounded-xl ..."
+                  >
+                    Thêm vào danh sách chờ
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {pendingResidents.map(pending => (
+                    <div key={pending.id} className="bg-white dark:bg-gray-800 p-3 rounded-lg flex justify-between items-center">
+                      <span className="font-medium">{pending.name}</span>
+                      <button
+                        onClick={() => handleMoveInPendingResident(pending)}
+                        className="px-3 py-1 bg-green-500 text-white text-sm rounded-lg hover:bg-green-600"
+                      >
+                        Chuyển vào
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
       }
     }
     // Logic cho Thành viên
@@ -7311,6 +7414,13 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`; // Sửa lỗi: dù
                               >
                                 <i className="fas fa-users"></i>
                                 {!isSidebarCollapsed && <span className="ml-3">Quản lý người ở</span>}
+                              </button>
+                              <button
+                                className={`w-full flex items-center py-2 px-4 ...`}
+                                onClick={() => setActiveSection('pendingResidents')}
+                              >
+                                <i className="fas fa-user-clock"></i>
+                                {!isSidebarCollapsed && <span className="ml-3">Thành viên chờ</span>}
                               </button>
                               <button
                                 className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
