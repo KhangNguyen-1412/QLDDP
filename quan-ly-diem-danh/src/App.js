@@ -7701,10 +7701,14 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                               {!isSidebarCollapsed && <span className="ml-3">Quản lý người ở</span>}
                             </button>
                             <button
-                              className={`w-full flex items-center py-2 px-4 ...`}
-                              onClick={() => setActiveSection('pendingResidents')}
+                              className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
+                                activeSection === 'pendingResidents'
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                              onClick={() => { setActiveSection('pendingResidents'); setIsSidebarOpen(false); }}
                             >
-                              <i className="fas fa-user-clock"></i>
+                              <i className="fas fa-users"></i>
                               {!isSidebarCollapsed && <span className="ml-3">Thành viên chờ</span>}
                             </button>
                             <button
