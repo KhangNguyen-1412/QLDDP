@@ -4317,10 +4317,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                                                                   disabled={!canAdminister && !isMyRow}
                                                                   className="form-checkbox h-5 w-5 rounded focus:ring-green-500 cursor-pointer text-green-600 disabled:checked:bg-red-500 dark:text-green-400 dark:disabled:bg-slate-700 dark:disabled:checked:bg-yellow-600 dark:disabled:checked:border-transparent"
                                                               />
-                                                              <div className="absolute bottom-full mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity duration-300 pointer-events-none whitespace-nowrap">
-                                                                {isPresent ? 'Có mặt' : 'Vắng'}
-                                                                <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-gray-800"></div>
-                                                              </div>
                                                           </div>
                                                       </td>
                                                   );
