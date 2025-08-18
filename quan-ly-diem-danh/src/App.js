@@ -227,6 +227,76 @@ function App() {
     return localStorage.getItem('theme') || 'light';
   });
 
+  const [pendingResidents, setPendingResidents] = useState([]); // Danh sách thành viên chờ
+  const [newPendingResidentName, setNewPendingResidentName] = useState('');
+
+  useEffect(() => {
+    if (db && (userRole === 'admin' || userRole === 'developer')) {
+      const pendingQuery = query(collection(db, `artifacts/${currentAppId}/public/data/pendingResidents`), orderBy('createdAt', 'asc'));
+      
+      const unsubscribe = onSnapshot(pendingQuery, (snapshot) => {
+        const pendingList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setPendingResidents(pendingList);
+      });
+  
+      return () => unsubscribe();
+    }
+  }, [db, userRole]);
+
+  // Hàm thêm thành viên mới vào danh sách chờ
+const handleAddPendingResident = async () => {
+  if (!newPendingResidentName.trim()) {
+    alert('Vui lòng nhập tên thành viên chờ.');
+    return;
+  }
+  
+  const pendingResidentsRef = collection(db, `artifacts/${currentAppId}/public/data/pendingResidents`);
+    try {
+      await addDoc(pendingResidentsRef, {
+        name: newPendingResidentName.trim(),
+        createdAt: serverTimestamp(),
+      });
+      setNewPendingResidentName('');
+      alert('Đã thêm thành viên vào danh sách chờ thành công!');
+    } catch (error) {
+      console.error("Lỗi khi thêm thành viên chờ:", error);
+      alert('Đã xảy ra lỗi.');
+    }
+  };
+  
+  // Hàm chuyển một thành viên từ danh sách chờ vào danh sách chính thức
+  const handleMoveInPendingResident = async (pendingResident) => {
+    const activeResidentsCount = residents.filter(res => res.status !== 'inactive').length;
+    if (activeResidentsCount >= 8) {
+      alert('Phòng đã đủ 8 người. Vui lòng hoàn tất thủ tục cho một thành viên cũ trước khi chuyển thành viên mới vào.');
+      return;
+    }
+  
+    if (!window.confirm(`Bạn có chắc chắn muốn chuyển "${pendingResident.name}" vào danh sách thành viên chính thức?`)) {
+      return;
+    }
+  
+    try {
+      // Thêm vào danh sách residents chính thức
+      const residentsRef = collection(db, `artifacts/${currentAppId}/public/data/residents`);
+      await addDoc(residentsRef, {
+        name: pendingResident.name,
+        status: 'active', // Trạng thái ban đầu là active
+        createdAt: serverTimestamp(),
+        addedBy: userId,
+      });
+  
+      // Xóa khỏi danh sách pendingResidents
+      const pendingDocRef = doc(db, `artifacts/${currentAppId}/public/data/pendingResidents`, pendingResident.id);
+      await deleteDoc(pendingDocRef);
+  
+      alert(`Đã chuyển "${pendingResident.name}" vào phòng thành công!`);
+    } catch (error) {
+      console.error("Lỗi khi chuyển thành viên vào phòng:", error);
+      alert('Đã xảy ra lỗi.');
+    }
+  };
+
   //Hàm kiểm tra lượt đăng nhập 
   const [loginHistory, setLoginHistory] = useState([]);
 
@@ -3063,154 +3133,137 @@ useEffect(() => {
   const calculateAttendanceDays = async () => {
     setAuthError('');
     setBillingError('');
-    if (!db || !userId || (userRole !== 'admin' && userId !== 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) {
-      // Chỉ admin mới có thể tính toán điểm danh và chi phí
-      setAuthError('Hệ thống chưa sẵn sàng hoặc bạn không có quyền.');
-      return;
+    if (!db || !userId || !(userRole === 'admin' || userRole === 'developer' || userId === 'BJHeKQkyE9VhWCpMfaONEf2N28H2')) {
+        setAuthError('Hệ thống chưa sẵn sàng hoặc bạn không có quyền.');
+        return;
     }
     if (!startDate || !endDate) {
-      setAuthError('Vui lòng chọn ngày bắt đầu và ngày kết thúc để tính toán điểm danh.');
-      return;
+        setAuthError('Vui lòng chọn ngày bắt đầu và ngày kết thúc để tính toán.');
+        return;
     }
-
     const start = new Date(startDate);
     const end = new Date(endDate);
     if (start > end) {
-      setAuthError('Ngày bắt đầu không được lớn hơn ngày kết thúc.');
-      return;
+        setAuthError('Ngày bắt đầu không được lớn hơn ngày kết thúc.');
+        return;
+    }
+    if (totalCost <= 0) {
+        setBillingError('Vui lòng tính toán tổng chi phí điện nước trước khi chia tiền.');
+        return;
     }
 
-    // Đảm bảo totalCost hợp lệ trước khi tiến hành tính toán chi phí
-    if (totalCost <= 0) {
-      setBillingError('Vui lòng tính toán tổng chi phí điện nước trước khi chia tiền.');
-      return;
-    }
+    // ===== BẮT ĐẦU THAY ĐỔI =====
+    // 1. Tạo danh sách tổng hợp bao gồm cả thành viên chính thức và thành viên chờ
+    const allMembersToCalculate = [
+        ...residents.filter(r => r.status !== 'inactive'), 
+        ...pendingResidents
+    ];
+    // ===== KẾT THÚC THAY ĐỔI =====
 
     const dailyPresenceCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/dailyPresence`);
-
     const daysPresentPerResident = {};
     let totalDaysAcrossAllResidentsLocal = 0;
-    const individualCalculatedCostsLocal = {}; // Sẽ lưu { residentId: { cost: X, isPaid: false, daysPresent: Z } }
-
-    let calculatedCostPerDayLocal = 0; // <-- Khai báo biến này ở scope rộng hơn
-    let calculatedRemainingFund = 0; // <-- Khai báo biến này ở scope rộng hơn
+    const individualCalculatedCostsLocal = {};
+    let calculatedCostPerDayLocal = 0;
+    let calculatedRemainingFund = 0;
 
     try {
-      // Lấy các bản ghi điểm danh hàng ngày trong khoảng thời gian đã chọn
-      const q = query(
-        dailyPresenceCollectionRef,
-        where('date', '>=', formatDate(start)),
-        where('date', '<=', formatDate(end)),
-      );
-      const querySnapshot = await getDocs(q);
+        const q = query(
+            dailyPresenceCollectionRef,
+            where('date', '>=', formatDate(start)),
+            where('date', '<=', formatDate(end))
+        );
+        const querySnapshot = await getDocs(q);
 
-      for (const resident of residents) {
-        // Khởi tạo daysPresent cho mỗi cư dân
-        daysPresentPerResident[resident.id] = 0;
-      }
-
-      // Điền daysPresentPerResident từ snapshot đã lấy
-      querySnapshot.forEach((docSnap) => {
-        const data = docSnap.data();
-        if (residents.some((res) => res.id === data.residentId) && data.status === 1) {
-          daysPresentPerResident[data.residentId]++;
+        // Khởi tạo ngày có mặt cho TẤT CẢ thành viên (cả chính thức và chờ)
+        for (const member of allMembersToCalculate) {
+            daysPresentPerResident[member.id] = 0;
         }
-      });
 
-      // Tính tổng số ngày trên tất cả các cư dân từ các ngày đã đếm
-      for (const residentId in daysPresentPerResident) {
-        totalDaysAcrossAllResidentsLocal += daysPresentPerResident[residentId];
-      }
-
-      setCalculatedDaysPresent(daysPresentPerResident);
-      setTotalCalculatedDaysAllResidents(totalDaysAcrossAllResidentsLocal);
-
-      let totalRoundedIndividualCosts = 0;
-
-      // Tính toán chi phí cá nhân dựa trên totalCost và totalDaysAcrossAllResidents
-      if (totalDaysAcrossAllResidentsLocal > 0 && totalCost > 0) {
-        calculatedCostPerDayLocal = totalCost / totalDaysAcrossAllResidentsLocal; // Gán vào biến đã khai báo
-        setCostPerDayPerPerson(calculatedCostPerDayLocal);
-        residents.forEach((resident) => {
-          const days = daysPresentPerResident[resident.id] || 0; // Lấy số ngày có mặt
-          const rawCost = days * calculatedCostPerDayLocal;
-          const roundedCost = Math.round(rawCost / 1000) * 1000;
-
-          // Lưu chi phí, trạng thái đã thanh toán và SỐ NGÀY CÓ MẶT
-          individualCalculatedCostsLocal[resident.id] = {
-            cost: roundedCost,
-            isPaid: false,
-            daysPresent: days, // LƯU SỐ NGÀY CÓ MẶT VÀO ĐÂY
-          };
-          totalRoundedIndividualCosts += roundedCost;
+        // Đếm ngày có mặt từ dữ liệu điểm danh
+        querySnapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            if (allMembersToCalculate.some((member) => member.id === data.residentId) && data.status === 1) {
+                daysPresentPerResident[data.residentId]++;
+            }
         });
-      } else {
-        setCostPerDayPerPerson(0);
-        residents.forEach((resident) => {
-          individualCalculatedCostsLocal[resident.id] = { cost: 0, isPaid: false, daysPresent: 0 }; // Mặc định daysPresent
-        });
-      }
-      setIndividualCosts(individualCalculatedCostsLocal);
 
-      // Lấy số tiền dư/thiếu của tháng hiện tại
-      const currentMonthSurplusOrDeficit = totalCost - totalRoundedIndividualCosts;
-
-      // Lấy số tiền quỹ hiện tại (đã có trong state) và cộng dồn
-      // Nếu chưa có lịch sử chia tiền, quỹ hiện tại là 0
-      const previousRemainingFund = costSharingHistory.length > 0 ? (costSharingHistory[0].remainingFund || 0) : 0;
-      calculatedRemainingFund = previousRemainingFund + currentMonthSurplusOrDeficit;
-
-      setRemainingFund(calculatedRemainingFund);
-      // Lưu tóm tắt chia sẻ chi phí vào lịch sử bằng cách sử dụng các biến cục bộ
-      const costSharingHistoryCollectionRef = collection(
-        db,
-        `artifacts/${currentAppId}/public/data/costSharingHistory`,
-      );
-      const newCostSharingDocRef = await addDoc(costSharingHistoryCollectionRef, {
-        // Lấy ref của tài liệu mới
-        periodStart: startDate,
-        periodEnd: endDate,
-        totalCalculatedDaysAllResidents: totalDaysAcrossAllResidentsLocal,
-        costPerDayPerPerson: calculatedCostPerDayLocal, // Sử dụng biến đã khai báo
-        individualCosts: individualCalculatedCostsLocal, // Lưu dưới dạng map các đối tượng {cost, isPaid, daysPresent}
-        remainingFund: calculatedRemainingFund, // Sử dụng biến đã khai báo
-        calculatedBy: userId,
-        calculatedDate: serverTimestamp(),
-        relatedTotalBill: totalCost,
-      });
-
-      console.log('Đã tính toán số ngày có mặt và chi phí trung bình.');
-
-      // TẠO THÔNG BÁO TIỀN ĐIỆN NƯỚC CHO TỪNG THÀNH VIÊN (Đoạn này đã đúng)
-      for (const resident of residents.filter((res) => res.isActive)) {
-        const userLinkedToResident = allUsersData.find((user) => user.linkedResidentId === resident.id);
-        if (userLinkedToResident) {
-          const cost = individualCalculatedCostsLocal[resident.id]?.cost || 0;
-          const message = `Bạn có hóa đơn tiền điện nước cần đóng ${cost.toLocaleString('vi-VN')} VND cho kỳ từ ${startDate} đến ${endDate}.`;
-          await createNotification(
-            userLinkedToResident.id,
-            'payment',
-            message,
-            userId,
-            newCostSharingDocRef.id,
-            'Hóa đơn tiền điện nước',
-          ); // Thêm title
+        // Tính tổng số ngày có mặt
+        for (const memberId in daysPresentPerResident) {
+            totalDaysAcrossAllResidentsLocal += daysPresentPerResident[memberId];
         }
-      }
-      // Tạo thông báo chung cho admin
-      await createNotification(
-        'all',
-        'payment',
-        `Hóa đơn điện nước mới cho kỳ ${startDate} đến ${endDate} đã được tính.`,
-        userId,
-        newCostSharingDocRef.id,
-        'Thông báo hóa đơn chung',
-      ); // Thêm title
+
+        setCalculatedDaysPresent(daysPresentPerResident);
+        setTotalCalculatedDaysAllResidents(totalDaysAcrossAllResidentsLocal);
+        let totalRoundedIndividualCosts = 0;
+
+        // Tính chi phí cá nhân cho TẤT CẢ thành viên
+        if (totalDaysAcrossAllResidentsLocal > 0 && totalCost > 0) {
+            calculatedCostPerDayLocal = totalCost / totalDaysAcrossAllResidentsLocal;
+            setCostPerDayPerPerson(calculatedCostPerDayLocal);
+            
+            allMembersToCalculate.forEach((member) => {
+                const days = daysPresentPerResident[member.id] || 0;
+                const rawCost = days * calculatedCostPerDayLocal;
+                const roundedCost = Math.round(rawCost / 1000) * 1000;
+                individualCalculatedCostsLocal[member.id] = {
+                    cost: roundedCost,
+                    isPaid: false,
+                    daysPresent: days,
+                };
+                totalRoundedIndividualCosts += roundedCost;
+            });
+        } else {
+            setCostPerDayPerPerson(0);
+            allMembersToCalculate.forEach((member) => {
+                individualCalculatedCostsLocal[member.id] = { cost: 0, isPaid: false, daysPresent: 0 };
+            });
+        }
+        setIndividualCosts(individualCalculatedCostsLocal);
+
+        // Cập nhật quỹ phòng
+        const currentMonthSurplusOrDeficit = totalCost - totalRoundedIndividualCosts;
+        const previousRemainingFund = costSharingHistory.length > 0 ? (costSharingHistory[0].remainingFund || 0) : 0;
+        calculatedRemainingFund = previousRemainingFund + currentMonthSurplusOrDeficit;
+        setRemainingFund(calculatedRemainingFund);
+        
+        // Lưu lịch sử chia tiền
+        const costSharingHistoryCollectionRef = collection(db, `artifacts/${currentAppId}/public/data/costSharingHistory`);
+        const newCostSharingDocRef = await addDoc(costSharingHistoryCollectionRef, {
+            periodStart: startDate,
+            periodEnd: endDate,
+            totalCalculatedDaysAllResidents: totalDaysAcrossAllResidentsLocal,
+            costPerDayPerPerson: calculatedCostPerDayLocal,
+            individualCosts: individualCalculatedCostsLocal,
+            remainingFund: calculatedRemainingFund,
+            calculatedBy: userId,
+            calculatedDate: serverTimestamp(),
+            relatedTotalBill: totalCost,
+        });
+
+        console.log('Đã tính toán số ngày có mặt và chi phí trung bình.');
+
+        // Tạo thông báo cho TẤT CẢ thành viên (chỉ những ai có tài khoản)
+        for (const member of allMembersToCalculate) {
+            const userLinkedToResident = allUsersData.find((user) => user.linkedResidentId === member.id);
+            if (userLinkedToResident) {
+                const cost = individualCalculatedCostsLocal[member.id]?.cost || 0;
+                const message = `Bạn có hóa đơn tiền điện nước cần đóng ${cost.toLocaleString('vi-VN')} VND cho kỳ từ ${startDate} đến ${endDate}.`;
+                await createNotification(
+                    userLinkedToResident.id, 'payment', message, userId, newCostSharingDocRef.id, 'Hóa đơn tiền điện nước'
+                );
+            }
+        }
+        
+        // Tạo thông báo chung
+        await createNotification(
+            'all', 'payment', `Hóa đơn điện nước mới cho kỳ ${startDate} đến ${endDate} đã được tính.`, userId, newCostSharingDocRef.id, 'Thông báo hóa đơn chung'
+        );
     } catch (error) {
-      console.error('Lỗi khi tính toán ngày có mặt và chi phí:', error);
-      setBillingError(`Lỗi khi tính toán: ${error.message}`);
+        console.error('Lỗi khi tính toán ngày có mặt và chi phí:', error);
+        setBillingError(`Lỗi khi tính toán: ${error.message}`);
     }
-  };
+};
 
   // Hàm để tạo nhắc nhở thanh toán bằng Gemini API
   const generatePaymentReminder = async () => {
@@ -4186,86 +4239,102 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
             </div>
           );
         //Case điểm danh
-        case 'attendanceTracking':
+        case 'attendanceTracking': { // Bọc trong {} để có thể khai báo biến
+          // Gộp danh sách thành viên chính thức và thành viên chờ
+          const allMembersToDisplay = [
+              ...residents.filter(res => showInactiveResidents ? true : res.status !== 'inactive'), 
+              ...pendingResidents
+          ];
+      
           return (
-            <div className="p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">
-                {userRole === 'admin' ? 'Điểm danh theo tháng' : 'Điểm danh của tôi'}
-              </h2>
-              <div className="mb-6 flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4">
-                <label htmlFor="monthSelector" className="font-semibold text-gray-700 dark:text-gray-300 text-lg">
-                  Chọn tháng:
-                </label>
-                <input
-                  type="month"
-                  id="monthSelector"
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700"
-                />
+              <div className="p-4 md:p-6 bg-green-50 dark:bg-gray-700 rounded-2xl shadow-lg w-full">
+                  <h2 className="text-2xl font-bold text-green-800 dark:text-green-200 mb-5">
+                      {(userRole === 'admin' || userRole === 'developer') ? 'Điểm danh theo tháng' : 'Điểm danh của tôi'}
+                  </h2>
+                  <div className="mb-6 flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4">
+                      <label htmlFor="monthSelector" className="font-semibold text-gray-700 dark:text-gray-300 text-lg">
+                          Chọn tháng:
+                      </label>
+                      <input
+                          type="month"
+                          id="monthSelector"
+                          value={selectedMonth}
+                          onChange={(e) => setSelectedMonth(e.target.value)}
+                          className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-green-500 bg-white dark:bg-gray-700"
+                      />
+                  </div>
+      
+                  <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                      {allMembersToDisplay.length === 0 ? (
+                          <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
+                              Chưa có người ở nào để điểm danh.
+                          </p>
+                      ) : (
+                          <table className="w-full border-collapse">
+                              <thead>
+                                  <tr className="bg-green-100 dark:bg-gray-700">
+                                      <th className="py-3 px-4 text-left sticky left-0 z-10 bg-green-100 dark:bg-gray-700 border-r border-green-200 dark:border-gray-600 text-green-800 dark:text-green-200 uppercase text-sm font-semibold">
+                                          Tên
+                                      </th>
+                                      {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map((day) => (
+                                          <th
+                                              key={day}
+                                              className="py-3 px-2 text-center border-l border-green-200 dark:border-gray-600 text-green-800 dark:text-green-200 uppercase text-sm font-semibold"
+                                          >
+                                              {day}
+                                          </th>
+                                      ))}
+                                  </tr>
+                              </thead>
+                              <tbody className="text-gray-700 dark:text-gray-300 text-sm">
+                                  {allMembersToDisplay.map((resident) => {
+                                      // `resident` ở đây có thể là từ `residents` hoặc `pendingResidents`
+                                      const isMyRow = loggedInResidentProfile && resident.id === loggedInResidentProfile.id;
+                                      const canAdminister = userRole === 'admin' || userRole === 'developer' || (allUsersData.find(u => u.id === userId)?.canTakeAttendance);
+      
+                                      return (
+                                          <tr
+                                              key={resident.id}
+                                              className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+                                          >
+                                              <td className="py-3 px-4 text-left whitespace-nowrap font-medium sticky left-0 z-10 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+                                                  {resident.name}
+                                                  {pendingResidents.some(p => p.id === resident.id) && <span className="text-xs text-cyan-500 ml-2">(Chờ)</span>}
+                                              </td>
+                                              {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map((day) => {
+                                                  const dayString = String(day).padStart(2, '0');
+                                                  const isPresent = monthlyAttendanceData[resident.id]?.[dayString] === 1;
+                                                  return (
+                                                      <td
+                                                          key={day}
+                                                          className="py-3 px-2 text-center border-l border-gray-200 dark:border-gray-700"
+                                                      >
+                                                          <div className="relative flex justify-center group">
+                                                              <input
+                                                                  type="checkbox"
+                                                                  checked={isPresent}
+                                                                  onChange={() => handleToggleDailyPresence(resident.id, day)}
+                                                                  disabled={!canAdminister && !isMyRow}
+                                                                  className="form-checkbox h-5 w-5 rounded focus:ring-green-500 cursor-pointer text-green-600 disabled:checked:bg-red-500 dark:text-green-400 dark:disabled:bg-slate-700 dark:disabled:checked:bg-yellow-600 dark:disabled:checked:border-transparent"
+                                                              />
+                                                              <div className="absolute bottom-full mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity duration-300 pointer-events-none whitespace-nowrap">
+                                                                {isPresent ? 'Có mặt' : 'Vắng'}
+                                                                <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-gray-800"></div>
+                                                              </div>
+                                                          </div>
+                                                      </td>
+                                                  );
+                                              })}
+                                          </tr>
+                                      );
+                                  })}
+                              </tbody>
+                          </table>
+                      )}
+                  </div>
               </div>
-
-              {/* ===== KHUNG CHỨA CÓ THANH CUỘN NGANG ===== */}
-              <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-                {displayedResidents.length === 0 ? (
-                  <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
-                    Chưa có người ở nào để điểm danh.
-                  </p>
-                ) : (
-                  <table className="min-w-full bg-white dark:bg-gray-800">
-                    <thead>
-                      <tr>
-                        <th className="py-3 px-4 text-left sticky left-0 z-10 bg-green-100 dark:bg-gray-700 border-r border-green-200 dark:border-gray-600 text-green-800 dark:text-green-200 uppercase text-sm font-semibold">
-                          Tên
-                        </th>
-                        {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map((day) => (
-                          <th
-                            key={day}
-                            className="py-3 px-2 text-center border-l border-green-200 dark:border-gray-600 text-green-800 dark:text-green-200 uppercase text-sm leading-normal"
-                          >
-                            {day}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="text-gray-700 dark:text-gray-300 text-sm font-light">
-                      {displayedResidents.map((resident) => {
-                        const isMyRow = loggedInResidentProfile && resident.id === loggedInResidentProfile.id;
-                        return (
-                          <tr
-                            key={resident.id}
-                            className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
-                          >
-                            <td className="py-3 px-6 text-left whitespace-nowrap font-medium sticky left-0 bg-white dark:bg-gray-800 z-10 border-r border-gray-200 dark:border-gray-700">
-                              {resident.name}
-                            </td>
-                            {Array.from({ length: daysInSelectedMonth }, (_, i) => i + 1).map((day) => {
-                              const dayString = String(day).padStart(2, '0');
-                              const isPresent = monthlyAttendanceData[resident.id]?.[dayString] === 1;
-                              return (
-                                <td
-                                  key={day}
-                                  className="py-3 px-2 text-center border-l border-gray-200 dark:border-gray-700"
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={isPresent}
-                                    onChange={() => handleToggleDailyPresence(resident.id, day)}
-                                    disabled={userRole === 'member' && !isMyRow}
-                                    className="form-checkbox h-5 w-5 rounded focus:ring-green-500 cursor-pointer text-green-600 dark:text-green-400 dark:disabled:bg-slate-500 dark:disabled:border-slate-400 dark:disabled:checked:bg-yellow-600 dark:disabled:checked:border-transparent"
-                                  />
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </div>
           );
+      }
         //Case tính tiền điện nước
         case 'billing':
             return (
@@ -6205,6 +6274,42 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
               </div>
             </div>
           );
+          case 'pendingResidents':
+          return (
+            <div className="p-6 bg-cyan-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-cyan-800 dark:text-cyan-200 mb-5">
+                Quản lý Thành viên chờ
+              </h2>
+              <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                <input
+                  type="text"
+                  value={newPendingResidentName}
+                  onChange={(e) => setNewPendingResidentName(e.target.value)}
+                  className="flex-1 shadow-sm border rounded-xl py-2 px-4 ..."
+                  placeholder="Nhập tên thành viên mới..."
+                />
+                <button
+                  onClick={handleAddPendingResident}
+                  className="px-6 py-2 bg-cyan-600 text-white font-semibold rounded-xl ..."
+                >
+                  Thêm vào danh sách chờ
+                </button>
+              </div>
+              <div className="space-y-3">
+                {pendingResidents.map(pending => (
+                  <div key={pending.id} className="bg-white dark:bg-gray-800 p-3 rounded-lg flex justify-between items-center">
+                    <span className="font-medium">{pending.name}</span>
+                    <button
+                      onClick={() => handleMoveInPendingResident(pending)}
+                      className="px-3 py-1 bg-green-500 text-white text-sm rounded-lg hover:bg-green-600"
+                    >
+                      Chuyển vào
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
         default:
         return (
           <div className="text-center p-8 bg-gray-100 dark:bg-gray-700 rounded-xl shadow-inner">
@@ -7598,6 +7703,13 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                             >
                               <i className="fas fa-users"></i>
                               {!isSidebarCollapsed && <span className="ml-3">Quản lý người ở</span>}
+                            </button>
+                            <button
+                              className={`w-full flex items-center py-2 px-4 ...`}
+                              onClick={() => setActiveSection('pendingResidents')}
+                            >
+                              <i className="fas fa-user-clock"></i>
+                              {!isSidebarCollapsed && <span className="ml-3">Thành viên chờ</span>}
                             </button>
                             <button
                               className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${isSidebarCollapsed && 'justify-center'} ${
