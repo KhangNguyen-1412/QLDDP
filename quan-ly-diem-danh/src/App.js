@@ -4996,7 +4996,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
               linkedUser.studentId.length >= 2
             ) {
               // Lấy 2 ký tự đầu của MSSV để xác định khóa
-              const course = `{linkedUser.studentId.substring(0, 2)}`;
+              const course = courseNumber;
               acc[course] = (acc[course] || 0) + 1;
             }
             return acc;
@@ -5010,14 +5010,8 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
           // ===== BẮT ĐẦU THAY ĐỔI =====
           // 1. Tạo một bản đồ màu sắc (color map) cho từng khóa cụ thể
           const courseColorMap = {
-            K47: "#0088FE", // Xanh dương
-            K48: "#00C49F", // Xanh lục
-            K49: "#FFBB28", // Vàng
-            K50: "#FF8042", // Cam
-            K51: "#AF19FF", // Tím
-            // Thêm các màu khác cho các khóa dự phòng nếu cần
-            K52: "#FF4560", // Đỏ
-            K53: "#3366CC", // Xanh đậm
+              '47': '#0088FE', '48': '#00C49F', '49': '#FFBB28', '50': '#FF8042',
+              '51': '#AF19FF', '52': '#FF4560', '53': '#3366CC',
           };
 
           const defaultColor = "#B0B0B0"; // Màu xám mặc định cho các khóa không có trong map
