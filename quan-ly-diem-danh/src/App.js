@@ -4996,7 +4996,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
               linkedUser.studentId.length >= 2
             ) {
               // Lấy 2 ký tự đầu của MSSV để xác định khóa
-              const course = `K${linkedUser.studentId.substring(0, 2)}`;
+              const course = `{linkedUser.studentId.substring(0, 2)}`;
               acc[course] = (acc[course] || 0) + 1;
             }
             return acc;
