@@ -10983,15 +10983,19 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                         <ul className="space-y-2 py-2">
                           {Object.entries(individualCostsMap).map(
                             ([residentId, data]) => {
-                              const residentName =
-                                residents.find((res) => res.id === residentId)
-                                  ?.name || residentId;
+                              const memberInfo = allMembers.find(
+                                (mem) => mem.id === residentId
+                              );
+                              const memberName = memberInfo
+                                ? memberInfo.name
+                                : residentId;
+
                               return (
                                 <li
                                   key={residentId}
                                   className="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-2 rounded-lg"
                                 >
-                                  <span>{residentName}:</span>
+                                  <span>{memberName}:</span>
                                   <div className="flex items-center">
                                     <span className="font-bold mr-2">
                                       {data.cost?.toLocaleString("vi-VN")} VND
@@ -11006,7 +11010,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                                           data.isPaid || false
                                         )
                                       }
-                                      className="form-checkbox h-5 w-5 text-green-600 dark:text-green-400 rounded cursor-pointer"
+                                      className="form-checkbox h-5 w-5 text-green-600 rounded cursor-pointer"
                                     />
                                   </div>
                                 </li>
