@@ -4569,36 +4569,70 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
             {Object.keys(individualCosts).length > 0 && (
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
                     <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200 mb-4">Kết quả chia tiền</h3>
-                    <div className="space-y-3">
-                        {/* 2. Dùng danh sách tổng hợp để hiển thị */}
-                        {allMembersToDisplay.map((member) => {
-                            const costData = individualCosts[member.id];
-                            if (!costData) return null;
+                    <div className="space-y-4">
+                        {/* Bảng xếp hạng số ngày có mặt */}
+                        <div>
+                            <h4 className="font-semibold mb-2 text-gray-700 dark:text-gray-300">Xếp hạng Số ngày có mặt:</h4>
+                            <div className="space-y-2">
+                                {[...allMembersToDisplay]
+                                    .sort((a, b) => (calculatedDaysPresent[b.id] || 0) - (calculatedDaysPresent[a.id] || 0))
+                                    .map((member, index) => (
+                                    <div key={member.id} className="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
+                                        <span className="font-medium flex items-center">
+                                            <span className="mr-2 text-lg font-bold w-6 text-center">{index + 1}</span>
+                                            {member.name}
+                                            {pendingResidents.some(p => p.id === member.id) && <span className="text-xs text-cyan-500 ml-2">(Chờ)</span>}
+                                        </span>
+                                        <span className="font-bold text-orange-700 dark:text-orange-300">
+                                            {calculatedDaysPresent[member.id] || 0} ngày
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                            <p className="border-t pt-3 mt-3 font-semibold text-gray-700 dark:text-gray-300">
+                                Tổng số ngày-người: {totalCalculatedDaysAllResidents} ngày
+                            </p>
+                        </div>
 
-                            return (
-                                <div key={member.id} className="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
-                                    <span className="font-medium">
-                                        {member.name}
-                                        {pendingResidents.some(p => p.id === member.id) && <span className="text-xs text-cyan-500 ml-2">(Chờ)</span>}
-                                    </span>
-                                    <span className="font-bold text-orange-700 dark:text-orange-300">
-                                        {costData.cost.toLocaleString('vi-VN')} VND
-                                    </span>
-                                </div>
-                            );
-                        })}
-                        <p className="border-t pt-3 mt-3 font-semibold">
-                            Chi phí 1 ngày/người: {costPerDayPerPerson.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} VND
-                        </p>
-                        <p className="font-bold text-lg">
-                            Quỹ phòng còn lại: 
-                            <span className={`font-bold ${remainingFund >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                                {remainingFund.toLocaleString('vi-VN')} VND
-                            </span>
-                        </p>
+                        {/* Bảng xếp hạng số tiền cần đóng */}
+                        <div>
+                             <h4 className="font-semibold mt-4 mb-2 text-gray-700 dark:text-gray-300">Xếp hạng Số tiền cần đóng:</h4>
+                             <div className="space-y-2">
+                                {[...allMembersToDisplay]
+                                    .sort((a, b) => (individualCosts[b.id]?.cost || 0) - (individualCosts[a.id]?.cost || 0))
+                                    .map((member, index) => {
+                                    const costData = individualCosts[member.id];
+                                    if (!costData) return null;
+                                    return (
+                                        <div key={member.id} className="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
+                                            <span className="font-medium flex items-center">
+                                                <span className="mr-2 text-lg font-bold w-6 text-center">{index + 1}</span>
+                                                {member.name}
+                                            </span>
+                                            <span className="font-bold text-red-600">
+                                                {costData.cost.toLocaleString('vi-VN')} VND
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Thông tin chung và Quỹ phòng */}
+                        <div className="border-t pt-4 mt-4 space-y-2 text-gray-700 dark:text-gray-300">
+                            <p className="font-semibold">
+                                Chi phí 1 ngày/người: {costPerDayPerPerson.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} VND
+                            </p>
+                            <p className="font-bold text-lg">
+                                Quỹ phòng còn lại: 
+                                <span className={`font-bold ${remainingFund >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
+                                    {' '}{remainingFund.toLocaleString('vi-VN')} VND
+                                </span>
+                            </p>
+                        </div>
                     </div>
 
-                    {/* Khối cập nhật quỹ và ghi nhận chi tiêu */}
+                    {/* ===== KHỐI CẬP NHẬT QUỸ PHÒNG ===== */}
                     <div className="mt-6 pt-4 border-t border-dashed border-orange-300 dark:border-gray-600">
                          <h4 className="text-lg font-bold text-orange-800 dark:text-orange-200 mb-2">
                            Cập nhật lại số tiền quỹ
@@ -4620,6 +4654,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                          </div>
                          {billingError && <p className="text-red-500 text-sm mt-2">{billingError}</p>}
                     </div>
+                    {/* ===== KHỐI GHI NHẬN CHI TIÊU QUỸ ===== */}
                     <div className="mt-8 pt-6 border-t border-orange-300 dark:border-gray-600">
                         <div className="flex justify-between items-center mb-4">
                           <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200">
