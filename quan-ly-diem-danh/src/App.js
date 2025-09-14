@@ -5007,20 +5007,21 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
             value: courseDistribution[key],
           }));
 
-          const COLORS = [
-            "#0088FE",
-            "#00C49F",
-            "#FFBB28",
-            "#FF8042",
-            "#AF19FF",
-            "#FF4560",
-            "#3366CC",
-            "#DC3912",
-            "#FF9900",
-            "#109618",
-            "#990099",
-            "#3B3EAC",
-          ];
+          // ===== BẮT ĐẦU THAY ĐỔI =====
+          // 1. Tạo một bản đồ màu sắc (color map) cho từng khóa cụ thể
+          const courseColorMap = {
+            K47: "#0088FE", // Xanh dương
+            K48: "#00C49F", // Xanh lục
+            K49: "#FFBB28", // Vàng
+            K50: "#FF8042", // Cam
+            K51: "#AF19FF", // Tím
+            // Thêm các màu khác cho các khóa dự phòng nếu cần
+            K52: "#FF4560", // Đỏ
+            K53: "#3366CC", // Xanh đậm
+          };
+
+          const defaultColor = "#B0B0B0"; // Màu xám mặc định cho các khóa không có trong map
+          // ===== KẾT THÚC THAY ĐỔI =====
 
           return (
             <div className="p-6 bg-gray-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
@@ -5244,7 +5245,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                   )}
                 </div>
 
-                {/* ===== BIỂU ĐỒ TRÒN MỚI ===== */}
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
                   <h3 className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-4 text-center">
                     Phân bổ SV theo khóa
@@ -5265,14 +5265,17 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                             `${(percent * 100).toFixed(0)}%`
                           }
                         >
+                          {/* 2. Sử dụng bản đồ màu sắc để tô màu cho từng phần */}
                           {pieChartData.map((entry, index) => (
                             <Cell
                               key={`cell-${index}`}
-                              fill={COLORS[index % COLORS.length]}
+                              fill={courseColorMap[entry.name] || defaultColor}
                             />
                           ))}
                         </Pie>
-                        <Tooltip />
+                        <Tooltip
+                          formatter={(value, name) => [value, `SV ${name}`]}
+                        />
                         <Legend />
                       </PieChart>
                     </ResponsiveContainer>
