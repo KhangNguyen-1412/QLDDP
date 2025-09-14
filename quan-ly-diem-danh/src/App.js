@@ -4522,237 +4522,142 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
               </div>
             );
         //Case chia tiền điện nước
-        case 'costSharing':
-        return (
-          <div className="p-6 bg-orange-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-            <h2 className="text-2xl font-bold text-orange-800 dark:text-orange-200 mb-5">
-              Tính ngày có mặt & Chia tiền
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              <div>
-                <label htmlFor="startDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                  Ngày bắt đầu:
-                </label>
-                <input
-                  type="date"
-                  id="startDate"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700"
-                />
-              </div>
-              <div>
-                <label htmlFor="endDate" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                  Ngày kết thúc:
-                </label>
-                <input
-                  type="date"
-                  id="endDate"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700"
-                />
-              </div>
+        case 'costSharing': {
+    // 1. Tạo danh sách tổng hợp để hiển thị
+    const allMembersToDisplay = [
+        ...residents.filter(r => r.status !== 'inactive'),
+        ...pendingResidents
+    ];
+
+    return (
+        <div className="p-6 bg-orange-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto space-y-6">
+            {/* Khối tính toán */}
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200 mb-4">Tính ngày có mặt & Chia tiền</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Ngày bắt đầu:</label>
+                        <input
+                            type="date"
+                            id="startDate"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:bg-gray-700 dark:border-gray-600"
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Ngày kết thúc:</label>
+                        <input
+                            type="date"
+                            id="endDate"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:bg-gray-700 dark:border-gray-600"
+                        />
+                    </div>
+                </div>
+                <button
+                    onClick={calculateAttendanceDays}
+                    className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700"
+                    disabled={totalCost <= 0}
+                >
+                    Tính toán & Chia tiền
+                </button>
             </div>
-            <button
-              onClick={calculateAttendanceDays}
-              className="w-full px-6 py-3 bg-orange-600 text-white font-semibold rounded-xl shadow-md hover:bg-orange-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-75 mb-6"
-              disabled={residents.length === 0 || totalCost <= 0}
-            >
-              <i className="fas fa-calendar-check mr-2"></i> Tính ngày có mặt
-            </button>
 
-            {totalCalculatedDaysAllResidents > 0 && totalCost > 0 && (
-              <div className="bg-orange-100 dark:bg-gray-700 p-4 rounded-xl shadow-inner text-lg font-semibold text-orange-900 dark:text-orange-100 border border-orange-200 dark:border-gray-600">
-                <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200 mb-3">
-                  Kết quả điểm danh theo ngày:
-                </h3>
-                <ul className="space-y-2 mb-3">
-                  {residents.map((resident) => (
-                    <li
-                      key={resident.id}
-                      className="flex justify-between items-center bg-gray-50 dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
-                    >
-                      <span className="font-medium text-gray-700 dark:text-gray-300">{resident.name}:</span>
-                      <span className="text-orange-700 dark:text-orange-300 font-bold">
-                        {calculatedDaysPresent[resident.id] || 0} ngày
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                <p className="border-t pt-3 mt-3 border-orange-300 dark:border-gray-600 text-xl font-bold">
-                  Tổng số ngày có mặt của tất cả:{' '}
-                  <span className="text-orange-800 dark:text-orange-200">{totalCalculatedDaysAllResidents} ngày</span>
-                </p>
+            {/* Khối kết quả và quản lý quỹ */}
+            {Object.keys(individualCosts).length > 0 && (
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                    <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200 mb-4">Kết quả chia tiền</h3>
+                    <div className="space-y-3">
+                        {/* 2. Dùng danh sách tổng hợp để hiển thị */}
+                        {allMembersToDisplay.map((member) => {
+                            const costData = individualCosts[member.id];
+                            if (!costData) return null;
 
-                <>
-                  <p className="mt-3 text-xl font-bold">
-                    Chi phí trung bình 1 ngày 1 người:{' '}
-                    <span className="text-orange-800 dark:text-orange-200">
-                      {costPerDayPerPerson.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} VND
-                    </span>
-                  </p>
-                  <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200 mt-5 mb-3">
-                    Số tiền mỗi người cần đóng:
-                  </h3>
-                  <ul className="space-y-2">
-                    {/* Sắp xếp cư dân để hiển thị dựa trên số ngày có mặt và sau đó là chi phí */}
-                    {[...residents]
-                      .sort((a, b) => {
-                        const daysA = calculatedDaysPresent[a.id] || 0;
-                        const daysB = calculatedDaysPresent[b.id] || 0;
-                        const costA = individualCosts[a.id]?.cost || 0;
-                        const costB = individualCosts[b.id]?.cost || 0;
-
-                        if (daysA !== daysB) {
-                          return daysB - daysA;
-                        }
-                        return costB - costA;
-                      })
-                      .map((resident) => (
-                        <li
-                          key={resident.id}
-                          className="flex justify-between items-center bg-gray-50 dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
-                        >
-                          <span className="font-medium text-gray-700 dark:text-gray-300">{resident.name}:</span>
-                          <span className="font-bold">
-                            {(individualCosts[resident.id]?.cost || 0).toLocaleString('vi-VN')} VND
-                          </span>
-                        </li>
-                      ))}
-                  </ul>
-                  <p className="border-t pt-3 mt-3 border-orange-300 dark:border-gray-600 text-xl font-bold">
-                    Quỹ phòng còn lại:{' '}
-                    <span
-                      className={`font-bold ${remainingFund >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}
-                    >
-                      {remainingFund.toLocaleString('vi-VN')} VND
-                    </span>
-                  </p>
-
-                  {/* ===== KHỐI CẬP NHẬT QUỸ PHÒNG - BẮT ĐẦU ===== */}
-                  <div className="mt-6 pt-4 border-t border-dashed border-orange-300 dark:border-gray-600">
-                    <h4 className="text-lg font-bold text-orange-800 dark:text-orange-200 mb-2">
-                      Cập nhật lại số tiền quỹ
-                    </h4>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="number"
-                        value={fundInputValue}
-                        onChange={(e) => setFundInputValue(e.target.value)}
-                        className="flex-1 shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-gray-700"
-                        placeholder="Nhập số tiền quỹ mới..."
-                      />
-                      <button
-                        onClick={handleUpdateFundManually}
-                        className="px-4 py-2 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all duration-300"
-                      >
-                        Cập nhật
-                      </button>
-                    </div>
-                    {billingError && <p className="text-red-500 text-sm mt-2">{billingError}</p>}
-                  </div>
-                  {/* ===== KHỐI CẬP NHẬT QUỸ PHÒNG - KẾT THÚC ===== */}
-
-                  {/* ===== KHỐC GHI NHẬN CHI TIÊU QUỸ - BẮT ĐẦU ===== */}
-                  <div className="mt-8 pt-6 border-t border-orange-300 dark:border-gray-600">
-                    <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200">
-                        Lịch sử chi tiêu quỹ phòng
-                      </h3>
-                      <button
-                        onClick={() => setShowAddExpenseModal(true)}
-                        className="bg-orange-500 text-white rounded-full w-10 h-10 flex items-center justify-center shadow-md hover:bg-orange-600 transition"
-                        title="Thêm chi tiêu mới"
-                      >
-                        <i className="fas fa-plus"></i>
-                      </button>
+                            return (
+                                <div key={member.id} className="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
+                                    <span className="font-medium">
+                                        {member.name}
+                                        {pendingResidents.some(p => p.id === member.id) && <span className="text-xs text-cyan-500 ml-2">(Chờ)</span>}
+                                    </span>
+                                    <span className="font-bold text-orange-700 dark:text-orange-300">
+                                        {costData.cost.toLocaleString('vi-VN')} VND
+                                    </span>
+                                </div>
+                            );
+                        })}
+                        <p className="border-t pt-3 mt-3 font-semibold">
+                            Chi phí 1 ngày/người: {costPerDayPerPerson.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} VND
+                        </p>
+                        <p className="font-bold text-lg">
+                            Quỹ phòng còn lại: 
+                            <span className={`font-bold ${remainingFund >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                                {remainingFund.toLocaleString('vi-VN')} VND
+                            </span>
+                        </p>
                     </div>
 
-                    <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
-                      {fundExpenses.length > 0 ? (
-                        fundExpenses.map(expense => (
-                          <div key={expense.id} className="bg-white dark:bg-gray-800 p-3 rounded-lg flex justify-between items-center text-sm">
-                            <div>
-                              <p className="font-semibold text-gray-800 dark:text-gray-200">{expense.description}</p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400">
-                                {expense.spentAt?.toDate().toLocaleDateString('vi-VN')}
-                              </p>
-                            </div>
-                            <p className="font-bold text-red-600">
-                              - {expense.amount.toLocaleString('vi-VN')} VND
-                            </p>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-gray-500 dark:text-gray-400 italic text-center">Chưa có chi tiêu nào được ghi nhận.</p>
-                      )}
+                    {/* Khối cập nhật quỹ và ghi nhận chi tiêu */}
+                    <div className="mt-6 pt-4 border-t border-dashed border-orange-300 dark:border-gray-600">
+                         <h4 className="text-lg font-bold text-orange-800 dark:text-orange-200 mb-2">
+                           Cập nhật lại số tiền quỹ
+                         </h4>
+                         <div className="flex items-center space-x-2">
+                           <input
+                             type="number"
+                             value={fundInputValue}
+                             onChange={(e) => setFundInputValue(e.target.value)}
+                             className="flex-1 shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-gray-700"
+                             placeholder="Nhập số tiền quỹ mới..."
+                           />
+                           <button
+                             onClick={handleUpdateFundManually}
+                             className="px-4 py-2 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all duration-300"
+                           >
+                             Cập nhật
+                           </button>
+                         </div>
+                         {billingError && <p className="text-red-500 text-sm mt-2">{billingError}</p>}
                     </div>
-                  </div>
-                  {/* ===== KHỐI GHI NHẬN CHI TIÊU QUỸ - KẾT THÚC ===== */}
-
-
-                  {/* ===== POPUP THÊM CHI TIÊU MỚI ===== */}
-                  {showAddExpenseModal && (
-                    <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4">
-                      <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md">
-                        <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
-                          Thêm chi tiêu từ quỹ
-                        </h3>
-                        <form onSubmit={handleAddFundExpense} className="space-y-4">
-                          <div>
-                            <label htmlFor="expenseDesc" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                              Nội dung chi tiêu:
-                            </label>
-                            <input
-                              type="text"
-                              id="expenseDesc"
-                              value={newExpenseDescription}
-                              onChange={(e) => setNewExpenseDescription(e.target.value)}
-                              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4"
-                              required
-                              placeholder="Ví dụ: Mua nước rửa chén, giấy vệ sinh..."
-                            />
-                          </div>
-                          <div>
-                            <label htmlFor="expenseAmount" className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                              Số tiền:
-                            </label>
-                            <input
-                              type="number"
-                              id="expenseAmount"
-                              value={newExpenseAmount}
-                              onChange={(e) => setNewExpenseAmount(e.target.value)}
-                              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4"
-                              required
-                              placeholder="Nhập số tiền đã chi..."
-                            />
-                          </div>
-                          {billingError && <p className="text-red-500 text-sm text-center">{billingError}</p>}
-                          <div className="flex space-x-4 mt-6">
-                            <button
-                              type="button"
-                              onClick={() => { setShowAddExpenseModal(false); setBillingError(''); }}
-                              className="w-1/2 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400"
-                            >
-                              Hủy
-                            </button>
-                            <button
-                              type="submit"
-                              className="w-1/2 px-6 py-3 bg-orange-600 text-white font-semibold rounded-xl shadow-md hover:bg-orange-700"
-                            >
-                              Thêm
-                            </button>
-                          </div>
-                        </form>
-                      </div>
+                    <div className="mt-8 pt-6 border-t border-orange-300 dark:border-gray-600">
+                        <div className="flex justify-between items-center mb-4">
+                          <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200">
+                            Lịch sử chi tiêu quỹ phòng
+                          </h3>
+                          <button
+                            onClick={() => setShowAddExpenseModal(true)}
+                            className="bg-orange-500 text-white rounded-full w-10 h-10 flex items-center justify-center shadow-md hover:bg-orange-600 transition"
+                            title="Thêm chi tiêu mới"
+                          >
+                            <i className="fas fa-plus"></i>
+                          </button>
+                        </div>
+                        <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                          {fundExpenses.length > 0 ? (
+                            fundExpenses.map(expense => (
+                              <div key={expense.id} className="bg-white dark:bg-gray-800 p-3 rounded-lg flex justify-between items-center text-sm">
+                                <div>
+                                  <p className="font-semibold text-gray-800 dark:text-gray-200">{expense.description}</p>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    {expense.spentAt?.toDate().toLocaleDateString('vi-VN')}
+                                  </p>
+                                </div>
+                                <p className="font-bold text-red-600">
+                                  - {expense.amount.toLocaleString('vi-VN')} VND
+                                </p>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-gray-500 dark:text-gray-400 italic text-center">Chưa có chi tiêu nào được ghi nhận.</p>
+                          )}
+                        </div>
                     </div>
-                  )}
-                </>
-              </div>
+                </div>
             )}
-          </div>
-        );
+        </div>
+    );
+}
         //Case lịch sử tính tiền điện nước
         case 'billHistory':
         return (
