@@ -3183,6 +3183,7 @@ useEffect(() => {
         // Đếm ngày có mặt từ dữ liệu điểm danh
         querySnapshot.forEach((docSnap) => {
             const data = docSnap.data();
+            // Kiểm tra xem người điểm danh có trong danh sách tổng hợp không
             if (allMembersToCalculate.some((member) => member.id === data.residentId) && data.status === 1) {
                 daysPresentPerResident[data.residentId]++;
             }
