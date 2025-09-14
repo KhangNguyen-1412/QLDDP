@@ -5014,6 +5014,12 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
             "#FF8042",
             "#AF19FF",
             "#FF4560",
+            "#3366CC",
+            "#DC3912",
+            "#FF9900",
+            "#109618",
+            "#990099",
+            "#3B3EAC",
           ];
 
           return (
