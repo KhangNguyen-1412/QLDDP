@@ -333,19 +333,42 @@ function App() {
     }
 
     try {
-      // Thêm vào danh sách residents chính thức
+      // === BẮT ĐẦU NÂNG CẤP LOGIC ===
+
+      // 1. Tạo một tài khoản người dùng (user) mới với các thông tin cơ bản
+      const usersRef = collection(
+        db,
+        `artifacts/${currentAppId}/public/data/users`
+      );
+      const newUserDocRef = await addDoc(usersRef, {
+        fullName: pendingResident.name,
+        email: null, // Sẽ được admin cập nhật sau
+        studentId: null, // Sẽ được admin cập nhật sau
+        phoneNumber: null, // Sẽ được admin cập nhật sau
+        role: "member", // Vai trò mặc định là member
+        linkedResidentId: null, // Tạm thời để trống
+        createdAt: serverTimestamp(),
+      });
+
+      // 2. Tạo hồ sơ người ở (resident) mới và liên kết ngay với user vừa tạo
       const residentsRef = collection(
         db,
         `artifacts/${currentAppId}/public/data/residents`
       );
-      await addDoc(residentsRef, {
+      const newResidentDocRef = await addDoc(residentsRef, {
         name: pendingResident.name,
-        status: "active", // Trạng thái ban đầu là active
+        status: "active",
         createdAt: serverTimestamp(),
         addedBy: userId,
+        linkedUserId: newUserDocRef.id, // Liên kết tới user mới
       });
 
-      // Xóa khỏi danh sách pendingResidents
+      // 3. Cập nhật ngược lại tài khoản user để hoàn tất liên kết hai chiều
+      await updateDoc(newUserDocRef, {
+        linkedResidentId: newResidentDocRef.id,
+      });
+
+      // 4. Xóa thành viên khỏi danh sách chờ
       const pendingDocRef = doc(
         db,
         `artifacts/${currentAppId}/public/data/pendingResidents`,
@@ -353,13 +376,16 @@ function App() {
       );
       await deleteDoc(pendingDocRef);
 
-      alert(`Đã chuyển "${pendingResident.name}" vào phòng thành công!`);
+      // === KẾT THÚC NÂNG CẤP ===
+
+      alert(
+        `Đã chuyển "${pendingResident.name}" vào phòng thành công! Bây-giờ bạn có-thể vào mục "Thông-tin phòng-chung" để cập-nhật chi-tiết cho-họ.`
+      );
     } catch (error) {
       console.error("Lỗi khi chuyển thành viên vào phòng:", error);
       alert("Đã xảy ra lỗi.");
     }
   };
-
   //Hàm kiểm tra lượt đăng nhập
   const [loginHistory, setLoginHistory] = useState([]);
 
