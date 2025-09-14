@@ -4984,22 +4984,22 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
           );
           // KẾT THÚC: CHUẨN BỊ DỮ LIỆU CHO BIỂU ĐỒ
 
-          // --- Chuẩn bị dữ liệu cho Biểu đồ tròn Phân bổ Khóa học ---
-          const activeResidents = residents.filter((res) => res.isActive);
+          // --- Chuẩn bị dữ liệu cho Biểu đồ tròn ---
+          const activeResidents = residents.filter(res => res.isActive);
           const courseDistribution = activeResidents.reduce((acc, resident) => {
-            const linkedUser = allUsersData.find(
-              (user) => user.linkedResidentId === resident.id
-            );
-            if (
-              linkedUser &&
-              linkedUser.studentId &&
-              linkedUser.studentId.length >= 2
-            ) {
-              // Lấy 2 ký tự đầu của MSSV để xác định khóa
-              const course = courseNumber;
-              acc[course] = (acc[course] || 0) + 1;
-            }
-            return acc;
+              const linkedUser = allUsersData.find(user => user.linkedResidentId === resident.id);
+              if (linkedUser && linkedUser.studentId) {
+                  let courseNumber;
+                  if (linkedUser.studentId.includes('.')) {
+                      courseNumber = linkedUser.studentId.split('.')[0];
+                  } else {
+                      courseNumber = linkedUser.studentId.substring(0, 2);
+                  }
+                  // ===== BỎ CHỮ 'K' Ở ĐÂY =====
+                  const course = courseNumber; // Chỉ lấy số
+                  acc[course] = (acc[course] || 0) + 1;
+              }
+              return acc;
           }, {});
 
           const pieChartData = Object.keys(courseDistribution).map((key) => ({
