@@ -267,6 +267,27 @@ function App() {
   const [showCostSharingHistoryModal, setShowCostSharingHistoryModal] =
     useState(false);
 
+  const handleAssignBed = async (residentId, bedId) => {
+    if (userRole !== "admin" && userRole !== "developer") {
+      alert("Bạn không có quyền thực hiện thao tác này.");
+      return;
+    }
+
+    const residentDocRef = doc(
+      db,
+      `artifacts/${currentAppId}/public/data/residents`,
+      residentId
+    );
+    try {
+      // Cập nhật mã giường cho người ở được chọn
+      await updateDoc(residentDocRef, { bedId: bedId });
+      alert("Đã cập nhật vị trí giường thành công!");
+    } catch (error) {
+      console.error("Lỗi khi cập nhật giường:", error);
+      alert("Đã xảy ra lỗi.");
+    }
+  };
+
   useEffect(() => {
     if (db && (userRole === "admin" || userRole === "developer")) {
       const pendingQuery = query(
@@ -7780,6 +7801,102 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
               </div>
             </div>
           );
+
+        case "bedManagement": {
+          const assignedBeds = residents
+            .filter((r) => r.bedId)
+            .map((r) => r.bedId);
+
+          const availableBeds = Array.from({ length: 8 }, (_, i) =>
+            String(i + 1)
+          ).filter((bed) => !assignedBeds.includes(bed));
+
+          return (
+            <div className="p-6 bg-teal-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-teal-800 dark:text-teal-200 mb-5">
+                Quản lý Giường ngủ
+              </h2>
+              <div className="space-y-4">
+                {residents
+                  .filter((r) => r.status === "active")
+                  .map((resident) => (
+                    <div
+                      key={resident.id}
+                      className="bg-white dark:bg-gray-800 p-4 rounded-lg flex justify-between items-center"
+                    >
+                      <span className="font-medium">{resident.name}</span>
+                      <select
+                        value={resident.bedId || ""}
+                        onChange={(e) =>
+                          handleAssignBed(resident.id, e.target.value)
+                        }
+                        className="p-2 border rounded-lg dark:bg-gray-700"
+                      >
+                        <option value="">-- Chọn giường --</option>
+                        {/* Nếu resident đã có giường, hiển thị giường đó */}
+                        {resident.bedId && (
+                          <option value={resident.bedId}>
+                            Giường {resident.bedId}
+                          </option>
+                        )}
+                        {/* Hiển thị các giường còn trống */}
+                        {availableBeds.map((bed) => (
+                          <option key={bed} value={bed}>
+                            Giường {bed}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          );
+        }
+        // Thêm case này vào hàm renderSection
+        case "roomLayout": {
+          const beds = Array.from({ length: 8 }, (_, i) => {
+            const bedId = String(i + 1);
+            const resident = residents.find((r) => r.bedId === bedId);
+            return {
+              id: bedId,
+              name: resident ? resident.name : "Giường trống",
+              isOccupied: !!resident,
+            };
+          });
+
+          return (
+            <div className="p-6 bg-gray-100 dark:bg-gray-900 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-6 text-center">
+                Sơ đồ phòng ngủ
+              </h2>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                {beds.map((bed) => (
+                  <div key={bed.id} className="relative group">
+                    <div
+                      className={`aspect-[3/4] border-4 rounded-lg flex items-center justify-center p-4 transition-all duration-300 ${
+                        bed.isOccupied
+                          ? "border-blue-500 bg-blue-100 dark:bg-blue-900"
+                          : "border-gray-400 bg-gray-200 dark:bg-gray-700"
+                      }`}
+                    >
+                      <span className="font-bold text-2xl text-gray-500 dark:text-gray-400">
+                        {bed.id}
+                      </span>
+                    </div>
+                    {/* Tooltip hiển thị tên */}
+                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 px-3 py-1 bg-gray-800 text-white text-sm rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity duration-300 pointer-events-none whitespace-nowrap">
+                      {bed.name}
+                      <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-gray-800"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
+                <p>* Di chuột qua từng giường để xem thông tin.</p>
+              </div>
+            </div>
+          );
+        }
         default:
           return (
             <div className="text-center p-8 bg-gray-100 dark:bg-gray-700 rounded-xl shadow-inner">
@@ -9061,6 +9178,51 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
               </div>
             );
           }
+        // Thêm case này vào hàm renderSection
+        case "roomLayout": {
+          const beds = Array.from({ length: 8 }, (_, i) => {
+            const bedId = String(i + 1);
+            const resident = residents.find((r) => r.bedId === bedId);
+            return {
+              id: bedId,
+              name: resident ? resident.name : "Giường trống",
+              isOccupied: !!resident,
+            };
+          });
+
+          return (
+            <div className="p-6 bg-gray-100 dark:bg-gray-900 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-6 text-center">
+                Sơ đồ phòng ngủ
+              </h2>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                {beds.map((bed) => (
+                  <div key={bed.id} className="relative group">
+                    <div
+                      className={`aspect-[3/4] border-4 rounded-lg flex items-center justify-center p-4 transition-all duration-300 ${
+                        bed.isOccupied
+                          ? "border-blue-500 bg-blue-100 dark:bg-blue-900"
+                          : "border-gray-400 bg-gray-200 dark:bg-gray-700"
+                      }`}
+                    >
+                      <span className="font-bold text-2xl text-gray-500 dark:text-gray-400">
+                        {bed.id}
+                      </span>
+                    </div>
+                    {/* Tooltip hiển thị tên */}
+                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 px-3 py-1 bg-gray-800 text-white text-sm rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity duration-300 pointer-events-none whitespace-nowrap">
+                      {bed.name}
+                      <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-gray-800"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
+                <p>* Di chuột qua từng giường để xem thông tin.</p>
+              </div>
+            </div>
+          );
+        }
         default:
           return (
             <div className="text-center p-8 bg-gray-100 dark:bg-gray-700 rounded-xl shadow-inner">
@@ -9456,6 +9618,26 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                         <span className="ml-3">Quản lý kệ giày</span>
                       )}
                     </button>
+                    {(userRole === "admin" || userRole === "developer") && (
+                      <button
+                        className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                          isSidebarCollapsed && "justify-center"
+                        } ${
+                          activeSection === "bedManagement"
+                            ? "bg-blue-600 text-white shadow-md"
+                            : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        }`}
+                        onClick={() => {
+                          setActiveSection("bedManagement");
+                          setIsSidebarOpen(false);
+                        }}
+                      >
+                        <i className="fas fa-tasks"></i>
+                        {!isSidebarCollapsed && (
+                          <span className="ml-3">Quản lý giường</span>
+                        )}
+                      </button>
+                    )}
                     <button
                       className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
                         isSidebarCollapsed && "justify-center"
@@ -9499,6 +9681,24 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                       <i className="fas fa-info-circle"></i>
                       {!isSidebarCollapsed && (
                         <span className="ml-3">Thông tin phòng chung</span>
+                      )}
+                    </button>
+                    <button
+                      className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                        isSidebarCollapsed && "justify-center"
+                      } ${
+                        activeSection === "roomLayout"
+                          ? "bg-blue-600 text-white shadow-md"
+                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      }`}
+                      onClick={() => {
+                        setActiveSection("roomLayout");
+                        setIsSidebarOpen(false);
+                      }}
+                    >
+                      <i className="fas fa-bed"></i>
+                      {!isSidebarCollapsed && (
+                        <span className="ml-3">Sơ đồ phòng</span>
                       )}
                     </button>
                     <button
