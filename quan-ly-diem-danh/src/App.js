@@ -4973,14 +4973,14 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
           // --- CHUẨN BỊ DỮ LIỆU ---
 
           // 1. Dữ liệu cho Biểu đồ đường/cột
-          const chartData = Object.entries(monthlyConsumptionStats).map(
-            ([month, stats]) => ({
-              month: month,
-              điện: stats.electricity,
-              nước: stats.water,
-              tổng: stats.total,
-            })
-          );
+          const chartData = billHistory
+            .slice() // Tạo một bản sao để không thay đổi mảng gốc
+            .sort((a, b) => new Date(a.billDate) - new Date(b.billDate)) // Sắp xếp theo ngày
+            .map((bill) => ({
+              month: bill.billingMonth, // Lấy tháng từ hóa đơn, ví dụ: "2025-08"
+              điện: bill.electricityConsumption,
+              nước: bill.waterConsumption,
+            }));
 
           // 2. Dữ liệu cho Biểu đồ tròn
           const allCurrentMembers = [
