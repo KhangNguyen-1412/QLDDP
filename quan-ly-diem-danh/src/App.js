@@ -5124,7 +5124,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                       </div>
                     ) : (
                       <p className="text-center italic text-gray-500 py-10">
-                        Chưa có dữ liệu điện nước.
+                        Chưa có dữ liệu hóa đơn để vẽ biểu đồ.
                       </p>
                     )}
                   </div>
