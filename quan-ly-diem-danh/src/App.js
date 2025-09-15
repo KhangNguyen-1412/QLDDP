@@ -4965,27 +4965,20 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
     // Logic cho Admin
     if (userRole === "admin" || userId === "BJHeKQkyE9VhWCpMfaONEf2N28H2") {
       switch (activeSection) {
-        case "dashboard": // Dashboard cho Admin
-          // Lọc các nhiệm vụ trực phòng sắp tới cho Admin (tất cả các nhiệm vụ chưa hoàn thành)
-          const upcomingAdminCleaningTasks = cleaningSchedule
-            .filter(
-              (task) => !task.isCompleted && new Date(task.date) >= new Date()
-            )
-            .sort((a, b) => new Date(a.date) - new Date(b.date)); // Sắp xếp theo ngày tăng dần
+        case "dashboard": {
+          // --- CHUẨN BỊ DỮ LIỆU ---
 
-          // CHUẨN BỊ DỮ LIỆU CHO BIỂU ĐỒ TIÊU THỤ ĐIỆN NƯỚC
+          // 1. Dữ liệu cho Biểu đồ đường/cột
           const chartData = Object.entries(monthlyConsumptionStats).map(
             ([month, stats]) => ({
-              month: month, // Ví dụ: "2025-06"
-              điện: stats.electricity, // Dữ liệu điện
-              nước: stats.water, // Dữ liệu nước
-              tổng: stats.total, // Dữ liệu tổng tiền
+              month: month,
+              điện: stats.electricity,
+              nước: stats.water,
+              tổng: stats.total,
             })
           );
-          // KẾT THÚC: CHUẨN BỊ DỮ LIỆU CHO BIỂU ĐỒ
 
-          // --- Chuẩn bị dữ liệu cho Biểu đồ tròn ---
-          // 1. Tạo danh sách tổng hợp tất cả thành viên đang có mặt
+          // 2. Dữ liệu cho Biểu đồ tròn
           const allCurrentMembers = [
             ...residents.filter(
               (res) =>
@@ -4994,19 +4987,15 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
             ...pendingResidents,
           ];
 
-          // 2. Dùng danh sách tổng hợp để tính toán phân bổ khóa học
           const courseDistribution = allCurrentMembers.reduce((acc, member) => {
-            // Tìm user được liên kết (nếu có)
             const linkedUser = allUsersData.find(
               (user) =>
                 (user.linkedResidentId === member.id &&
                   residents.some((r) => r.id === member.id)) ||
-                (user.linkedPendingId === member.id &&
-                  pendingResidents.some((p) => p.id === member.id)) // Giả sử có linkedPendingId
+                user.id === member.linkedUserId // Logic mới cho thành viên chờ
             );
 
-            // Ưu tiên MSSV từ user, nếu không có thì thử lấy từ chính member (nếu có)
-            const studentId = linkedUser?.studentId || member.studentId;
+            const studentId = linkedUser?.studentId;
 
             if (studentId) {
               let courseNumber;
@@ -5020,7 +5009,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
             }
             return acc;
           }, {});
-          // ===== KẾT THÚC SỬA LỖI LOGIC =====
 
           const pieChartData = Object.keys(courseDistribution).map((key) => ({
             name: key,
@@ -5037,276 +5025,212 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
             53: "#3366CC",
           };
           const defaultColor = "#B0B0B0";
-          // ===== KẾT THÚC THAY ĐỔI =====
+
+          // 3. Dữ liệu cho các nhiệm vụ sắp tới
+          const upcomingAdminCleaningTasks = cleaningSchedule
+            .filter(
+              (task) => !task.isCompleted && new Date(task.date) >= new Date()
+            )
+            .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+          // --- KẾT THÚC CHUẨN BỊ DỮ LIỆU ---
 
           return (
-            <div className="p-6 bg-gray-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-5">
+            <div className="p-4 md:p-6 bg-gray-50 dark:bg-gray-700 rounded-2xl shadow-lg w-full">
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-6">
                 Dashboard Tổng quan
               </h2>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {/* Widget: Số người ở hiện tại */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md flex flex-col items-center justify-center">
-                  <i className="fas fa-users text-4xl text-blue-500 mb-3"></i>
-                  <p className="text-lg text-gray-700 dark:text-gray-300">
-                    Tổng người ở
-                  </p>
-                  <p className="text-3xl font-bold text-blue-600 dark:text-blue-300">
-                    {allCurrentMembers.length}
-                  </p>
-                </div>
+              {/* BỐ CỤC CHÍNH (Dọc trên điện thoại, Ngang trên laptop) */}
+              <div className="flex flex-col lg:flex-row gap-6">
+                {/* --- CỘT BÊN TRÁI (Nội dung chính) --- */}
+                <div className="w-full lg:w-2/3 space-y-6">
+                  {/* Biểu đồ điện nước */}
+                  <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                    <div className="flex flex-col sm:flex-row justify-between items-center mb-4">
+                      <h3 className="text-xl font-bold text-gray-700 dark:text-gray-300">
+                        Tiêu thụ điện nước
+                      </h3>
+                      <div className="flex items-center bg-gray-200 dark:bg-gray-700 rounded-lg p-1 space-x-1 mt-3 sm:mt-0">
+                        <button
+                          onClick={() => setChartType("line")}
+                          className={`px-3 py-1 text-sm font-semibold rounded-md ${
+                            chartType === "line"
+                              ? "bg-white dark:bg-gray-600 text-blue-600 shadow"
+                              : "text-gray-600 dark:text-gray-400"
+                          }`}
+                        >
+                          <i className="fas fa-chart-line mr-2"></i>Đường
+                        </button>
+                        <button
+                          onClick={() => setChartType("bar")}
+                          className={`px-3 py-1 text-sm font-semibold rounded-md ${
+                            chartType === "bar"
+                              ? "bg-white dark:bg-gray-600 text-blue-600 shadow"
+                              : "text-gray-600 dark:text-gray-400"
+                          }`}
+                        >
+                          <i className="fas fa-chart-bar mr-2"></i>Cột
+                        </button>
+                      </div>
+                    </div>
+                    {chartData.length > 0 ? (
+                      <div className="w-full h-80">
+                        <ResponsiveContainer width="100%" height="100%">
+                          {chartType === "line" ? (
+                            <LineChart data={chartData}>
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="month" />
+                              <YAxis />
+                              <Tooltip />
+                              <Legend />
+                              <Line
+                                type="monotone"
+                                dataKey="điện"
+                                stroke="#8884d8"
+                                name="Điện (KW)"
+                              />
+                              <Line
+                                type="monotone"
+                                dataKey="nước"
+                                stroke="#82ca9d"
+                                name="Nước (m³)"
+                              />
+                            </LineChart>
+                          ) : (
+                            <BarChart data={chartData}>
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="month" />
+                              <YAxis />
+                              <Tooltip />
+                              <Legend />
+                              <Bar
+                                dataKey="điện"
+                                fill="#8884d8"
+                                name="Điện (KW)"
+                              />
+                              <Bar
+                                dataKey="nước"
+                                fill="#82ca9d"
+                                name="Nước (m³)"
+                              />
+                            </BarChart>
+                          )}
+                        </ResponsiveContainer>
+                      </div>
+                    ) : (
+                      <p className="text-center italic text-gray-500 py-10">
+                        Chưa có dữ liệu điện nước.
+                      </p>
+                    )}
+                  </div>
 
-                {/* Widget: Tổng tiền quỹ */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md flex flex-col items-center justify-center">
-                  <i className="fas fa-wallet text-4xl text-green-500 mb-3"></i>
-                  <p className="text-lg text-gray-700 dark:text-gray-300">
-                    Tổng tiền quỹ
-                  </p>
-                  <p
-                    className={`text-3xl font-bold ${
-                      remainingFund >= 0 ? "text-green-600" : "text-red-500"
-                    } dark:text-green-300`}
-                  >
-                    {remainingFund.toLocaleString("vi-VN")} VND
-                  </p>
-                </div>
-
-                {/* Widget: Thông báo chưa đọc */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md flex flex-col items-center justify-center">
-                  <i className="fas fa-bell text-4xl text-yellow-500 mb-3"></i>
-                  <p className="text-lg text-gray-700 dark:text-gray-300">
-                    Thông báo chưa đọc
-                  </p>
-                  <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-300">
-                    {unreadNotificationsCount}
-                  </p>
-                </div>
-
-                {/* Widget: Hóa đơn gần nhất */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md col-span-full">
-                  <h3 className="text-xl font-bold text-blue-700 dark:text-blue-200 mb-3">
-                    Hóa đơn gần nhất
-                  </h3>
-                  {billHistory.length > 0 ? (
-                    <p className="text-gray-700 dark:text-gray-300">
-                      <strong>Kỳ tính:</strong> {billHistory[0].billingMonth} -{" "}
-                      <strong>Tổng:</strong>{" "}
-                      {billHistory[0].totalCost?.toLocaleString("vi-VN")} VND
-                      <span
-                        className={`ml-2 font-semibold ${
-                          billHistory[0].isPaid
-                            ? "text-green-600"
-                            : "text-red-500"
-                        }`}
-                      >
-                        ({billHistory[0].isPaid ? "Đã trả" : "Chưa trả"})
-                      </span>
-                    </p>
-                  ) : (
-                    <p className="text-gray-600 dark:text-gray-400 italic">
-                      Chưa có hóa đơn nào.
-                    </p>
-                  )}
-                </div>
-
-                {/* Widget: Các nhiệm vụ trực phòng sắp tới (Admin thấy tất cả) */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md col-span-full">
-                  <h3 className="text-xl font-bold text-purple-700 dark:text-purple-200 mb-3">
-                    Nhiệm vụ trực phòng sắp tới
-                  </h3>
-                  {upcomingAdminCleaningTasks.length > 0 ? (
-                    <ul className="space-y-2">
-                      {upcomingAdminCleaningTasks.slice(0, 5).map(
-                        (
-                          task // Chỉ hiển thị 5 nhiệm vụ đầu
-                        ) => (
+                  {/* Nhiệm vụ sắp tới */}
+                  <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                    <h3 className="text-xl font-bold text-purple-700 dark:text-purple-200 mb-3">
+                      Nhiệm vụ sắp tới
+                    </h3>
+                    {upcomingAdminCleaningTasks.length > 0 ? (
+                      <ul className="space-y-2">
+                        {upcomingAdminCleaningTasks.slice(0, 5).map((task) => (
                           <li
                             key={task.id}
                             className="text-gray-700 dark:text-gray-300"
                           >
                             <i className="fas fa-check-circle mr-2 text-purple-500"></i>
-                            {task.name} ({task.assignedToResidentName}) vào ngày{" "}
+                            {task.name} ({task.assignedToResidentName}) -{" "}
                             {task.date}
                           </li>
-                        )
-                      )}
-                    </ul>
-                  ) : (
-                    <p className="text-gray-600 dark:text-gray-400 italic">
-                      Không có nhiệm vụ sắp tới.
-                    </p>
-                  )}
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="italic text-gray-500">
+                        Không có nhiệm vụ sắp tới.
+                      </p>
+                    )}
+                  </div>
                 </div>
 
-                {/* Widget: Tóm tắt tiền quỹ (Nếu muốn hiển thị chi tiết hơn) */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md col-span-full">
-                  <h3 className="text-xl font-bold text-orange-700 dark:text-orange-200 mb-3">
-                    Tóm tắt chia tiền gần nhất
-                  </h3>
-                  {costSharingHistory.length > 0 ? (
-                    <div>
-                      <p className="text-gray-700 dark:text-gray-300">
-                        <strong>Kỳ:</strong> {costSharingHistory[0].periodStart}{" "}
-                        - {costSharingHistory[0].periodEnd}
+                {/* --- CỘT BÊN PHẢI (Thông tin phụ) --- */}
+                <div className="w-full lg:w-1/3 space-y-6">
+                  {/* Widgets thông tin nhanh */}
+                  <div className="grid grid-cols-1 gap-6">
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md text-center">
+                      <i className="fas fa-users text-4xl text-blue-500 mb-3"></i>
+                      <p className="text-lg text-gray-700 dark:text-gray-300">
+                        Tổng người ở
                       </p>
-                      <p className="text-gray-700 dark:text-gray-300">
-                        <strong>Tổng ngày có mặt:</strong>{" "}
-                        {costSharingHistory[0].totalCalculatedDaysAllResidents}{" "}
-                        ngày
-                      </p>
-                      <p className="text-gray-700 dark:text-gray-300">
-                        <strong>Tiền/ngày/người:</strong>{" "}
-                        {costSharingHistory[0].costPerDayPerPerson?.toLocaleString(
-                          "vi-VN",
-                          {
-                            maximumFractionDigits: 0,
-                          }
-                        )}{" "}
-                        VND
-                      </p>
-                      <p className="text-gray-700 dark:text-gray-300">
-                        <strong>Quỹ còn lại:</strong>{" "}
-                        {costSharingHistory[0].remainingFund?.toLocaleString(
-                          "vi-VN"
-                        )}{" "}
-                        VND
+                      <p className="text-3xl font-bold text-blue-600 dark:text-blue-300">
+                        {allCurrentMembers.length}
                       </p>
                     </div>
-                  ) : (
-                    <p className="text-gray-600 dark:text-gray-400 italic">
-                      Chưa có bản chia tiền nào.
-                    </p>
-                  )}
-                </div>
-
-                {/* ===== KHỐI BIỂU ĐỒ ĐÃ NÂNG CẤP ===== */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md col-span-full">
-                  <div className="flex flex-col sm:flex-row justify-between items-center mb-4">
-                    <h3 className="text-xl font-bold text-gray-700 dark:text-gray-300">
-                      Biểu đồ tiêu thụ điện nước
-                    </h3>
-                    {/* Nút chuyển đổi đã được chuyển vào đây */}
-                    <div className="flex items-center bg-gray-200 dark:bg-gray-700 rounded-lg p-1 space-x-1 mt-3 sm:mt-0">
-                      <button
-                        onClick={() => setChartType("line")}
-                        className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${
-                          chartType === "line"
-                            ? "bg-white dark:bg-gray-600 text-blue-600 shadow"
-                            : "text-gray-600 dark:text-gray-400"
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md text-center">
+                      <i className="fas fa-wallet text-4xl text-green-500 mb-3"></i>
+                      <p className="text-lg text-gray-700 dark:text-gray-300">
+                        Tổng tiền quỹ
+                      </p>
+                      <p
+                        className={`text-3xl font-bold ${
+                          remainingFund >= 0 ? "text-green-600" : "text-red-500"
                         }`}
                       >
-                        <i className="fas fa-chart-line mr-2"></i>Đường
-                      </button>
-                      <button
-                        onClick={() => setChartType("bar")}
-                        className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${
-                          chartType === "bar"
-                            ? "bg-white dark:bg-gray-600 text-blue-600 shadow"
-                            : "text-gray-600 dark:text-gray-400"
-                        }`}
-                      >
-                        <i className="fas fa-chart-bar mr-2"></i>Cột
-                      </button>
+                        {remainingFund.toLocaleString("vi-VN")} VND
+                      </p>
                     </div>
                   </div>
-                  {Object.keys(monthlyConsumptionStats).length > 0 ? (
-                    <div className="w-full h-80">
-                      <ResponsiveContainer width="100%" height="100%">
-                        {chartType === "line" ? (
-                          <LineChart data={chartData}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="month" />
-                            <YAxis />
-                            <Tooltip />
-                            <Legend />
-                            <Line
-                              type="monotone"
-                              dataKey="điện"
-                              stroke="#8884d8"
-                              name="Điện (KW)"
-                            />
-                            <Line
-                              type="monotone"
-                              dataKey="nước"
-                              stroke="#82ca9d"
-                              name="Nước (m³)"
-                            />
-                          </LineChart>
-                        ) : (
-                          <BarChart data={chartData}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="month" />
-                            <YAxis />
-                            <Tooltip />
-                            <Legend />
-                            <Bar
-                              dataKey="điện"
-                              fill="#8884d8"
-                              name="Điện (KW)"
-                            />
-                            <Bar
-                              dataKey="nước"
-                              fill="#82ca9d"
-                              name="Nước (m³)"
-                            />
-                          </BarChart>
-                        )}
-                      </ResponsiveContainer>
-                    </div>
-                  ) : (
-                    <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
-                      Chưa có dữ liệu thống kê để tạo biểu đồ.
-                    </p>
-                  )}
-                </div>
 
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-                  <h3 className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-4 text-center">
-                    Phân bổ SV theo khóa
-                  </h3>
-                  {pieChartData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <PieChart>
-                        <Pie
-                          data={pieChartData}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          outerRadius={100}
-                          fill="#8884d8"
-                          dataKey="value"
-                          nameKey="name"
-                          label={({ percent }) =>
-                            `${(percent * 100).toFixed(0)}%`
-                          }
-                        >
-                          {/* 2. Sử dụng bản đồ màu sắc để tô màu cho từng phần */}
-                          {pieChartData.map((entry, index) => (
-                            <Cell
-                              key={`cell-${index}`}
-                              fill={courseColorMap[entry.name] || defaultColor}
+                  {/* Biểu đồ tròn */}
+                  <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                    <h3 className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-4 text-center">
+                      Phân bổ SV theo khóa
+                    </h3>
+                    {pieChartData.length > 0 ? (
+                      <div className="w-full h-80">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={pieChartData}
+                              cx="50%"
+                              cy="50%"
+                              labelLine={false}
+                              outerRadius={100}
+                              fill="#8884d8"
+                              dataKey="value"
+                              nameKey="name"
+                              label={({ percent }) =>
+                                `${(percent * 100).toFixed(0)}%`
+                              }
+                            >
+                              {pieChartData.map((entry, index) => (
+                                <Cell
+                                  key={`cell-${index}`}
+                                  fill={
+                                    courseColorMap[entry.name] || defaultColor
+                                  }
+                                />
+                              ))}
+                            </Pie>
+                            <Tooltip
+                              formatter={(value, name) => [
+                                value,
+                                `Khóa ${name}`,
+                              ]}
                             />
-                          ))}
-                        </Pie>
-                        <Tooltip
-                          formatter={(value, name) => [value, `SV ${name}`]}
-                        />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-[300px] flex items-center justify-center">
-                      <p className="text-gray-500 dark:text-gray-400 italic">
-                        Không có dữ liệu MSSV.
+                            <Legend formatter={(value) => `Khóa ${value}`} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                    ) : (
+                      <p className="text-center italic text-gray-500 py-10">
+                        Chưa có dữ liệu MSSV.
                       </p>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
           );
-        //Case quản lý người ở
+        } //Case quản lý người ở
         case "residentManagement":
           return (
             <div className="p-6 bg-purple-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
