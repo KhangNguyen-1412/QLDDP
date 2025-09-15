@@ -6433,7 +6433,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                 {/* --- CỘT BÊN TRÁI: THÀNH VIÊN HIỆN TẠI --- */}
                 <div className="w-full lg:w-1/2">
                   <h3 className="text-xl font-semibold text-blue-700 dark:text-blue-300 mb-4 pb-2 border-b-2 border-blue-200">
-                    Thành viên hiện tại ({membersToDisplay.length})
+                    Thành viên hiện tại ({filteredCurrentMembers.length})
                   </h3>
                   <input
                     type="text"
@@ -6635,7 +6635,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                 {/* --- CỘT BÊN PHẢI: TIỀN BỐI --- */}
                 <div className="w-full lg:w-1/2">
                   <h3 className="text-xl font-semibold text-purple-700 dark:text-purple-300 mb-4 pb-2 border-b-2 border-purple-200">
-                    Tiền bối ({formerResidents.length})
+                    Tiền bối ({filteredFormerResidents.length})
                   </h3>
                   <input
                     type="text"
