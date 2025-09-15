@@ -4926,6 +4926,9 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
     }
   };
 
+  const [searchTermCurrent, setSearchTermCurrent] = useState(""); // Cho thành viên hiện tại
+  const [searchTermFormer, setSearchTermFormer] = useState(""); // Cho tiền bối
+
   // Hàm renderSection để hiển thị các phần giao diện dựa trên vai trò người dùng
   const renderSection = () => {
     // Nếu chưa đăng nhập hoặc xác thực chưa sẵn sàng, hiển thị thông báo chung
@@ -4965,8 +4968,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
         </div>
       );
     }
-    const [searchTermCurrent, setSearchTermCurrent] = useState(""); // Cho thành viên hiện tại
-    const [searchTermFormer, setSearchTermFormer] = useState(""); // Cho tiền bối
 
     // Logic cho Admin
     if (userRole === "admin" || userId === "BJHeKQkyE9VhWCpMfaONEf2N28H2") {
