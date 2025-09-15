@@ -5480,9 +5480,19 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
         case "billing": {
           return (
             <div className="p-4 md:p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg w-full">
-              <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-6">
-                Quản lý Hóa đơn & Đơn giá
-              </h2>
+              {/* ===== TIÊU ĐỀ VÀ NÚT BẤM MỚI ===== */}
+              <div className="flex flex-col sm:flex-row justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200">
+                  Quản lý Hóa đơn & Đơn giá
+                </h2>
+                <button
+                  onClick={() => setActiveSection("billHistory")}
+                  className="mt-3 sm:mt-0 px-4 py-2 bg-purple-600 text-white font-semibold rounded-xl shadow-md hover:bg-purple-700 transition-all"
+                >
+                  <i className="fas fa-history mr-2"></i>
+                  Xem Lịch sử Hóa đơn
+                </button>
+              </div>
 
               {/* BỐ CỤC CHÍNH (Dọc trên điện thoại, Ngang trên laptop) */}
               <div className="flex flex-col lg:flex-row gap-6">
@@ -5714,270 +5724,194 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
               </div>
             </div>
           );
-        }
+        } 
         //Case chia tiền điện nước
         case "costSharing": {
           // 1. Tạo danh sách tổng hợp để sử dụng trong toàn bộ case
           const allMembersToDisplay = [
-            ...residents.filter((r) => r.status !== "inactive"),
-            ...pendingResidents,
+              ...residents.filter((r) => r.status !== "inactive"),
+              ...pendingResidents,
           ];
-
+      
           return (
-            <div className="p-4 md:p-6 bg-orange-50 dark:bg-gray-700 rounded-2xl shadow-lg w-full">
-              <h2 className="text-2xl font-bold text-orange-800 dark:text-orange-200 mb-6">
-                Chia tiền & Quản lý Quỹ
-              </h2>
-
-              {/* BỐ CỤC CHÍNH (Dọc trên điện thoại, Ngang trên laptop) */}
-              <div className="flex flex-col lg:flex-row gap-6">
-                {/* --- CỘT BÊN TRÁI: TÍNH TOÁN & KẾT QUẢ --- */}
-                <div className="w-full lg:w-1/2 space-y-6">
-                  {/* Khối tính toán */}
-                  <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-                    <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200 mb-4">
-                      Tính ngày có mặt
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                      <div>
-                        <label
-                          htmlFor="startDate"
-                          className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-                        >
-                          Ngày bắt đầu:
-                        </label>
-                        <input
-                          type="date"
-                          id="startDate"
-                          value={startDate}
-                          onChange={(e) => setStartDate(e.target.value)}
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:bg-gray-700 dark:border-gray-600"
-                        />
-                      </div>
-                      <div>
-                        <label
-                          htmlFor="endDate"
-                          className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-                        >
-                          Ngày kết thúc:
-                        </label>
-                        <input
-                          type="date"
-                          id="endDate"
-                          value={endDate}
-                          onChange={(e) => setEndDate(e.target.value)}
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:bg-gray-700 dark:border-gray-600"
-                        />
-                      </div>
-                    </div>
-                    <button
-                      onClick={calculateAttendanceDays}
-                      className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700"
-                      disabled={totalCost <= 0}
-                    >
-                      Tính toán & Chia tiền
-                    </button>
-                  </div>
-
-                  {/* Khối kết quả */}
-                  {Object.keys(individualCosts).length > 0 && (
-                    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-                      <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200 mb-4">
-                        Kết quả chia tiền
-                      </h3>
-                      <div className="space-y-4">
-                        {/* Bảng xếp hạng số ngày có mặt */}
-                        <div>
-                          <h4 className="font-semibold mb-2 text-gray-700 dark:text-gray-300">
-                            Xếp hạng Số ngày có mặt:
-                          </h4>
-                          <div className="space-y-2">
-                            {[...allMembersToDisplay]
-                              .sort(
-                                (a, b) =>
-                                  (calculatedDaysPresent[b.id] || 0) -
-                                  (calculatedDaysPresent[a.id] || 0)
-                              )
-                              .map((member, index) => (
-                                <div
-                                  key={member.id}
-                                  className="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-3 rounded-lg"
-                                >
-                                  <span className="font-medium flex items-center">
-                                    <span className="mr-2 text-lg font-bold w-6 text-center">
-                                      {index + 1}
-                                    </span>
-                                    {member.name}
-                                    {pendingResidents.some(
-                                      (p) => p.id === member.id
-                                    ) && (
-                                      <span className="text-xs text-cyan-500 ml-2">
-                                        (
-                                        {pendingResidents.find(
-                                          (p) => p.id === member.id
-                                        ).type === "temporary"
-                                          ? "Tạm thời"
-                                          : "Chờ"}
-                                        )
-                                      </span>
-                                    )}
-                                  </span>
-                                  <span className="font-bold text-orange-700 dark:text-orange-300">
-                                    {calculatedDaysPresent[member.id] || 0} ngày
-                                  </span>
-                                </div>
-                              ))}
-                          </div>
-                          <p className="border-t pt-3 mt-3 font-semibold text-gray-700 dark:text-gray-300">
-                            Tổng số ngày-người:{" "}
-                            {totalCalculatedDaysAllResidents} ngày
-                          </p>
-                        </div>
-
-                        {/* Bảng xếp hạng số tiền cần đóng */}
-                        <div>
-                          <h4 className="font-semibold mt-4 mb-2 text-gray-700 dark:text-gray-300">
-                            Xếp hạng Số tiền cần đóng:
-                          </h4>
-                          <div className="space-y-2">
-                            {[...allMembersToDisplay]
-                              .sort(
-                                (a, b) =>
-                                  (individualCosts[b.id]?.cost || 0) -
-                                  (individualCosts[a.id]?.cost || 0)
-                              )
-                              .map((member, index) => {
-                                const costData = individualCosts[member.id];
-                                if (!costData) return null;
-                                return (
-                                  <div
-                                    key={member.id}
-                                    className="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-3 rounded-lg"
-                                  >
-                                    <span className="font-medium flex items-center">
-                                      <span className="mr-2 text-lg font-bold w-6 text-center">
-                                        {index + 1}
-                                      </span>
-                                      {member.name}
-                                    </span>
-                                    <span className="font-bold text-red-600">
-                                      {costData.cost.toLocaleString("vi-VN")}{" "}
-                                      VND
-                                    </span>
-                                  </div>
-                                );
-                              })}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* --- CỘT BÊN PHẢI: QUẢN LÝ QUỸ --- */}
-                <div className="w-full lg:w-1/2 space-y-6">
-                  {/* Khối quản lý quỹ */}
-                  <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-                    <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200 mb-4">
-                      Quản lý quỹ phòng
-                    </h3>
-                    <div className="border-t pt-4 mt-4 space-y-2 text-gray-700 dark:text-gray-300">
-                      <p className="font-semibold">
-                        Chi phí 1 ngày/người:{" "}
-                        {costPerDayPerPerson.toLocaleString("vi-VN", {
-                          maximumFractionDigits: 0,
-                        })}{" "}
-                        VND
-                      </p>
-                      <p className="font-bold text-lg">
-                        Quỹ phòng còn lại:
-                        <span
-                          className={`font-bold ${
-                            remainingFund >= 0
-                              ? "text-green-700 dark:text-green-300"
-                              : "text-red-700 dark:text-red-300"
-                          }`}
-                        >
-                          {" "}
-                          {remainingFund.toLocaleString("vi-VN")} VND
-                        </span>
-                      </p>
-                    </div>
-                    <div className="mt-6 pt-4 border-t border-dashed border-orange-300 dark:border-gray-600">
-                      <h4 className="text-lg font-bold text-orange-800 dark:text-orange-200 mb-2">
-                        Cập nhật lại số tiền quỹ
-                      </h4>
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="number"
-                          value={fundInputValue}
-                          onChange={(e) => setFundInputValue(e.target.value)}
-                          className="flex-1 shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-gray-700"
-                          placeholder="Nhập số tiền quỹ mới..."
-                        />
-                        <button
-                          onClick={handleUpdateFundManually}
-                          className="px-4 py-2 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700"
-                        >
-                          Cập nhật
-                        </button>
-                      </div>
-                      {billingError && (
-                        <p className="text-red-500 text-sm mt-2">
-                          {billingError}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Khối lịch sử chi tiêu */}
-                  <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-                    <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200">
-                        Lịch sử chi tiêu quỹ
-                      </h3>
+              <div className="p-4 md:p-6 bg-orange-50 dark:bg-gray-700 rounded-2xl shadow-lg w-full">
+                  {/* ===== TIÊU ĐỀ VÀ NÚT BẤM MỚI ===== */}
+                  <div className="flex flex-col sm:flex-row justify-between items-center mb-6">
+                      <h2 className="text-2xl font-bold text-orange-800 dark:text-orange-200">
+                          Chia tiền & Quản lý Quỹ
+                      </h2>
                       <button
-                        onClick={() => setShowAddExpenseModal(true)}
-                        className="bg-orange-500 text-white rounded-full w-10 h-10 flex items-center justify-center shadow-md hover:bg-orange-600"
-                        title="Thêm chi tiêu mới"
+                          onClick={() => setActiveSection('costSharingHistory')}
+                          className="mt-3 sm:mt-0 px-4 py-2 bg-purple-600 text-white font-semibold rounded-xl shadow-md hover:bg-purple-700 transition-all"
                       >
-                        <i className="fas fa-plus"></i>
+                          <i className="fas fa-history mr-2"></i>
+                          Xem Lịch sử Chia tiền
                       </button>
-                    </div>
-                    <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
-                      {fundExpenses.length > 0 ? (
-                        fundExpenses.map((expense) => (
-                          <div
-                            key={expense.id}
-                            className="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg flex justify-between items-center text-sm"
-                          >
-                            <div>
-                              <p className="font-semibold text-gray-800 dark:text-gray-200">
-                                {expense.description}
-                              </p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400">
-                                {expense.spentAt
-                                  ?.toDate()
-                                  .toLocaleDateString("vi-VN")}
-                              </p>
-                            </div>
-                            <p className="font-bold text-red-600">
-                              - {expense.amount.toLocaleString("vi-VN")} VND
-                            </p>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-gray-500 dark:text-gray-400 italic text-center">
-                          Chưa có chi tiêu nào được ghi nhận.
-                        </p>
-                      )}
-                    </div>
                   </div>
-                </div>
+      
+                  {/* BỐ CỤC CHÍNH (Dọc trên điện thoại, Ngang trên laptop) */}
+                  <div className="flex flex-col lg:flex-row gap-6">
+      
+                      {/* --- CỘT BÊN TRÁI: TÍNH TOÁN & KẾT QUẢ --- */}
+                      <div className="w-full lg:w-1/2 space-y-6">
+                          {/* Khối tính toán */}
+                          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                              <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200 mb-4">
+                                  Tính ngày có mặt
+                              </h3>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                  <div>
+                                      <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Ngày bắt đầu:</label>
+                                      <input
+                                          type="date"
+                                          id="startDate"
+                                          value={startDate}
+                                          onChange={(e) => setStartDate(e.target.value)}
+                                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:bg-gray-700 dark:border-gray-600"
+                                      />
+                                  </div>
+                                  <div>
+                                      <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Ngày kết thúc:</label>
+                                      <input
+                                          type="date"
+                                          id="endDate"
+                                          value={endDate}
+                                          onChange={(e) => setEndDate(e.target.value)}
+                                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:bg-gray-700 dark:border-gray-600"
+                                      />
+                                  </div>
+                              </div>
+                              <button
+                                  onClick={calculateAttendanceDays}
+                                  className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700"
+                                  disabled={totalCost <= 0}
+                              >
+                                  Tính toán & Chia tiền
+                              </button>
+                          </div>
+      
+                          {/* Khối kết quả */}
+                          {Object.keys(individualCosts).length > 0 && (
+                              <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                                  <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200 mb-4">
+                                      Kết quả chia tiền
+                                  </h3>
+                                  <div className="space-y-4">
+                                      {/* Bảng xếp hạng số ngày có mặt */}
+                                      <div>
+                                          <h4 className="font-semibold mb-2 text-gray-700 dark:text-gray-300">Xếp hạng Số ngày có mặt:</h4>
+                                          <div className="space-y-2">
+                                              {[...allMembersToDisplay]
+                                                  .sort((a, b) => (calculatedDaysPresent[b.id] || 0) - (calculatedDaysPresent[a.id] || 0))
+                                                  .map((member, index) => (
+                                                  <div key={member.id} className="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
+                                                      <span className="font-medium flex items-center">
+                                                          <span className="mr-2 text-lg font-bold w-6 text-center">{index + 1}</span>
+                                                          {member.name}
+                                                          {pendingResidents.some(p => p.id === member.id) && (
+                                                              <span className="text-xs text-cyan-500 ml-2">({pendingResidents.find(p => p.id === member.id).type === "temporary" ? "Tạm thời" : "Chờ"})</span>
+                                                          )}
+                                                      </span>
+                                                      <span className="font-bold text-orange-700 dark:text-orange-300">{calculatedDaysPresent[member.id] || 0} ngày</span>
+                                                  </div>
+                                              ))}
+                                          </div>
+                                          <p className="border-t pt-3 mt-3 font-semibold text-gray-700 dark:text-gray-300">Tổng số ngày-người: {totalCalculatedDaysAllResidents} ngày</p>
+                                      </div>
+      
+                                      {/* Bảng xếp hạng số tiền cần đóng */}
+                                      <div>
+                                          <h4 className="font-semibold mt-4 mb-2 text-gray-700 dark:text-gray-300">Xếp hạng Số tiền cần đóng:</h4>
+                                          <div className="space-y-2">
+                                              {[...allMembersToDisplay]
+                                                  .sort((a, b) => (individualCosts[b.id]?.cost || 0) - (individualCosts[a.id]?.cost || 0))
+                                                  .map((member, index) => {
+                                                  const costData = individualCosts[member.id];
+                                                  if (!costData) return null;
+                                                  return (
+                                                      <div key={member.id} className="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
+                                                          <span className="font-medium flex items-center">
+                                                              <span className="mr-2 text-lg font-bold w-6 text-center">{index + 1}</span>
+                                                              {member.name}
+                                                          </span>
+                                                          <span className="font-bold text-red-600">{costData.cost.toLocaleString("vi-VN")} VND</span>
+                                                      </div>
+                                                  );
+                                              })}
+                                          </div>
+                                      </div>
+                                  </div>
+                              </div>
+                          )}
+                      </div>
+      
+                      {/* --- CỘT BÊN PHẢI: QUẢN LÝ QUỸ --- */}
+                      <div className="w-full lg:w-1/2 space-y-6">
+                          {/* Khối quản lý quỹ */}
+                          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                              <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200 mb-4">Quản lý quỹ phòng</h3>
+                              <div className="border-t pt-4 mt-4 space-y-2 text-gray-700 dark:text-gray-300">
+                                  <p className="font-semibold">Chi phí 1 ngày/người: {costPerDayPerPerson.toLocaleString("vi-VN", { maximumFractionDigits: 0 })} VND</p>
+                                  <p className="font-bold text-lg">Quỹ phòng còn lại:
+                                      <span className={`font-bold ${remainingFund >= 0 ? "text-green-700 dark:text-green-300" : "text-red-700 dark:text-red-300"}`}>
+                                          {' '}{remainingFund.toLocaleString("vi-VN")} VND
+                                      </span>
+                                  </p>
+                              </div>
+                              <div className="mt-6 pt-4 border-t border-dashed border-orange-300 dark:border-gray-600">
+                                  <h4 className="text-lg font-bold text-orange-800 dark:text-orange-200 mb-2">Cập nhật lại số tiền quỹ</h4>
+                                  <div className="flex items-center space-x-2">
+                                      <input
+                                          type="number"
+                                          value={fundInputValue}
+                                          onChange={(e) => setFundInputValue(e.target.value)}
+                                          className="flex-1 shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-gray-700"
+                                          placeholder="Nhập số tiền quỹ mới..."
+                                      />
+                                      <button
+                                          onClick={handleUpdateFundManually}
+                                          className="px-4 py-2 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700"
+                                      >
+                                          Cập nhật
+                                      </button>
+                                  </div>
+                                  {billingError && <p className="text-red-500 text-sm mt-2">{billingError}</p>}
+                              </div>
+                          </div>
+      
+                          {/* Khối lịch sử chi tiêu */}
+                          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                              <div className="flex justify-between items-center mb-4">
+                                  <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200">Lịch sử chi tiêu quỹ</h3>
+                                  <button
+                                      onClick={() => setShowAddExpenseModal(true)}
+                                      className="bg-orange-500 text-white rounded-full w-10 h-10 flex items-center justify-center shadow-md hover:bg-orange-600"
+                                      title="Thêm chi tiêu mới"
+                                  >
+                                      <i className="fas fa-plus"></i>
+                                  </button>
+                              </div>
+                              <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                                  {fundExpenses.length > 0 ? (
+                                      fundExpenses.map((expense) => (
+                                          <div key={expense.id} className="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg flex justify-between items-center text-sm">
+                                              <div>
+                                                  <p className="font-semibold text-gray-800 dark:text-gray-200">{expense.description}</p>
+                                                  <p className="text-xs text-gray-500 dark:text-gray-400">{expense.spentAt?.toDate().toLocaleDateString("vi-VN")}</p>
+                                              </div>
+                                              <p className="font-bold text-red-600">- {expense.amount.toLocaleString("vi-VN")} VND</p>
+                                          </div>
+                                      ))
+                                  ) : (
+                                      <p className="text-gray-500 dark:text-gray-400 italic text-center">Chưa có chi tiêu nào được ghi nhận.</p>
+                                  )}
+                              </div>
+                          </div>
+                      </div>
+                  </div>
               </div>
-            </div>
           );
-        } //Case lịch sử tính tiền điện nước
+      }        //Case lịch sử tính tiền điện nước
         case "billHistory":
           return (
             <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
@@ -9931,42 +9865,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                         Báo Cáo & Thống Kê
                       </h3>
                     )}
-                    <button
-                      className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
-                        isSidebarCollapsed && "justify-center"
-                      } ${
-                        activeSection === "billHistory"
-                          ? "bg-blue-600 text-white shadow-md"
-                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      }`}
-                      onClick={() => {
-                        setActiveSection("billHistory");
-                        setIsSidebarOpen(false);
-                      }}
-                    >
-                      <i className="fas fa-history"></i>
-                      {!isSidebarCollapsed && (
-                        <span className="ml-3">Lịch sử hóa đơn</span>
-                      )}
-                    </button>
-                    <button
-                      className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
-                        isSidebarCollapsed && "justify-center"
-                      } ${
-                        activeSection === "costSharingHistory"
-                          ? "bg-blue-600 text-white shadow-md"
-                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      }`}
-                      onClick={() => {
-                        setActiveSection("costSharingHistory");
-                        setIsSidebarOpen(false);
-                      }}
-                    >
-                      <i className="fas fa-receipt"></i>
-                      {!isSidebarCollapsed && (
-                        <span className="ml-3">Lịch sử chia tiền</span>
-                      )}
-                    </button>
                     <button
                       className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
                         isSidebarCollapsed && "justify-center"
