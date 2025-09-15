@@ -11524,21 +11524,73 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
             className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
               <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
                 Lịch sử hóa đơn
               </h2>
+              <button
+                onClick={() => setShowBillHistoryModal(false)}
+                className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"
+              >
+                <i className="fas fa-times text-xl"></i>
+              </button>
             </div>
             <div className="flex-1 p-6 overflow-y-auto">
-              {/* Dán nội dung của case 'billHistory' cũ vào đây */}
               {billHistory.length === 0 ? (
                 <p className="text-gray-500 italic text-center">
                   Chưa có lịch sử hóa đơn nào.
                 </p>
               ) : (
-                <div className="overflow-x-auto rounded-xl border">
+                <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
                   <table className="min-w-full bg-white dark:bg-gray-800">
-                    {/* ... (Phần thead và tbody của bảng lịch sử hóa đơn) ... */}
+                    <thead>
+                      <tr className="bg-gray-100 dark:bg-gray-700">
+                        <th className="py-3 px-4 text-left text-sm font-semibold">
+                          Tháng
+                        </th>
+                        <th className="py-3 px-4 text-right text-sm font-semibold">
+                          Tổng tiền (VND)
+                        </th>
+                        <th className="py-3 px-4 text-center text-sm font-semibold">
+                          Trạng thái
+                        </th>
+                        <th className="py-3 px-4 text-center text-sm font-semibold">
+                          Hành động
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-gray-700 dark:text-gray-300">
+                      {billHistory.map((bill) => (
+                        <tr
+                          key={bill.id}
+                          className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+                        >
+                          <td className="py-3 px-4">{bill.billingMonth}</td>
+                          <td className="py-3 px-4 text-right font-semibold">
+                            {bill.totalCost.toLocaleString("vi-VN")}
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span
+                              className={`px-3 py-1 text-xs font-bold rounded-full ${
+                                bill.isPaid
+                                  ? "bg-green-100 text-green-700"
+                                  : "bg-red-100 text-red-700"
+                              }`}
+                            >
+                              {bill.isPaid ? "Đã trả" : "Chưa trả"}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <button
+                              onClick={() => setSelectedBillDetails(bill)}
+                              className="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600"
+                            >
+                              Xem chi tiết
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
                   </table>
                 </div>
               )}
@@ -11546,7 +11598,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
             <div className="p-6 border-t border-gray-200 dark:border-gray-700">
               <button
                 onClick={() => setShowBillHistoryModal(false)}
-                className="w-full px-6 py-3 bg-gray-500 text-white rounded-xl"
+                className="w-full px-6 py-3 bg-gray-500 text-white font-semibold rounded-xl hover:bg-gray-600"
               >
                 Đóng
               </button>
@@ -11554,7 +11606,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
           </div>
         </div>
       )}
-
       {/* =================================================== */}
       {/* ===== MODAL LỊCH SỬ CHIA TIỀN ===== */}
       {/* =================================================== */}
@@ -11567,21 +11618,84 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
             className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
               <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
                 Lịch sử chia tiền
               </h2>
+              <button
+                onClick={() => setShowCostSharingHistoryModal(false)}
+                className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"
+              >
+                <i className="fas fa-times text-xl"></i>
+              </button>
             </div>
             <div className="flex-1 p-6 overflow-y-auto">
-              {/* Dán nội dung của case 'costSharingHistory' cũ vào đây */}
               {costSharingHistory.length === 0 ? (
                 <p className="text-gray-500 italic text-center">
                   Chưa có lịch sử chia tiền nào.
                 </p>
               ) : (
-                <div className="overflow-x-auto rounded-xl border">
+                <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
                   <table className="min-w-full bg-white dark:bg-gray-800">
-                    {/* ... (Phần thead và tbody của bảng lịch sử chia tiền) ... */}
+                    <thead>
+                      <tr className="bg-gray-100 dark:bg-gray-700">
+                        <th className="py-3 px-4 text-left text-sm font-semibold">
+                          Kỳ
+                        </th>
+                        <th className="py-3 px-4 text-right text-sm font-semibold">
+                          Tổng ngày-người
+                        </th>
+                        <th className="py-3 px-4 text-right text-sm font-semibold">
+                          Chi phí/ngày (VND)
+                        </th>
+                        <th className="py-3 px-4 text-right text-sm font-semibold">
+                          Quỹ còn lại (VND)
+                        </th>
+                        <th className="py-3 px-4 text-center text-sm font-semibold">
+                          Hành động
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-gray-700 dark:text-gray-300">
+                      {costSharingHistory.map((record) => (
+                        <tr
+                          key={record.id}
+                          className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+                        >
+                          <td className="py-3 px-4">
+                            {record.periodStart} đến {record.periodEnd}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            {record.totalCalculatedDaysAllResidents}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            {record.costPerDayPerPerson.toLocaleString(
+                              "vi-VN",
+                              { maximumFractionDigits: 0 }
+                            )}
+                          </td>
+                          <td
+                            className={`py-3 px-4 text-right font-semibold ${
+                              record.remainingFund >= 0
+                                ? "text-green-600"
+                                : "text-red-600"
+                            }`}
+                          >
+                            {record.remainingFund.toLocaleString("vi-VN")}
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <button
+                              onClick={() =>
+                                setSelectedCostSharingDetails(record)
+                              }
+                              className="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600"
+                            >
+                              Xem chi tiết
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
                   </table>
                 </div>
               )}
@@ -11589,7 +11703,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
             <div className="p-6 border-t border-gray-200 dark:border-gray-700">
               <button
                 onClick={() => setShowCostSharingHistoryModal(false)}
-                className="w-full px-6 py-3 bg-gray-500 text-white rounded-xl"
+                className="w-full px-6 py-3 bg-gray-500 text-white font-semibold rounded-xl hover:bg-gray-600"
               >
                 Đóng
               </button>
@@ -11597,7 +11711,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
           </div>
         </div>
       )}
-
       {/* ===== MODAL CHỈNH SỬA THÔNG TIN CÁ NHÂN CỦA TIỀN BỐI ===== */}
       {editingFormerResident && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
