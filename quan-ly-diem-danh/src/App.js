@@ -4985,36 +4985,58 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
           // KẾT THÚC: CHUẨN BỊ DỮ LIỆU CHO BIỂU ĐỒ
 
           // --- Chuẩn bị dữ liệu cho Biểu đồ tròn ---
-          const activeResidents = residents.filter(res => res.isActive);
-          const courseDistribution = activeResidents.reduce((acc, resident) => {
-              const linkedUser = allUsersData.find(user => user.linkedResidentId === resident.id);
-              if (linkedUser && linkedUser.studentId) {
-                  let courseNumber;
-                  if (linkedUser.studentId.includes('.')) {
-                      courseNumber = linkedUser.studentId.split('.')[0];
-                  } else {
-                      courseNumber = linkedUser.studentId.substring(0, 2);
-                  }
-                  // ===== BỎ CHỮ 'K' Ở ĐÂY =====
-                  const course = courseNumber; // Chỉ lấy số
-                  acc[course] = (acc[course] || 0) + 1;
+          // 1. Tạo danh sách tổng hợp tất cả thành viên đang có mặt
+          const allCurrentMembers = [
+            ...residents.filter(
+              (res) =>
+                res.status === "active" || res.status === "pending_departure"
+            ),
+            ...pendingResidents,
+          ];
+
+          // 2. Dùng danh sách tổng hợp để tính toán phân bổ khóa học
+          const courseDistribution = allCurrentMembers.reduce((acc, member) => {
+            // Tìm user được liên kết (nếu có)
+            const linkedUser = allUsersData.find(
+              (user) =>
+                (user.linkedResidentId === member.id &&
+                  residents.some((r) => r.id === member.id)) ||
+                (user.linkedPendingId === member.id &&
+                  pendingResidents.some((p) => p.id === member.id)) // Giả sử có linkedPendingId
+            );
+
+            // Ưu tiên MSSV từ user, nếu không có thì thử lấy từ chính member (nếu có)
+            const studentId = linkedUser?.studentId || member.studentId;
+
+            if (studentId) {
+              let courseNumber;
+              if (studentId.includes(".")) {
+                courseNumber = studentId.split(".")[0];
+              } else {
+                courseNumber = studentId.substring(0, 2);
               }
-              return acc;
+              const course = courseNumber;
+              acc[course] = (acc[course] || 0) + 1;
+            }
+            return acc;
           }, {});
+          // ===== KẾT THÚC SỬA LỖI LOGIC =====
 
           const pieChartData = Object.keys(courseDistribution).map((key) => ({
             name: key,
             value: courseDistribution[key],
           }));
 
-          // ===== BẮT ĐẦU THAY ĐỔI =====
-          // 1. Tạo một bản đồ màu sắc (color map) cho từng khóa cụ thể
           const courseColorMap = {
-              '47': '#0088FE', '48': '#00C49F', '49': '#FFBB28', '50': '#FF8042',
-              '51': '#AF19FF', '52': '#FF4560', '53': '#3366CC',
+            47: "#0088FE",
+            48: "#00C49F",
+            49: "#FFBB28",
+            50: "#FF8042",
+            51: "#AF19FF",
+            52: "#FF4560",
+            53: "#3366CC",
           };
-
-          const defaultColor = "#B0B0B0"; // Màu xám mặc định cho các khóa không có trong map
+          const defaultColor = "#B0B0B0";
           // ===== KẾT THÚC THAY ĐỔI =====
 
           return (
@@ -5028,10 +5050,10 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md flex flex-col items-center justify-center">
                   <i className="fas fa-users text-4xl text-blue-500 mb-3"></i>
                   <p className="text-lg text-gray-700 dark:text-gray-300">
-                    Người ở hiện tại
+                    Tổng người ở
                   </p>
                   <p className="text-3xl font-bold text-blue-600 dark:text-blue-300">
-                    {residents.filter((res) => res.isActive).length} / 8
+                    {allCurrentMembers.length}
                   </p>
                 </div>
 
@@ -10442,7 +10464,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                           id="passwordRegister"
                           placeholder="Mật khẩu (ít nhất 6 ký tự)"
                           value={password}
-                          onChange={(e) => setPassword(e.targe.value)}
+                          onChange={(e) => setPassword(e.target.value)}
                           className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
                         />
                       </div>
