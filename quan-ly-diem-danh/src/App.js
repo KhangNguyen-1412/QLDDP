@@ -7853,51 +7853,86 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
           );
         }
         // Thêm case này vào hàm renderSection
-        case "roomLayout": {
-          const beds = Array.from({ length: 8 }, (_, i) => {
-            const bedId = String(i + 1);
-            const resident = residents.find((r) => r.bedId === bedId);
-            return {
-              id: bedId,
-              name: resident ? resident.name : "Giường trống",
-              isOccupied: !!resident,
-            };
-          });
+// Thêm case này vào hàm renderSection cho cả admin và member
+case "roomLayout": {
+  // 1. Chuẩn bị dữ liệu giường ngủ
+  // Tạo một mảng 8 giường, sau đó tìm xem ai đang ở giường nào.
+  const beds = Array.from({ length: 8 }, (_, i) => {
+    const bedId = String(i + 1);
+    const resident = residents.find((r) => r.bedId === bedId);
+    return {
+      id: bedId,
+      name: resident ? resident.name : "Giường trống",
+      isOccupied: !!resident,
+    };
+  });
 
-          return (
-            <div className="p-6 bg-gray-100 dark:bg-gray-900 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-6 text-center">
-                Sơ đồ phòng ngủ
-              </h2>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                {beds.map((bed) => (
-                  <div key={bed.id} className="relative group">
-                    <div
-                      className={`aspect-[3/4] border-4 rounded-lg flex items-center justify-center p-4 transition-all duration-300 ${
-                        bed.isOccupied
-                          ? "border-blue-500 bg-blue-100 dark:bg-blue-900"
-                          : "border-gray-400 bg-gray-200 dark:bg-gray-700"
-                      }`}
-                    >
-                      <span className="font-bold text-2xl text-gray-500 dark:text-gray-400">
-                        {bed.id}
-                      </span>
-                    </div>
-                    {/* Tooltip hiển thị tên */}
-                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 px-3 py-1 bg-gray-800 text-white text-sm rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity duration-300 pointer-events-none whitespace-nowrap">
-                      {bed.name}
-                      <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-gray-800"></div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
-                <p>* Di chuột qua từng giường để xem thông tin.</p>
-              </div>
-            </div>
-          );
-        }
-        default:
+  // Chia thành 2 bên, mỗi bên 2 giường tầng
+  const leftSideBeds = beds.slice(0, 4); // Giường 1, 2, 3, 4
+  const rightSideBeds = beds.slice(4, 8); // Giường 5, 6, 7, 8
+
+  // Hàm render một giường tầng (gồm 2 giường đơn)
+  const BunkBed = ({ topBed, bottomBed }) => (
+    <div className="border-4 border-gray-500 dark:border-gray-400 rounded-xl p-2 space-y-2 bg-gray-300 dark:bg-gray-600 w-48 h-64 flex flex-col justify-around">
+      {/* Giường trên */}
+      <div className={`relative rounded-lg h-1/2 flex items-center justify-center text-center p-2 transition-colors ${
+          topBed.isOccupied
+            ? "bg-blue-200 dark:bg-blue-800 border-2 border-blue-500"
+            : "bg-gray-100 dark:bg-gray-500 border-2 border-dashed border-gray-400"
+        }`}>
+        <span className="font-bold text-gray-800 dark:text-gray-100">{topBed.name}</span>
+        <span className="absolute top-1 right-1 bg-black bg-opacity-50 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-mono">{topBed.id}</span>
+      </div>
+      {/* Giường dưới */}
+      <div className={`relative rounded-lg h-1/2 flex items-center justify-center text-center p-2 transition-colors ${
+          bottomBed.isOccupied
+            ? "bg-blue-200 dark:bg-blue-800 border-2 border-blue-500"
+            : "bg-gray-100 dark:bg-gray-500 border-2 border-dashed border-gray-400"
+        }`}>
+        <span className="font-bold text-gray-800 dark:text-gray-100">{bottomBed.name}</span>
+        <span className="absolute top-1 right-1 bg-black bg-opacity-50 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-mono">{bottomBed.id}</span>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="p-6 bg-gray-100 dark:bg-gray-900 rounded-2xl shadow-lg max-w-5xl mx-auto">
+      <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-8 text-center">
+        Sơ đồ phòng ngủ 🛌
+      </h2>
+      <div className="flex justify-around items-center">
+        {/* Bên trái phòng */}
+        <div className="flex flex-col gap-8">
+          <BunkBed topBed={leftSideBeds[0]} bottomBed={leftSideBeds[1]} /> {/* Giường tầng 1-2 */}
+          <BunkBed topBed={leftSideBeds[2]} bottomBed={leftSideBeds[3]} /> {/* Giường tầng 3-4 */}
+        </div>
+
+        {/* Lối đi giữa */}
+        <div className="text-center text-gray-400 dark:text-gray-500 font-semibold">
+            <p>Lối đi</p>
+            <i className="fas fa-arrows-alt-h text-4xl my-4"></i>
+            <p className="font-mono text-sm">[CỬA RA VÀO]</p>
+        </div>
+
+        {/* Bên phải phòng */}
+        <div className="flex flex-col gap-8">
+          <BunkBed topBed={rightSideBeds[0]} bottomBed={rightSideBeds[1]} /> {/* Giường tầng 5-6 */}
+          <BunkBed topBed={rightSideBeds[2]} bottomBed={rightSideBeds[3]} /> {/* Giường tầng 7-8 */}
+        </div>
+      </div>
+       <div className="mt-8 text-center text-sm text-gray-600 dark:text-gray-400">
+          <p>
+            <span className="inline-block w-4 h-4 bg-blue-200 border-2 border-blue-500 rounded mr-2"></span>
+            Giường đã có người ở
+          </p>
+           <p className="mt-2">
+            <span className="inline-block w-4 h-4 bg-gray-100 border-2 border-dashed border-gray-400 rounded mr-2"></span>
+            Giường trống
+          </p>
+      </div>
+    </div>
+  );
+}        default:
           return (
             <div className="text-center p-8 bg-gray-100 dark:bg-gray-700 rounded-xl shadow-inner">
               <p className="text-xl text-gray-700 dark:text-gray-300 font-semibold mb-4">
@@ -9179,62 +9214,87 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
             );
           }
         // Thêm case này vào hàm renderSection
-        case "roomLayout": {
-          const beds = Array.from({ length: 8 }, (_, i) => {
-            const bedId = String(i + 1);
-            const resident = residents.find((r) => r.bedId === bedId);
-            return {
-              id: bedId,
-              name: resident ? resident.name : "Giường trống",
-              isOccupied: !!resident,
-            };
-          });
+// Thêm case này vào hàm renderSection cho cả admin và member
+case "roomLayout": {
+  // 1. Chuẩn bị dữ liệu giường ngủ
+  // Tạo một mảng 8 giường, sau đó tìm xem ai đang ở giường nào.
+  const beds = Array.from({ length: 8 }, (_, i) => {
+    const bedId = String(i + 1);
+    const resident = residents.find((r) => r.bedId === bedId);
+    return {
+      id: bedId,
+      name: resident ? resident.name : "Giường trống",
+      isOccupied: !!resident,
+    };
+  });
 
-          return (
-            <div className="p-6 bg-gray-100 dark:bg-gray-900 rounded-2xl shadow-lg max-w-5xl mx-auto">
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-6 text-center">
-                Sơ đồ phòng ngủ
-              </h2>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                {beds.map((bed) => (
-                  <div key={bed.id} className="relative group">
-                    <div
-                      className={`aspect-[3/4] border-4 rounded-lg flex items-center justify-center p-4 transition-all duration-300 ${
-                        bed.isOccupied
-                          ? "border-blue-500 bg-blue-100 dark:bg-blue-900"
-                          : "border-gray-400 bg-gray-200 dark:bg-gray-700"
-                      }`}
-                    >
-                      <span className="font-bold text-2xl text-gray-500 dark:text-gray-400">
-                        {bed.id}
-                      </span>
-                    </div>
-                    {/* Tooltip hiển thị tên */}
-                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 px-3 py-1 bg-gray-800 text-white text-sm rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity duration-300 pointer-events-none whitespace-nowrap">
-                      {bed.name}
-                      <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-gray-800"></div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
-                <p>* Di chuột qua từng giường để xem thông tin.</p>
-              </div>
-            </div>
-          );
-        }
-        default:
-          return (
-            <div className="text-center p-8 bg-gray-100 dark:bg-gray-700 rounded-xl shadow-inner">
-              <p className="text-xl text-gray-700 dark:text-gray-300 font-semibold mb-4">
-                Chào mừng Thành viên! Vui lòng chọn một mục từ thanh điều hướng.
-              </p>
-            </div>
-          );
-      }
-    }
+  // Chia thành 2 bên, mỗi bên 2 giường tầng
+  const leftSideBeds = beds.slice(0, 4); // Giường 1, 2, 3, 4
+  const rightSideBeds = beds.slice(4, 8); // Giường 5, 6, 7, 8
 
-    // Trường hợp không có vai trò hoặc không xác định (hiển thị khi chưa đăng nhập)
+  // Hàm render một giường tầng (gồm 2 giường đơn)
+  const BunkBed = ({ topBed, bottomBed }) => (
+    <div className="border-4 border-gray-500 dark:border-gray-400 rounded-xl p-2 space-y-2 bg-gray-300 dark:bg-gray-600 w-48 h-64 flex flex-col justify-around">
+      {/* Giường trên */}
+      <div className={`relative rounded-lg h-1/2 flex items-center justify-center text-center p-2 transition-colors ${
+          topBed.isOccupied
+            ? "bg-blue-200 dark:bg-blue-800 border-2 border-blue-500"
+            : "bg-gray-100 dark:bg-gray-500 border-2 border-dashed border-gray-400"
+        }`}>
+        <span className="font-bold text-gray-800 dark:text-gray-100">{topBed.name}</span>
+        <span className="absolute top-1 right-1 bg-black bg-opacity-50 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-mono">{topBed.id}</span>
+      </div>
+      {/* Giường dưới */}
+      <div className={`relative rounded-lg h-1/2 flex items-center justify-center text-center p-2 transition-colors ${
+          bottomBed.isOccupied
+            ? "bg-blue-200 dark:bg-blue-800 border-2 border-blue-500"
+            : "bg-gray-100 dark:bg-gray-500 border-2 border-dashed border-gray-400"
+        }`}>
+        <span className="font-bold text-gray-800 dark:text-gray-100">{bottomBed.name}</span>
+        <span className="absolute top-1 right-1 bg-black bg-opacity-50 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-mono">{bottomBed.id}</span>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="p-6 bg-gray-100 dark:bg-gray-900 rounded-2xl shadow-lg max-w-5xl mx-auto">
+      <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-8 text-center">
+        Sơ đồ phòng ngủ 🛌
+      </h2>
+      <div className="flex justify-around items-center">
+        {/* Bên trái phòng */}
+        <div className="flex flex-col gap-8">
+          <BunkBed topBed={leftSideBeds[0]} bottomBed={leftSideBeds[1]} /> {/* Giường tầng 1-2 */}
+          <BunkBed topBed={leftSideBeds[2]} bottomBed={leftSideBeds[3]} /> {/* Giường tầng 3-4 */}
+        </div>
+
+        {/* Lối đi giữa */}
+        <div className="text-center text-gray-400 dark:text-gray-500 font-semibold">
+            <p>Lối đi</p>
+            <i className="fas fa-arrows-alt-h text-4xl my-4"></i>
+            <p className="font-mono text-sm">[CỬA RA VÀO]</p>
+        </div>
+
+        {/* Bên phải phòng */}
+        <div className="flex flex-col gap-8">
+          <BunkBed topBed={rightSideBeds[0]} bottomBed={rightSideBeds[1]} /> {/* Giường tầng 5-6 */}
+          <BunkBed topBed={rightSideBeds[2]} bottomBed={rightSideBeds[3]} /> {/* Giường tầng 7-8 */}
+        </div>
+      </div>
+       <div className="mt-8 text-center text-sm text-gray-600 dark:text-gray-400">
+          <p>
+            <span className="inline-block w-4 h-4 bg-blue-200 border-2 border-blue-500 rounded mr-2"></span>
+            Giường đã có người ở
+          </p>
+           <p className="mt-2">
+            <span className="inline-block w-4 h-4 bg-gray-100 border-2 border-dashed border-gray-400 rounded mr-2"></span>
+            Giường trống
+          </p>
+      </div>
+    </div>
+  );
+}    
+// Trường hợp không có vai trò hoặc không xác định (hiển thị khi chưa đăng nhập)
     return (
       <div className="text-center p-8 bg-gray-100 dark:bg-gray-700 rounded-xl shadow-inner">
         <p className="text-xl text-gray-700 dark:text-gray-300 font-semibold mb-4">
@@ -9684,23 +9744,23 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                       )}
                     </button>
                     <button
-                      className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
-                        isSidebarCollapsed && "justify-center"
-                      } ${
-                        activeSection === "roomLayout"
-                          ? "bg-blue-600 text-white shadow-md"
-                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      }`}
-                      onClick={() => {
-                        setActiveSection("roomLayout");
-                        setIsSidebarOpen(false);
-                      }}
-                    >
-                      <i className="fas fa-bed"></i>
-                      {!isSidebarCollapsed && (
-                        <span className="ml-3">Sơ đồ phòng</span>
-                      )}
-                    </button>
+  className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+    isSidebarCollapsed && "justify-center"
+  } ${
+    activeSection === "roomLayout"
+      ? "bg-blue-600 text-white shadow-md"
+      : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+  }`}
+  onClick={() => {
+    setActiveSection("roomLayout");
+    setIsSidebarOpen(false);
+  }}
+>
+  <i className="fas fa-bed"></i>
+  {!isSidebarCollapsed && (
+    <span className="ml-3">Sơ đồ phòng</span>
+  )}
+</button>
                     <button
                       className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
                         isSidebarCollapsed && "justify-center"
@@ -9927,6 +9987,24 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                         <span className="ml-3">Thông tin phòng chung</span>
                       )}
                     </button>
+                    <button
+  className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+    isSidebarCollapsed && "justify-center"
+  } ${
+    activeSection === "roomLayout"
+      ? "bg-blue-600 text-white shadow-md"
+      : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+  }`}
+  onClick={() => {
+    setActiveSection("roomLayout");
+    setIsSidebarOpen(false);
+  }}
+>
+  <i className="fas fa-bed"></i>
+  {!isSidebarCollapsed && (
+    <span className="ml-3">Sơ đồ phòng</span>
+  )}
+</button>
                     <button
                       className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
                         isSidebarCollapsed && "justify-center"
