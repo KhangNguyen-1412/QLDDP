@@ -6644,35 +6644,80 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                     onChange={(e) => setSearchTermFormer(e.target.value)}
                     className="w-full p-2 mb-4 border rounded-lg dark:bg-gray-800 dark:border-gray-600"
                   />
-                  <div className="space-y-4 max-h-[65vh] overflow-y-auto pr-2">
+                  <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
                     {filteredFormerResidents.length > 0 ? (
                       filteredFormerResidents.map((former) => (
                         <div
                           key={former.id}
-                          className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow flex items-center"
+                          className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 flex flex-col justify-between"
                         >
-                          {former.photoURL ? (
-                            <img
-                              src={former.photoURL}
-                              alt={former.name}
-                              className="w-12 h-12 rounded-full object-cover mr-4"
-                            />
-                          ) : (
-                            <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-xl">
-                              <i className="fas fa-user-graduate"></i>
+                          {/* Header Thẻ */}
+                          <div className="flex items-start mb-4">
+                            <div className="relative">
+                              {former.photoURL ? (
+                                <img
+                                  src={former.photoURL}
+                                  alt="Avatar"
+                                  className="w-16 h-16 rounded-full object-cover border-2 border-gray-200 dark:border-gray-600"
+                                />
+                              ) : (
+                                <div className="w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-3xl text-gray-400">
+                                  <i className="fas fa-user-graduate"></i>
+                                </div>
+                              )}
+                              <span
+                                className="absolute bottom-0 right-0 block h-4 w-4 rounded-full border-2 border-white dark:border-gray-800 bg-gray-400"
+                                title="Đã rời đi"
+                              ></span>
                             </div>
-                          )}
-                          <div>
-                            <p className="font-bold">{former.name}</p>
-                            <p className="text-sm text-gray-500">
-                              MSSV: {former.studentId || "N/A"}
-                            </p>
+                            <div className="ml-4">
+                              <p className="font-bold text-lg text-gray-900 dark:text-white break-words">
+                                {former.name}
+                              </p>
+                              <p className="text-sm text-gray-500 dark:text-gray-400">
+                                Tiền bối
+                              </p>
+                            </div>
+                          </div>
+                          {/* Thân Thẻ */}
+                          <div className="space-y-3 text-sm">
+                            <div className="flex items-center text-gray-700 dark:text-gray-300">
+                              <i className="fas fa-id-badge w-5 text-center mr-2 text-purple-500"></i>
+                              <span>{former.studentId || "N/A"}</span>
+                            </div>
+                            <div className="flex items-center text-gray-700 dark:text-gray-300">
+                              <i className="fas fa-envelope w-5 text-center mr-2 text-purple-500"></i>
+                              <span>{former.email || "N/A"}</span>
+                            </div>
+                            <div className="flex items-center text-gray-700 dark:text-gray-300">
+                              <i className="fas fa-phone w-5 text-center mr-2 text-purple-500"></i>
+                              <span>{former.phoneNumber || "N/A"}</span>
+                            </div>
+                          </div>
+                          {/* Footer Thẻ */}
+                          <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end space-x-2">
+                            <button
+                              onClick={() => handleEditFormerResident(former)}
+                              className="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg shadow-sm hover:bg-blue-600"
+                              title="Sửa thông tin"
+                            >
+                              <i className="fas fa-edit"></i>
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleDeleteFormerResident(former.id)
+                              }
+                              className="px-3 py-1 bg-red-500 text-white text-xs rounded-lg shadow-sm hover:bg-red-600"
+                              title="Xóa"
+                            >
+                              <i className="fas fa-trash"></i>
+                            </button>
                           </div>
                         </div>
                       ))
                     ) : (
                       <p className="text-center italic text-gray-500">
-                        Chưa có thông tin tiền bối.
+                        Không tìm thấy tiền bối nào.
                       </p>
                     )}
                   </div>
