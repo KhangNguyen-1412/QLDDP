@@ -5477,391 +5477,410 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
           );
         }
         //Case tính tiền điện nước
-        case "billing":
+        case "billing": {
           return (
-            // Container chính cho toàn bộ mục, dùng space-y để tạo khoảng cách giữa các khối
-            <div className="space-y-8">
-              {/* ===== KHỐI 1: TÍNH TIỀN ĐIỆN NƯỚC ===== */}
-              <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-                <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">
-                  Tính tiền điện nước
-                </h2>
+            <div className="p-4 md:p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg w-full">
+              <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-6">
+                Quản lý Hóa đơn & Đơn giá
+              </h2>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                  {/* Electricity */}
-                  <div>
-                    <label
-                      htmlFor="lastElectricityReading"
-                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                    >
-                      Chỉ số điện cuối cùng (KW):
-                    </label>
-                    <input
-                      type="number"
-                      id="lastElectricityReading"
-                      value={lastElectricityReading}
-                      readOnly
-                      className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 bg-gray-100 dark:bg-gray-600 cursor-not-allowed"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="currentElectricityReading"
-                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                    >
-                      Chỉ số điện hiện tại (KW):
-                    </label>
-                    <input
-                      type="number"
-                      id="currentElectricityReading"
-                      value={currentElectricityReading}
-                      onChange={(e) => {
-                        setCurrentElectricityReading(e.target.value);
-                        setBillingError("");
-                      }}
-                      className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 bg-white dark:bg-gray-700"
-                      placeholder="Nhập chỉ số hiện tại"
-                    />
-                  </div>
-
-                  {/* Water */}
-                  <div>
-                    <label
-                      htmlFor="lastWaterReading"
-                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                    >
-                      Chỉ số nước cuối cùng (m³):
-                    </label>
-                    <input
-                      type="number"
-                      id="lastWaterReading"
-                      value={lastWaterReading}
-                      readOnly
-                      className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 bg-gray-100 dark:bg-gray-600 cursor-not-allowed"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="currentWaterReading"
-                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                    >
-                      Chỉ số nước hiện tại (m³):
-                    </label>
-                    <input
-                      type="number"
-                      id="currentWaterReading"
-                      value={currentWaterReading}
-                      onChange={(e) => {
-                        setCurrentWaterReading(e.target.value);
-                        setBillingError("");
-                      }}
-                      className="shadow-sm appearance-none border rounded-xl w-full py-2 px-4 bg-white dark:bg-gray-700"
-                      placeholder="Nhập chỉ số hiện tại"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  onClick={calculateBill}
-                  className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all"
-                >
-                  <i className="fas fa-calculator mr-2"></i> Tính toán chi phí
-                </button>
-
-                {totalCost > 0 && (
-                  <div className="mt-6 bg-blue-100 dark:bg-gray-800 p-4 rounded-xl text-lg font-semibold">
-                    <p>
-                      Tiền điện:{" "}
-                      <span className="text-blue-700 dark:text-blue-300">
-                        {electricityCost.toLocaleString("vi-VN")} VND
-                      </span>
-                    </p>
-                    <p>
-                      Tiền nước:{" "}
-                      <span className="text-blue-700 dark:text-blue-300">
-                        {waterCost.toLocaleString("vi-VN")} VND
-                      </span>
-                    </p>
-                    <p className="border-t pt-3 mt-3 text-xl font-bold">
-                      Tổng cộng:{" "}
-                      <span className="text-blue-800 dark:text-blue-200">
-                        {totalCost.toLocaleString("vi-VN")} VND
-                      </span>
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* ===== KHỐI 2: CÀI ĐẶT GIÁ ĐIỆN & NƯỚC ===== */}
-              <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-                <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">
-                  Cài đặt giá điện & nước
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-                  <div>
-                    <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                      Giá điện hiện tại (VND/KW):
-                    </label>
-                    <input
-                      type="text"
-                      value={`${electricityRate.toLocaleString("vi-VN")} VND`}
-                      readOnly
-                      className="shadow-sm border rounded-xl w-full py-2 px-4 bg-gray-100 dark:bg-gray-600 cursor-not-allowed"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
-                      Giá nước hiện tại (VND/m³):
-                    </label>
-                    <input
-                      type="text"
-                      value={`${waterRate.toLocaleString("vi-VN")} VND`}
-                      readOnly
-                      className="shadow-sm border rounded-xl w-full py-2 px-4 bg-gray-100 dark:bg-gray-600 cursor-not-allowed"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="newElecRate"
-                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                    >
-                      Nhập giá điện mới:
-                    </label>
-                    <input
-                      type="number"
-                      id="newElecRate"
-                      value={newElectricityRate}
-                      onChange={(e) => setNewElectricityRate(e.target.value)}
-                      className="shadow-sm border rounded-xl w-full py-2 px-4 bg-white dark:bg-gray-700"
-                      placeholder="Ví dụ: 2600"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="newWatRate"
-                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                    >
-                      Nhập giá nước mới:
-                    </label>
-                    <input
-                      type="number"
-                      id="newWatRate"
-                      value={newWaterRate}
-                      onChange={(e) => setNewWaterRate(e.target.value)}
-                      className="shadow-sm border rounded-xl w-full py-2 px-4 bg-white dark:bg-gray-700"
-                      placeholder="Ví dụ: 4500"
-                    />
-                  </div>
-                </div>
-                {billingError && (
-                  <p className="text-red-500 text-sm text-center mb-4">
-                    {billingError}
-                  </p>
-                )}
-                <button
-                  onClick={handleUpdateRates}
-                  className="w-full px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all"
-                >
-                  Lưu thay đổi giá
-                </button>
-              </div>
-              {/* ===== KHỐI 3: CÀI ĐẶT MÃ QR THANH TOÁN ===== */}
-              <div className="p-6 bg-yellow-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
-                <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-5">
-                  Cài đặt QR Thanh toán
-                </h2>
-                <div className="flex flex-col md:flex-row items-center gap-6">
-                  {/* Phần xem trước QR */}
-                  <div className="flex-shrink-0">
-                    <p className="text-center text-sm font-semibold mb-2">
-                      Mã QR hiện tại:
-                    </p>
-                    {qrCodeUrl ? (
-                      <img
-                        src={qrCodeUrl}
-                        alt="Mã QR thanh toán"
-                        className="w-40 h-40 object-contain border rounded-lg bg-white"
+              {/* BỐ CỤC CHÍNH (Dọc trên điện thoại, Ngang trên laptop) */}
+              <div className="flex flex-col lg:flex-row gap-6">
+                {/* --- CỘT BÊN TRÁI: TÍNH TIỀN ĐIỆN NƯỚC --- */}
+                <div className="w-full lg:w-1/2 bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                  <h3 className="text-xl font-bold text-yellow-800 dark:text-yellow-200 mb-4">
+                    Nhập chỉ số tháng này
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label
+                        htmlFor="lastElectricityReading"
+                        className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        Chỉ số điện cuối:
+                      </label>
+                      <input
+                        type="number"
+                        id="lastElectricityReading"
+                        value={lastElectricityReading}
+                        readOnly
+                        className="mt-1 block w-full rounded-md border-gray-300 bg-gray-100 dark:bg-gray-600 cursor-not-allowed shadow-sm"
                       />
-                    ) : (
-                      <div className="w-40 h-40 border rounded-lg bg-gray-100 flex items-center justify-center text-gray-400">
-                        Chưa có mã QR
-                      </div>
-                    )}
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="currentElectricityReading"
+                        className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        Chỉ số điện hiện tại:
+                      </label>
+                      <input
+                        type="number"
+                        id="currentElectricityReading"
+                        value={currentElectricityReading}
+                        onChange={(e) =>
+                          setCurrentElectricityReading(e.target.value)
+                        }
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:bg-gray-700 dark:border-gray-600"
+                        placeholder="Nhập chỉ số..."
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="lastWaterReading"
+                        className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        Chỉ số nước cuối:
+                      </label>
+                      <input
+                        type="number"
+                        id="lastWaterReading"
+                        value={lastWaterReading}
+                        readOnly
+                        className="mt-1 block w-full rounded-md border-gray-300 bg-gray-100 dark:bg-gray-600 cursor-not-allowed shadow-sm"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="currentWaterReading"
+                        className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        Chỉ số nước hiện tại:
+                      </label>
+                      <input
+                        type="number"
+                        id="currentWaterReading"
+                        value={currentWaterReading}
+                        onChange={(e) => setCurrentWaterReading(e.target.value)}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:bg-gray-700 dark:border-gray-600"
+                        placeholder="Nhập chỉ số..."
+                      />
+                    </div>
                   </div>
-                  {/* Phần tải lên */}
-                  <div className="flex-1 w-full">
-                    <label
-                      htmlFor="qrCodeFile"
-                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                    >
-                      Tải lên mã QR mới:
-                    </label>
-                    <input
-                      type="file"
-                      id="qrCodeFile"
-                      accept="image/*"
-                      onChange={(e) => setNewQrCodeFile(e.target.files[0])}
-                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                    />
+                  <button
+                    onClick={calculateBill}
+                    className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700"
+                  >
+                    <i className="fas fa-calculator mr-2"></i> Tính toán chi phí
+                  </button>
+                  {totalCost > 0 && (
+                    <div className="mt-4 bg-blue-100 dark:bg-gray-900 p-4 rounded-lg space-y-1">
+                      <p>
+                        Tiền điện:{" "}
+                        <span className="font-bold text-blue-700 dark:text-blue-300">
+                          {electricityCost.toLocaleString("vi-VN")} VND
+                        </span>
+                      </p>
+                      <p>
+                        Tiền nước:{" "}
+                        <span className="font-bold text-blue-700 dark:text-blue-300">
+                          {waterCost.toLocaleString("vi-VN")} VND
+                        </span>
+                      </p>
+                      <p className="border-t pt-2 mt-2 font-bold text-lg text-blue-800 dark:text-blue-200">
+                        Tổng cộng: {totalCost.toLocaleString("vi-VN")} VND
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* --- CỘT BÊN PHẢI: CÀI ĐẶT ĐƠN GIÁ & MÃ QR --- */}
+                <div className="w-full lg:w-1/2 space-y-6">
+                  {/* Cài đặt giá */}
+                  <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                    <h3 className="text-xl font-bold text-yellow-800 dark:text-yellow-200 mb-4">
+                      Cài đặt đơn giá
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <label className="block text-sm font-medium">
+                          Giá điện hiện tại:
+                        </label>
+                        <input
+                          type="text"
+                          value={`${electricityRate.toLocaleString(
+                            "vi-VN"
+                          )} VND/KW`}
+                          readOnly
+                          className="mt-1 w-full rounded-md bg-gray-100 dark:bg-gray-600 cursor-not-allowed"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium">
+                          Giá nước hiện tại:
+                        </label>
+                        <input
+                          type="text"
+                          value={`${waterRate.toLocaleString("vi-VN")} VND/m³`}
+                          readOnly
+                          className="mt-1 w-full rounded-md bg-gray-100 dark:bg-gray-600 cursor-not-allowed"
+                        />
+                      </div>
+                      <div>
+                        <label
+                          htmlFor="newElecRate"
+                          className="block text-sm font-medium"
+                        >
+                          Giá điện mới:
+                        </label>
+                        <input
+                          type="number"
+                          id="newElecRate"
+                          value={newElectricityRate}
+                          onChange={(e) =>
+                            setNewElectricityRate(e.target.value)
+                          }
+                          className="mt-1 w-full rounded-md dark:bg-gray-700"
+                          placeholder="Ví dụ: 2600"
+                        />
+                      </div>
+                      <div>
+                        <label
+                          htmlFor="newWatRate"
+                          className="block text-sm font-medium"
+                        >
+                          Giá nước mới:
+                        </label>
+                        <input
+                          type="number"
+                          id="newWatRate"
+                          value={newWaterRate}
+                          onChange={(e) => setNewWaterRate(e.target.value)}
+                          className="mt-1 w-full rounded-md dark:bg-gray-700"
+                          placeholder="Ví dụ: 4500"
+                        />
+                      </div>
+                    </div>
+                    {billingError && (
+                      <p className="text-red-500 text-sm text-center mb-2">
+                        {billingError}
+                      </p>
+                    )}
                     <button
-                      onClick={handleUploadQrCode}
-                      className="w-full mt-4 px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700"
-                      disabled={isUploadingQrCode || !newQrCodeFile}
+                      onClick={handleUpdateRates}
+                      className="w-full px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700"
                     >
-                      {isUploadingQrCode ? "Đang tải lên..." : "Lưu mã QR mới"}
+                      Lưu thay đổi giá
                     </button>
+                  </div>
+
+                  {/* Cài đặt mã QR */}
+                  <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                    <h3 className="text-xl font-bold text-yellow-800 dark:text-yellow-200 mb-4">
+                      Cài đặt QR Thanh toán
+                    </h3>
+                    <div className="flex flex-col sm:flex-row items-center gap-6">
+                      <div className="flex-shrink-0">
+                        <p className="text-center text-sm font-semibold mb-2">
+                          Mã QR hiện tại:
+                        </p>
+                        {qrCodeUrl ? (
+                          <img
+                            src={qrCodeUrl}
+                            alt="Mã QR thanh toán"
+                            className="w-32 h-32 object-contain border rounded-lg bg-white"
+                          />
+                        ) : (
+                          <div className="w-32 h-32 border rounded-lg bg-gray-100 flex items-center justify-center text-gray-400">
+                            Chưa có mã
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 w-full">
+                        <label
+                          htmlFor="qrCodeFile"
+                          className="block text-sm font-semibold mb-2"
+                        >
+                          Tải lên mã QR mới:
+                        </label>
+                        <input
+                          type="file"
+                          id="qrCodeFile"
+                          accept="image/*"
+                          onChange={(e) => setNewQrCodeFile(e.target.files[0])}
+                          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                        />
+                        <button
+                          onClick={handleUploadQrCode}
+                          className="w-full mt-4 px-6 py-2 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700"
+                          disabled={isUploadingQrCode || !newQrCodeFile}
+                        >
+                          {isUploadingQrCode ? "Đang tải lên..." : "Lưu mã QR"}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           );
+        }
         //Case chia tiền điện nước
         case "costSharing": {
-          // 1. Tạo danh sách tổng hợp để hiển thị
+          // 1. Tạo danh sách tổng hợp để sử dụng trong toàn bộ case
           const allMembersToDisplay = [
             ...residents.filter((r) => r.status !== "inactive"),
             ...pendingResidents,
           ];
 
           return (
-            <div className="p-6 bg-orange-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto space-y-6">
-              {/* Khối tính toán */}
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-                <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200 mb-4">
-                  Tính ngày có mặt & Chia tiền
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <label
-                      htmlFor="startDate"
-                      className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      Ngày bắt đầu:
-                    </label>
-                    <input
-                      type="date"
-                      id="startDate"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:bg-gray-700 dark:border-gray-600"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="endDate"
-                      className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      Ngày kết thúc:
-                    </label>
-                    <input
-                      type="date"
-                      id="endDate"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:bg-gray-700 dark:border-gray-600"
-                    />
-                  </div>
-                </div>
-                <button
-                  onClick={calculateAttendanceDays}
-                  className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700"
-                  disabled={totalCost <= 0}
-                >
-                  Tính toán & Chia tiền
-                </button>
-              </div>
+            <div className="p-4 md:p-6 bg-orange-50 dark:bg-gray-700 rounded-2xl shadow-lg w-full">
+              <h2 className="text-2xl font-bold text-orange-800 dark:text-orange-200 mb-6">
+                Chia tiền & Quản lý Quỹ
+              </h2>
 
-              {/* Khối kết quả và quản lý quỹ */}
-              {Object.keys(individualCosts).length > 0 && (
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-                  <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200 mb-4">
-                    Kết quả chia tiền
-                  </h3>
-                  <div className="space-y-4">
-                    {/* Bảng xếp hạng số ngày có mặt */}
-                    <div>
-                      <h4 className="font-semibold mb-2 text-gray-700 dark:text-gray-300">
-                        Xếp hạng Số ngày có mặt:
-                      </h4>
-                      <div className="space-y-2">
-                        {[...allMembersToDisplay]
-                          .sort(
-                            (a, b) =>
-                              (calculatedDaysPresent[b.id] || 0) -
-                              (calculatedDaysPresent[a.id] || 0)
-                          )
-                          .map((member, index) => (
-                            <div
-                              key={member.id}
-                              className="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-3 rounded-lg"
-                            >
-                              <span className="font-medium flex items-center">
-                                <span className="mr-2 text-lg font-bold w-6 text-center">
-                                  {index + 1}
-                                </span>
-                                {member.name}
-                                {pendingResidents.some(
-                                  (p) => p.id === member.id
-                                ) && (
-                                  <span className="text-xs text-cyan-500 ml-2">
-                                    (
-                                    {pendingResidents.find(
+              {/* BỐ CỤC CHÍNH (Dọc trên điện thoại, Ngang trên laptop) */}
+              <div className="flex flex-col lg:flex-row gap-6">
+                {/* --- CỘT BÊN TRÁI: TÍNH TOÁN & KẾT QUẢ --- */}
+                <div className="w-full lg:w-1/2 space-y-6">
+                  {/* Khối tính toán */}
+                  <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                    <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200 mb-4">
+                      Tính ngày có mặt
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <label
+                          htmlFor="startDate"
+                          className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                        >
+                          Ngày bắt đầu:
+                        </label>
+                        <input
+                          type="date"
+                          id="startDate"
+                          value={startDate}
+                          onChange={(e) => setStartDate(e.target.value)}
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:bg-gray-700 dark:border-gray-600"
+                        />
+                      </div>
+                      <div>
+                        <label
+                          htmlFor="endDate"
+                          className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                        >
+                          Ngày kết thúc:
+                        </label>
+                        <input
+                          type="date"
+                          id="endDate"
+                          value={endDate}
+                          onChange={(e) => setEndDate(e.target.value)}
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:bg-gray-700 dark:border-gray-600"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      onClick={calculateAttendanceDays}
+                      className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700"
+                      disabled={totalCost <= 0}
+                    >
+                      Tính toán & Chia tiền
+                    </button>
+                  </div>
+
+                  {/* Khối kết quả */}
+                  {Object.keys(individualCosts).length > 0 && (
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                      <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200 mb-4">
+                        Kết quả chia tiền
+                      </h3>
+                      <div className="space-y-4">
+                        {/* Bảng xếp hạng số ngày có mặt */}
+                        <div>
+                          <h4 className="font-semibold mb-2 text-gray-700 dark:text-gray-300">
+                            Xếp hạng Số ngày có mặt:
+                          </h4>
+                          <div className="space-y-2">
+                            {[...allMembersToDisplay]
+                              .sort(
+                                (a, b) =>
+                                  (calculatedDaysPresent[b.id] || 0) -
+                                  (calculatedDaysPresent[a.id] || 0)
+                              )
+                              .map((member, index) => (
+                                <div
+                                  key={member.id}
+                                  className="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-3 rounded-lg"
+                                >
+                                  <span className="font-medium flex items-center">
+                                    <span className="mr-2 text-lg font-bold w-6 text-center">
+                                      {index + 1}
+                                    </span>
+                                    {member.name}
+                                    {pendingResidents.some(
                                       (p) => p.id === member.id
-                                    ).type === "temporary"
-                                      ? "Tạm thời"
-                                      : "Chờ"}
-                                    )
+                                    ) && (
+                                      <span className="text-xs text-cyan-500 ml-2">
+                                        (
+                                        {pendingResidents.find(
+                                          (p) => p.id === member.id
+                                        ).type === "temporary"
+                                          ? "Tạm thời"
+                                          : "Chờ"}
+                                        )
+                                      </span>
+                                    )}
                                   </span>
-                                )}{" "}
-                              </span>
-                              <span className="font-bold text-orange-700 dark:text-orange-300">
-                                {calculatedDaysPresent[member.id] || 0} ngày
-                              </span>
-                            </div>
-                          ))}
-                      </div>
-                      <p className="border-t pt-3 mt-3 font-semibold text-gray-700 dark:text-gray-300">
-                        Tổng số ngày-người: {totalCalculatedDaysAllResidents}{" "}
-                        ngày
-                      </p>
-                    </div>
-
-                    {/* Bảng xếp hạng số tiền cần đóng */}
-                    <div>
-                      <h4 className="font-semibold mt-4 mb-2 text-gray-700 dark:text-gray-300">
-                        Xếp hạng Số tiền cần đóng:
-                      </h4>
-                      <div className="space-y-2">
-                        {[...allMembersToDisplay]
-                          .sort(
-                            (a, b) =>
-                              (individualCosts[b.id]?.cost || 0) -
-                              (individualCosts[a.id]?.cost || 0)
-                          )
-                          .map((member, index) => {
-                            const costData = individualCosts[member.id];
-                            if (!costData) return null;
-                            return (
-                              <div
-                                key={member.id}
-                                className="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-3 rounded-lg"
-                              >
-                                <span className="font-medium flex items-center">
-                                  <span className="mr-2 text-lg font-bold w-6 text-center">
-                                    {index + 1}
+                                  <span className="font-bold text-orange-700 dark:text-orange-300">
+                                    {calculatedDaysPresent[member.id] || 0} ngày
                                   </span>
-                                  {member.name}
-                                </span>
-                                <span className="font-bold text-red-600">
-                                  {costData.cost.toLocaleString("vi-VN")} VND
-                                </span>
-                              </div>
-                            );
-                          })}
+                                </div>
+                              ))}
+                          </div>
+                          <p className="border-t pt-3 mt-3 font-semibold text-gray-700 dark:text-gray-300">
+                            Tổng số ngày-người:{" "}
+                            {totalCalculatedDaysAllResidents} ngày
+                          </p>
+                        </div>
+
+                        {/* Bảng xếp hạng số tiền cần đóng */}
+                        <div>
+                          <h4 className="font-semibold mt-4 mb-2 text-gray-700 dark:text-gray-300">
+                            Xếp hạng Số tiền cần đóng:
+                          </h4>
+                          <div className="space-y-2">
+                            {[...allMembersToDisplay]
+                              .sort(
+                                (a, b) =>
+                                  (individualCosts[b.id]?.cost || 0) -
+                                  (individualCosts[a.id]?.cost || 0)
+                              )
+                              .map((member, index) => {
+                                const costData = individualCosts[member.id];
+                                if (!costData) return null;
+                                return (
+                                  <div
+                                    key={member.id}
+                                    className="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-3 rounded-lg"
+                                  >
+                                    <span className="font-medium flex items-center">
+                                      <span className="mr-2 text-lg font-bold w-6 text-center">
+                                        {index + 1}
+                                      </span>
+                                      {member.name}
+                                    </span>
+                                    <span className="font-bold text-red-600">
+                                      {costData.cost.toLocaleString("vi-VN")}{" "}
+                                      VND
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        </div>
                       </div>
                     </div>
+                  )}
+                </div>
 
-                    {/* Thông tin chung và Quỹ phòng */}
+                {/* --- CỘT BÊN PHẢI: QUẢN LÝ QUỸ --- */}
+                <div className="w-full lg:w-1/2 space-y-6">
+                  {/* Khối quản lý quỹ */}
+                  <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                    <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200 mb-4">
+                      Quản lý quỹ phòng
+                    </h3>
                     <div className="border-t pt-4 mt-4 space-y-2 text-gray-700 dark:text-gray-300">
                       <p className="font-semibold">
                         Chi phí 1 ngày/người:{" "}
@@ -5884,43 +5903,42 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                         </span>
                       </p>
                     </div>
+                    <div className="mt-6 pt-4 border-t border-dashed border-orange-300 dark:border-gray-600">
+                      <h4 className="text-lg font-bold text-orange-800 dark:text-orange-200 mb-2">
+                        Cập nhật lại số tiền quỹ
+                      </h4>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="number"
+                          value={fundInputValue}
+                          onChange={(e) => setFundInputValue(e.target.value)}
+                          className="flex-1 shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-gray-700"
+                          placeholder="Nhập số tiền quỹ mới..."
+                        />
+                        <button
+                          onClick={handleUpdateFundManually}
+                          className="px-4 py-2 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700"
+                        >
+                          Cập nhật
+                        </button>
+                      </div>
+                      {billingError && (
+                        <p className="text-red-500 text-sm mt-2">
+                          {billingError}
+                        </p>
+                      )}
+                    </div>
                   </div>
 
-                  {/* ===== KHỐI CẬP NHẬT QUỸ PHÒNG ===== */}
-                  <div className="mt-6 pt-4 border-t border-dashed border-orange-300 dark:border-gray-600">
-                    <h4 className="text-lg font-bold text-orange-800 dark:text-orange-200 mb-2">
-                      Cập nhật lại số tiền quỹ
-                    </h4>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="number"
-                        value={fundInputValue}
-                        onChange={(e) => setFundInputValue(e.target.value)}
-                        className="flex-1 shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-gray-700"
-                        placeholder="Nhập số tiền quỹ mới..."
-                      />
-                      <button
-                        onClick={handleUpdateFundManually}
-                        className="px-4 py-2 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all duration-300"
-                      >
-                        Cập nhật
-                      </button>
-                    </div>
-                    {billingError && (
-                      <p className="text-red-500 text-sm mt-2">
-                        {billingError}
-                      </p>
-                    )}
-                  </div>
-                  {/* ===== KHỐI GHI NHẬN CHI TIÊU QUỸ ===== */}
-                  <div className="mt-8 pt-6 border-t border-orange-300 dark:border-gray-600">
+                  {/* Khối lịch sử chi tiêu */}
+                  <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
                     <div className="flex justify-between items-center mb-4">
                       <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200">
-                        Lịch sử chi tiêu quỹ phòng
+                        Lịch sử chi tiêu quỹ
                       </h3>
                       <button
                         onClick={() => setShowAddExpenseModal(true)}
-                        className="bg-orange-500 text-white rounded-full w-10 h-10 flex items-center justify-center shadow-md hover:bg-orange-600 transition"
+                        className="bg-orange-500 text-white rounded-full w-10 h-10 flex items-center justify-center shadow-md hover:bg-orange-600"
                         title="Thêm chi tiêu mới"
                       >
                         <i className="fas fa-plus"></i>
@@ -5931,7 +5949,7 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                         fundExpenses.map((expense) => (
                           <div
                             key={expense.id}
-                            className="bg-white dark:bg-gray-800 p-3 rounded-lg flex justify-between items-center text-sm"
+                            className="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg flex justify-between items-center text-sm"
                           >
                             <div>
                               <p className="font-semibold text-gray-800 dark:text-gray-200">
@@ -5956,11 +5974,10 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
           );
-        }
-        //Case lịch sử tính tiền điện nước
+        } //Case lịch sử tính tiền điện nước
         case "billHistory":
           return (
             <div className="p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg max-w-5xl mx-auto">
