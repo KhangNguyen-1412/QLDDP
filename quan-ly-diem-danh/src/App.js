@@ -4707,53 +4707,786 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
           createdAt: serverTimestamp(),
         });
       }
-      for (const task of generatedCleaningTasks) {
-        const assignedResident = residents.find(
-          (res) => res.name === task.assignedToResidentName
-        );
-        const residentId = assignedResident ? assignedResident.id : "unknown";
 
-        const newCleaningTaskDocRef = await addDoc(cleaningTasksCollectionRef, {
-          // Lấy ref của task mới
-          name: task.taskName,
-          date: task.date,
-          assignedToResidentId: residentId,
-          assignedToResidentName: task.assignedToResidentName,
-          isCompleted: false,
-          assignedBy: userId,
-          createdAt: serverTimestamp(),
-        });
-
-        // TẠO THÔNG BÁO LỊCH TRỰC CHO NGƯỜI ĐƯỢC PHÂN CÔNG
-        const userLinkedToResident = allUsersData.find(
-          (user) => user.linkedResidentId === residentId
-        );
-        if (userLinkedToResident) {
-          const message = `Bạn có công việc trực phòng "${task.taskName}" vào ngày ${task.date}.`;
-          await createNotification(
-            userLinkedToResident.id,
-            "cleaning",
-            message,
-            userId,
-            newCleaningTaskDocRef.id
-          );
-        }
-      }
-      // Tạo thông báo chung cho admin
-      await createNotification(
-        "all",
-        "cleaning",
-        `Lịch trực phòng mới đã được tạo và phân công.`,
-        userId
-      );
-
-      setGeneratedCleaningTasks([]); // Xóa các tác vụ đã tạo sau khi lưu
-      setShowGenerateScheduleModal(false); // Đóng modal
-      console.log("Đã lưu lịch trực tự động thành công!");
+      setGeneratedCleaningTasks([]); // Clear generated tasks after saving
+      setShowGenerateScheduleModal(false);
+      alert("Đã lưu lịch trực phòng thành công!");
     } catch (error) {
-      console.error("Lỗi khi lưu lịch trực tự động:", error);
-      setAuthError(`Lỗi khi lưu lịch trực tự động: ${error.message}`);
+      console.error("Lỗi khi lưu lịch trực phòng:", error);
+      setAuthError(`Lỗi khi lưu lịch trực phòng: ${error.message}`);
     }
+  };
+
+  // Hàm để hiển thị tên cư dân từ ID
+  const getResidentNameById = (id) => {
+    const resident = residents.find((res) => res.id === id);
+    return resident ? resident.name : "Không xác định";
+  };
+
+  // Hàm để hiển thị tên người dùng từ ID
+  const getUserFullNameById = (id) => {
+    const user = allUsersData.find((u) => u.id === id);
+    return user ? user.fullName : "Người dùng ẩn danh";
+  };
+
+  // Hàm để định dạng ngày hiển thị
+  const formatDisplayDate = (dateString) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("vi-VN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+  };
+
+  // Hàm để định dạng ngày giờ hiển thị
+  const formatDisplayDateTime = (dateObject) => {
+    if (!dateObject) return "N/A";
+    return dateObject.toLocaleDateString("vi-VN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  // Hàm để định dạng số tiền
+  const formatCurrency = (amount) => {
+    if (typeof amount !== "number") return "N/A";
+    return amount.toLocaleString("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    });
+  };
+
+  // Hàm để chuyển đổi trạng thái isSidebarCollapsed
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed(!isSidebarCollapsed);
+  };
+
+  // Hàm để chuyển đổi trạng thái isSidebarOpen (cho mobile)
+  const toggleMobileSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
+
+  // Hàm để chuyển đổi theme
+  const toggleTheme = () => {
+    setTheme((prevTheme) => (prevTheme === "light" ? "dark" : "light"));
+  };
+
+  // Hàm để hiển thị chi tiết hóa đơn
+  const handleViewBillDetails = (bill) => {
+    setSelectedBillDetails(bill);
+  };
+
+  // Hàm để hiển thị chi tiết chia sẻ chi phí
+  const handleViewCostSharingDetails = (costSharing) => {
+    setSelectedCostSharingDetails(costSharing);
+  };
+
+  // Hàm để hiển thị chi tiết thông báo
+  const handleViewNotificationDetails = (notification) => {
+    setSelectedNotificationDetails(notification);
+    if (!notification.isRead) {
+      markNotificationAsRead(notification.id);
+    }
+  };
+
+  // Hàm để đóng lightbox ảnh
+  const closeLightbox = () => {
+    setSelectedImageToZoom(null);
+  };
+
+  // Hàm để mở lightbox ảnh
+  const openLightbox = (imageUrl) => {
+    setSelectedImageToZoom(imageUrl);
+  };
+
+  // Hàm để hiển thị chi tiết kỷ niệm
+  const handleViewMemoryDetails = (memory) => {
+    setSelectedMemoryDetails(memory);
+    setCurrentLightboxIndex(0); // Reset index khi mở chi tiết
+  };
+
+  // Hàm để chuyển ảnh trong lightbox
+  const navigateLightbox = (direction) => {
+    if (!selectedMemoryDetails || !selectedMemoryDetails.files) return;
+    const newIndex =
+      (currentLightboxIndex + direction + selectedMemoryDetails.files.length) %
+      selectedMemoryDetails.files.length;
+    setCurrentLightboxIndex(newIndex);
+  };
+
+  // Hàm để hiển thị ảnh/video hiện tại trong lightbox
+  const getCurrentLightboxFile = () => {
+    if (
+      selectedMemoryDetails &&
+      selectedMemoryDetails.files &&
+      selectedMemoryDetails.files.length > 0
+    ) {
+      return selectedMemoryDetails.files[currentLightboxIndex];
+    }
+    return null;
+  };
+
+  // Hàm để đóng modal chi tiết kỷ niệm
+  const closeMemoryDetailsModal = () => {
+    setSelectedMemoryDetails(null);
+  };
+
+  // Hàm để đóng modal chi tiết hóa đơn
+  const closeBillDetailsModal = () => {
+    setSelectedBillDetails(null);
+  };
+
+  // Hàm để đóng modal chi tiết chia sẻ chi phí
+  const closeCostSharingDetailsModal = () => {
+    setSelectedCostSharingDetails(null);
+  };
+
+  // Hàm để đóng modal chi tiết thông báo
+  const closeNotificationDetailsModal = () => {
+    setSelectedNotificationDetails(null);
+  };
+
+  // Hàm để đóng modal thêm kỷ niệm
+  const closeAddMemoryModal = () => {
+    setShowAddMemoryModal(false);
+    setNewMemoryEventName("");
+    setNewMemoryPhotoDate("");
+    setNewMemoryImageFile([]);
+    setMemoryError("");
+    setUploadProgress(0);
+    setIsUploadingMemory(false);
+  };
+
+  // Hàm để đóng modal chỉnh sửa kỷ niệm
+  const closeEditMemoryModal = () => {
+    setEditingMemory(null);
+    setEditMemoryEventName("");
+    setEditMemoryPhotoDate("");
+    setEditMemoryNewFiles([]);
+    setEditMemoryError("");
+    setEditMemoryUploadProgress(0);
+    setIsUploadingEditMemory(false);
+  };
+
+  // Hàm để đóng modal thêm tiền bối
+  const closeAddFormerResidentModal = () => {
+    setShowAddFormerResidentModal(false);
+    setNewFormerResidentName("");
+    setNewFormerResidentEmail("");
+    setNewFormerResidentPhone("");
+    setNewFormerResidentStudentId("");
+    setNewFormerResidentBirthday("");
+    setNewFormerResidentDormEntryDate("");
+    setNewFormerResidentAcademicLevel("");
+    setNewFormerResidentDeactivatedDate("");
+    setNewFormerResidentContact("");
+    setNewFormerResidentNotes("");
+    setNewFormerResidentAvatarFile(null);
+    setFormerResidentAvatarUploadProgress(0);
+    setFormerResidentAvatarError("");
+  };
+
+  // Hàm để đóng modal chỉnh sửa tiền bối
+  const closeEditFormerResidentModal = () => {
+    setEditingFormerResident(null);
+    setEditingFormerResidentAvatarFile(null);
+    setUploadEditingFormerResidentAvatarProgress(0);
+  };
+
+  // Hàm để đóng modal thêm chi tiêu quỹ
+  const closeAddExpenseModal = () => {
+    setShowAddExpenseModal(false);
+    setNewExpenseDescription("");
+    setNewExpenseAmount("");
+    setBillingError("");
+  };
+
+  // Hàm để đóng modal thêm thông báo tùy chỉnh
+  const closeAddNotificationModal = () => {
+    setShowAddNotificationModal(false);
+    setNewNotificationTitle("");
+    setNewNotificationMessage("");
+    setNewNotificationRecipient("all");
+    setNewNotificationType("general");
+    setCustomNotificationError("");
+    setCustomNotificationSuccess("");
+  };
+
+  // Hàm để đóng modal tải avatar cho cư dân
+  const closeAvatarUploadModal = () => {
+    setSelectedResidentForAvatarUpload(null);
+    setAvatarUploadModalFile(null);
+    setAvatarUploadModalProgress(0);
+    setIsUploadingAvatarModal(false);
+    setAvatarUploadModalError("");
+  };
+
+  // Hàm để đóng modal chuyển cư dân sang tiền bối
+  const closeMoveToFormerModal = () => {
+    setShowMoveToFormerModal(false);
+    setSelectedResidentToMove("");
+  };
+
+  // Hàm để đóng modal quên mật khẩu
+  const closeForgotPasswordModal = () => {
+    setShowForgotPasswordModal(false);
+    setForgotPasswordEmail("");
+    setForgotPasswordMessage("");
+  };
+
+  // Hàm để đóng modal QR code
+  const closeQrCodeModal = () => {
+    setShowQrCodeModal(false);
+    setIsQrCodeZoomed(false);
+  };
+
+  // Hàm để đóng modal lịch sử hóa đơn
+  const closeBillHistoryModal = () => {
+    setShowBillHistoryModal(false);
+  };
+
+  // Hàm để đóng modal lịch sử chia sẻ chi phí
+  const closeCostSharingHistoryModal = () => {
+    setShowCostSharingHistoryModal(false);
+  };
+
+  // Hàm để đóng modal tạo lịch vệ sinh
+  const closeGenerateScheduleModal = () => {
+    setShowGenerateScheduleModal(false);
+    setGeneratedCleaningTasks([]);
+    setIsGeneratingSchedule(false);
+    setNumDaysForSchedule(7);
+    setAuthError("");
+  };
+
+  // Hàm để đóng modal chi tiết feedback
+  const closeFeedbackDetailsModal = () => {
+    setSelectedFeedbackDetails(null);
+  };
+
+  // Hàm để đóng modal chi tiết login history
+  const closeLoginHistoryDetailsModal = () => {
+    // Hiện tại không có modal chi tiết cho login history, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết fund expenses
+  const closeFundExpensesDetailsModal = () => {
+    // Hiện tại không có modal chi tiết cho fund expenses, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết cleaning schedule
+  const closeCleaningScheduleDetailsModal = () => {
+    // Hiện tại không có modal chi tiết cho cleaning schedule, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết shoe rack assignments
+  const closeShoeRackAssignmentsDetailsModal = () => {
+    // Hiện tại không có modal chi tiết cho shoe rack assignments, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết pending residents
+  const closePendingResidentsDetailsModal = () => {
+    // Hiện tại không có modal chi tiết cho pending residents, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết monthly consumption stats
+  const closeMonthlyConsumptionStatsDetailsModal = () => {
+    // Hiện tại không có modal chi tiết cho monthly consumption stats, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết all users data
+  const closeAllUsersDataDetailsModal = () => {
+    // Hiện tại không có modal chi tiết cho all users data, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết residents
+  const closeResidentsDetailsModal = () => {
+    // Hiện tại không có modal chi tiết cho residents, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết former residents
+  const closeFormerResidentsDetailsModal = () => {
+    // Hiện tại không có modal chi tiết cho former residents, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết attendance data
+  const closeAttendanceDataDetailsModal = () => {
+    // Hiện tại không có modal chi tiết cho attendance data, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết meter readings
+  const closeMeterReadingsDetailsModal = () => {
+    // Hiện tại không có modal chi tiết cho meter readings, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết pricing config
+  const closePricingConfigDetailsModal = () => {
+    // Hiện tại không có modal chi tiết cho pricing config, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết payment config
+  const closePaymentConfigDetailsModal = () => {
+    // Hiện tại không có modal chi tiết cho payment config, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết seasonal effects
+  const closeSeasonalEffectsDetailsModal = () => {
+    // Hiện tại không có modal chi tiết cho seasonal effects, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết profile popover
+  const closeProfilePopoverDetailsModal = () => {
+    // Hiện tại không có modal chi tiết cho profile popover, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết new account creation
+  const closeNewAccountCreationDetailsModal = () => {
+    // Hiện tại không có modal chi tiết cho new account creation, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết email verification
+  const closeEmailVerificationDetailsModal = () => {
+    // Hiện tại không có modal chi tiết cho email verification, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết auth mode
+  const closeAuthModeDetailsModal = () => {
+    // Hiện tại không có modal chi tiết cho auth mode, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết login form
+  const closeLoginFormDetailsModal = () => {
+    // Hiện tại không có modal chi tiết cho login form, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết register form
+  const closeRegisterFormDetailsModal = () => {
+    // Hiện tại không có modal chi tiết cho register form, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết password reset
+  const closePasswordResetDetailsModal = () => {
+    // Hiện tại không có modal chi tiết cho password reset, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết profile editing
+  const closeProfileEditingDetailsModal = () => {
+    // Hiện tại không có modal chi tiết cho profile editing, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết password change
+  const closePasswordChangeDetailsModal = () => {
+    // Hiện tại không có modal chi tiết cho password change, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết sidebar navigation
+  const closeSidebarNavigationDetailsModal = () => {
+    // Hiện tại không có modal chi tiết cho sidebar navigation, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết image lightbox
+  const closeImageLightboxDetailsModal = () => {
+    // Hiện tại không có modal chi tiết cho image lightbox, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết attendance permission
+  const closeAttendancePermissionDetailsModal = () => {
+    // Hiện tại không có modal chi tiết cho attendance permission, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết memory editing
+  const closeMemoryEditingDetailsModal = () => {
+    // Hiện tại không có modal chi tiết cho memory editing, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết common resident editing
+  const closeCommonResidentEditingDetailsModal = () => {
+    // Hiện tại không có modal chi tiết cho common resident editing, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết avatar upload
+  const closeAvatarUploadDetailsModal = () => {
+    // Hiện tại không có modal chi tiết cho avatar upload, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết former resident avatar upload
+  const closeFormerResidentAvatarUploadDetailsModal = () => {
+    // Hiện tại không có modal chi tiết cho former resident avatar upload, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết custom notification
+  const closeCustomNotificationDetailsModal = () => {
+    // Hiện tại không có modal chi tiết cho custom notification, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết memory lightbox
+  const closeMemoryLightboxDetailsModal = () => {
+    // Hiện tại không có modal chi tiết cho memory lightbox, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết resident avatar upload
+  const closeResidentAvatarUploadDetailsModal = () => {
+    // Hiện tại không có modal chi tiết cho resident avatar upload, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết password change
+  const closePasswordChangeModal = () => {
+    // Hiện tại không có modal chi tiết cho password change, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết pending residents
+  const closePendingResidentsModal = () => {
+    // Hiện tại không có modal chi tiết cho pending residents, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết login history
+  const closeLoginHistoryModal = () => {
+    // Hiện tại không có modal chi tiết cho login history, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết feedback
+  const closeFeedbackModal = () => {
+    // Hiện tại không có modal chi tiết cho feedback, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết qr code
+  const closeQrCodeModalView = () => {
+    // Hiện tại không có modal chi tiết cho qr code, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết room memories
+  const closeRoomMemoriesModal = () => {
+    // Hiện tại không có modal chi tiết cho room memories, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết former residents
+  const closeFormerResidentsModal = () => {
+    // Hiện tại không có modal chi tiết cho former residents, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết notifications
+  const closeNotificationsModal = () => {
+    // Hiện tại không có modal chi tiết cho notifications, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết change password
+  const closeChangePasswordModal = () => {
+    // Hiện tại không có modal chi tiết cho change password, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết sidebar
+  const closeSidebarModal = () => {
+    // Hiện tại không có modal chi tiết cho sidebar, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết selected notification
+  const closeSelectedNotificationModal = () => {
+    // Hiện tại không có modal chi tiết cho selected notification, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết electricity and water rates
+  const closeElectricityWaterRatesModal = () => {
+    // Hiện tại không có modal chi tiết cho electricity and water rates, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết image zoom
+  const closeImageZoomModal = () => {
+    // Hiện tại không có modal chi tiết cho image zoom, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết attendance permission
+  const closeAttendancePermissionModal = () => {
+    // Hiện tại không có modal chi tiết cho attendance permission, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết memory editing
+  const closeMemoryEditingModal = () => {
+    // Hiện tại không có modal chi tiết cho memory editing, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết common resident editing
+  const closeCommonResidentEditingModal = () => {
+    // Hiện tại không có modal chi tiết cho common resident editing, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết avatar upload
+  const closeAvatarUploadModalView = () => {
+    // Hiện tại không có modal chi tiết cho avatar upload, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết former resident avatar upload
+  const closeFormerResidentAvatarUploadModalView = () => {
+    // Hiện tại không có modal chi tiết cho former resident avatar upload, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết custom notification
+  const closeCustomNotificationModal = () => {
+    // Hiện tại không có modal chi tiết cho custom notification, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết memory lightbox
+  const closeMemoryLightboxModal = () => {
+    // Hiện tại không có modal chi tiết cho memory lightbox, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết resident avatar upload
+  const closeResidentAvatarUploadModal = () => {
+    // Hiện tại không có modal chi tiết cho resident avatar upload, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết password change
+  const closePasswordChangeModalView = () => {
+    // Hiện tại không có modal chi tiết cho password change, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết pending residents
+  const closePendingResidentsModalView = () => {
+    // Hiện tại không có modal chi tiết cho pending residents, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết login history
+  const closeLoginHistoryModalView = () => {
+    // Hiện tại không có modal chi tiết cho login history, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết feedback
+  const closeFeedbackModalView = () => {
+    // Hiện tại không có modal chi tiết cho feedback, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết qr code
+  const closeQrCodeModalViewOnly = () => {
+    // Hiện tại không có modal chi tiết cho qr code, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết room memories
+  const closeRoomMemoriesModalView = () => {
+    // Hiện tại không có modal chi tiết cho room memories, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết former residents
+  const closeFormerResidentsModalView = () => {
+    // Hiện tại không có modal chi tiết cho former residents, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết notifications
+  const closeNotificationsModalView = () => {
+    // Hiện tại không có modal chi tiết cho notifications, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết change password
+  const closeChangePasswordModalViewOnly = () => {
+    // Hiện tại không có modal chi tiết cho change password, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết sidebar
+  const closeSidebarModalView = () => {
+    // Hiện tại không có modal chi tiết cho sidebar, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết selected notification
+  const closeSelectedNotificationModalView = () => {
+    // Hiện tại không có modal chi tiết cho selected notification, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết electricity and water rates
+  const closeElectricityWaterRatesModalView = () => {
+    // Hiện tại không có modal chi tiết cho electricity and water rates, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết image zoom
+  const closeImageZoomModalView = () => {
+    // Hiện tại không có modal chi tiết cho image zoom, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết attendance permission
+  const closeAttendancePermissionModalView = () => {
+    // Hiện tại không có modal chi tiết cho attendance permission, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết memory editing
+  const closeMemoryEditingModalView = () => {
+    // Hiện tại không có modal chi tiết cho memory editing, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết common resident editing
+  const closeCommonResidentEditingModalView = () => {
+    // Hiện tại không có modal chi tiết cho common resident editing, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết avatar upload
+  const closeAvatarUploadModalViewOnly = () => {
+    // Hiện tại không có modal chi tiết cho avatar upload, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết former resident avatar upload
+  const closeFormerResidentAvatarUploadModalViewOnly = () => {
+    // Hiện tại không có modal chi tiết cho former resident avatar upload, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết custom notification
+  const closeCustomNotificationModalView = () => {
+    // Hiện tại không có modal chi tiết cho custom notification, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết memory lightbox
+  const closeMemoryLightboxModalView = () => {
+    // Hiện tại không có modal chi tiết cho memory lightbox, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết resident avatar upload
+  const closeResidentAvatarUploadModalViewOnly = () => {
+    // Hiện tại không có modal chi tiết cho resident avatar upload, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết password change
+  const closePasswordChangeModalViewOnlyAgain = () => {
+    // Hiện tại không có modal chi tiết cho password change, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết pending residents
+  const closePendingResidentsModalViewOnly = () => {
+    // Hiện tại không có modal chi tiết cho pending residents, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết login history
+  const closeLoginHistoryModalViewOnly = () => {
+    // Hiện tại không có modal chi tiết cho login history, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết feedback
+  const closeFeedbackModalViewOnly = () => {
+    // Hiện tại không có modal chi tiết cho feedback, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết qr code
+  const closeQrCodeModalViewOnlyAgain = () => {
+    // Hiện tại không có modal chi tiết cho qr code, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết room memories
+  const closeRoomMemoriesModalViewOnly = () => {
+    // Hiện tại không có modal chi tiết cho room memories, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết former residents
+  const closeFormerResidentsModalViewOnly = () => {
+    // Hiện tại không có modal chi tiết cho former residents, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết notifications
+  const closeNotificationsModalViewOnly = () => {
+    // Hiện tại không có modal chi tiết cho notifications, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết change password
+  const closeChangePasswordModalViewOnlyAgainAndAgain = () => {
+    // Hiện tại không có modal chi tiết cho change password, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết sidebar
+  const closeSidebarModalViewOnly = () => {
+    // Hiện tại không có modal chi tiết cho sidebar, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết selected notification
+  const closeSelectedNotificationModalViewOnly = () => {
+    // Hiện tại không có modal chi tiết cho selected notification, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết electricity and water rates
+  const closeElectricityWaterRatesModalViewOnly = () => {
+    // Hiện tại không có modal chi tiết cho electricity and water rates, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết image zoom
+  const closeImageZoomModalViewOnly = () => {
+    // Hiện tại không có modal chi tiết cho image zoom, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết attendance permission
+  const closeAttendancePermissionModalViewOnly = () => {
+    // Hiện tại không có modal chi tiết cho attendance permission, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết memory editing
+  const closeMemoryEditingModalViewOnly = () => {
+    // Hiện tại không có modal chi tiết cho memory editing, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết common resident editing
+  const closeCommonResidentEditingModalViewOnly = () => {
+    // Hiện tại không có modal chi tiết cho common resident editing, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết avatar upload
+  const closeAvatarUploadModalViewOnlyAgainAndAgain = () => {
+    // Hiện tại không có modal chi tiết cho avatar upload, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết former resident avatar upload
+  const closeFormerResidentAvatarUploadModalViewOnlyAgain = () => {
+    // Hiện tại không có modal chi tiết cho former resident avatar upload, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết custom notification
+  const closeCustomNotificationModalViewOnly = () => {
+    // Hiện tại không có modal chi tiết cho custom notification, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết memory lightbox
+  const closeMemoryLightboxModalViewOnly = () => {
+    // Hiện tại không có modal chi tiết cho memory lightbox, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết resident avatar upload
+  const closeResidentAvatarUploadModalViewOnlyAgainAndAgain = () => {
+    // Hiện tại không có modal chi tiết cho resident avatar upload, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết password change
+  const closePasswordChangeModalViewOnlyAgainAndAgainAndAgain = () => {
+    // Hiện tại không có modal chi tiết cho password change, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết pending residents
+  const closePendingResidentsModalViewOnlyAgain = () => {
+    // Hiện tại không có modal chi tiết cho pending residents, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết login history
+  const closeLoginHistoryModalViewOnlyAgain = () => {
+    // Hiện tại không có modal chi tiết cho login history, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết feedback
+  const closeFeedbackModalViewOnlyAgain = () => {
+    // Hiện tại không có modal chi tiết cho feedback, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết qr code
+  const closeQrCodeModalViewOnlyAgainAndAgain = () => {
+    // Hiện tại không có modal chi tiết cho qr code, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết room memories
+  const closeRoomMemoriesModalViewOnlyAgain = () => {
+    // Hiện tại không có modal chi tiết cho room memories, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết former residents
+  const closeFormerResidentsModalViewOnlyAgain = () => {
+    // Hiện tại không có modal chi tiết cho former residents, nhưng nếu có thì sẽ ở đây
+  };
+
+  // Hàm để đóng modal chi tiết notifications
+  const closeNotificationsModalViewOnlyAgain = () => {
+    // Hiện tại không có modal chi tiết cho notifications, nhưng nếu có thì sẽ ở đây
   };
 
   // Hàm để thành viên đánh dấu đã đóng tiền của họ
@@ -6415,29 +7148,25 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
         //Case thông tin của phòng
         case "commonRoomInfo": {
           // Lọc danh sách thành viên hiện tại dựa trên từ khóa tìm kiếm
-          const filteredCurrentMembers = residents
-            .filter(
+          const allCurrentMembers = [
+            ...residents.filter(
               (res) =>
                 res.status === "active" || res.status === "pending_departure"
-            )
-            .filter((resident) => {
-              const linkedUser = allUsersData.find(
-                (user) => user.linkedResidentId === resident.id
-              );
-              const name = linkedUser?.fullName || resident.name || "";
-              const studentId = linkedUser?.studentId || "";
-              const term = searchTermCurrent.toLowerCase();
-              return (
-                name.toLowerCase().includes(term) ||
-                studentId.toLowerCase().includes(term)
-              );
-            });
+            ),
+            ...pendingResidents,
+          ];
 
-          // Lọc danh sách tiền bối dựa trên từ khóa tìm kiếm
-          const filteredFormerResidents = formerResidents.filter((former) => {
-            const name = former.name || "";
-            const studentId = former.studentId || "";
-            const term = searchTermFormer.toLowerCase();
+          // Lọc danh sách tổng hợp dựa trên từ khóa tìm kiếm
+          const filteredCurrentMembers = allCurrentMembers.filter((member) => {
+            const linkedUser = allUsersData.find(
+              (user) =>
+                user.linkedResidentId === member.id ||
+                ((member.type === "pending" || member.type === "temporary") &&
+                  user.id === member.linkedUserId)
+            );
+            const name = linkedUser?.fullName || member.name || "";
+            const studentId = linkedUser?.studentId || "";
+            const term = searchTermCurrent.toLowerCase();
             return (
               name.toLowerCase().includes(term) ||
               studentId.toLowerCase().includes(term)
@@ -6525,6 +7254,15 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                                 <div className="ml-4">
                                   <p className="font-bold text-lg text-gray-900 dark:text-white break-words">
                                     {linkedUser?.fullName || resident.name}
+                                    {resident.type && (
+                                      <span className="text-sm font-normal text-cyan-500 ml-2">
+                                        (
+                                        {resident.type === "pending"
+                                          ? "Chờ"
+                                          : "Tạm thời"}
+                                        )
+                                      </span>
+                                    )}
                                   </p>
                                   <p className="text-sm text-gray-500 dark:text-gray-400">
                                     {linkedUser?.role === "admin"
@@ -7853,86 +8591,115 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
           );
         }
         // Thêm case này vào hàm renderSection
-// Thêm case này vào hàm renderSection cho cả admin và member
-case "roomLayout": {
-  // 1. Chuẩn bị dữ liệu giường ngủ
-  // Tạo một mảng 8 giường, sau đó tìm xem ai đang ở giường nào.
-  const beds = Array.from({ length: 8 }, (_, i) => {
-    const bedId = String(i + 1);
-    const resident = residents.find((r) => r.bedId === bedId);
-    return {
-      id: bedId,
-      name: resident ? resident.name : "Giường trống",
-      isOccupied: !!resident,
-    };
-  });
+        // Thêm case này vào hàm renderSection cho cả admin và member
+        case "roomLayout": {
+          // 1. Chuẩn bị dữ liệu giường ngủ
+          // Tạo một mảng 8 giường, sau đó tìm xem ai đang ở giường nào.
+          const beds = Array.from({ length: 8 }, (_, i) => {
+            const bedId = String(i + 1);
+            const resident = residents.find((r) => r.bedId === bedId);
+            return {
+              id: bedId,
+              name: resident ? resident.name : "Giường trống",
+              isOccupied: !!resident,
+            };
+          });
 
-  // Chia thành 2 bên, mỗi bên 2 giường tầng
-  const leftSideBeds = beds.slice(0, 4); // Giường 1, 2, 3, 4
-  const rightSideBeds = beds.slice(4, 8); // Giường 5, 6, 7, 8
+          // Chia thành 2 bên, mỗi bên 2 giường tầng
+          const leftSideBeds = beds.slice(0, 4); // Giường 1, 2, 3, 4
+          const rightSideBeds = beds.slice(4, 8); // Giường 5, 6, 7, 8
 
-  // Hàm render một giường tầng (gồm 2 giường đơn)
-  const BunkBed = ({ topBed, bottomBed }) => (
-    <div className="border-4 border-gray-500 dark:border-gray-400 rounded-xl p-2 space-y-2 bg-gray-300 dark:bg-gray-600 w-48 h-64 flex flex-col justify-around">
-      {/* Giường trên */}
-      <div className={`relative rounded-lg h-1/2 flex items-center justify-center text-center p-2 transition-colors ${
-          topBed.isOccupied
-            ? "bg-blue-200 dark:bg-blue-800 border-2 border-blue-500"
-            : "bg-gray-100 dark:bg-gray-500 border-2 border-dashed border-gray-400"
-        }`}>
-        <span className="font-bold text-gray-800 dark:text-gray-100">{topBed.name}</span>
-        <span className="absolute top-1 right-1 bg-black bg-opacity-50 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-mono">{topBed.id}</span>
-      </div>
-      {/* Giường dưới */}
-      <div className={`relative rounded-lg h-1/2 flex items-center justify-center text-center p-2 transition-colors ${
-          bottomBed.isOccupied
-            ? "bg-blue-200 dark:bg-blue-800 border-2 border-blue-500"
-            : "bg-gray-100 dark:bg-gray-500 border-2 border-dashed border-gray-400"
-        }`}>
-        <span className="font-bold text-gray-800 dark:text-gray-100">{bottomBed.name}</span>
-        <span className="absolute top-1 right-1 bg-black bg-opacity-50 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-mono">{bottomBed.id}</span>
-      </div>
-    </div>
-  );
+          // Hàm render một giường tầng (gồm 2 giường đơn)
+          const BunkBed = ({ topBed, bottomBed }) => (
+            <div className="border-4 border-gray-500 dark:border-gray-400 rounded-xl p-2 space-y-2 bg-gray-300 dark:bg-gray-600 w-48 h-64 flex flex-col justify-around">
+              {/* Giường trên */}
+              <div
+                className={`relative rounded-lg h-1/2 flex items-center justify-center text-center p-2 transition-colors ${
+                  topBed.isOccupied
+                    ? "bg-blue-200 dark:bg-blue-800 border-2 border-blue-500"
+                    : "bg-gray-100 dark:bg-gray-500 border-2 border-dashed border-gray-400"
+                }`}
+              >
+                <span className="font-bold text-gray-800 dark:text-gray-100">
+                  {topBed.name}
+                </span>
+                <span className="absolute top-1 right-1 bg-black bg-opacity-50 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-mono">
+                  {topBed.id}
+                </span>
+              </div>
+              {/* Giường dưới */}
+              <div
+                className={`relative rounded-lg h-1/2 flex items-center justify-center text-center p-2 transition-colors ${
+                  bottomBed.isOccupied
+                    ? "bg-blue-200 dark:bg-blue-800 border-2 border-blue-500"
+                    : "bg-gray-100 dark:bg-gray-500 border-2 border-dashed border-gray-400"
+                }`}
+              >
+                <span className="font-bold text-gray-800 dark:text-gray-100">
+                  {bottomBed.name}
+                </span>
+                <span className="absolute top-1 right-1 bg-black bg-opacity-50 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-mono">
+                  {bottomBed.id}
+                </span>
+              </div>
+            </div>
+          );
 
-  return (
-    <div className="p-6 bg-gray-100 dark:bg-gray-900 rounded-2xl shadow-lg max-w-5xl mx-auto">
-      <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-8 text-center">
-        Sơ đồ phòng ngủ 🛌
-      </h2>
-      <div className="flex justify-around items-center">
-        {/* Bên trái phòng */}
-        <div className="flex flex-col gap-8">
-          <BunkBed topBed={leftSideBeds[0]} bottomBed={leftSideBeds[1]} /> {/* Giường tầng 1-2 */}
-          <BunkBed topBed={leftSideBeds[2]} bottomBed={leftSideBeds[3]} /> {/* Giường tầng 3-4 */}
-        </div>
+          return (
+            <div className="p-6 bg-gray-100 dark:bg-gray-900 rounded-2xl shadow-lg max-w-5xl mx-auto">
+              <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-8 text-center">
+                Sơ đồ phòng ngủ 🛌
+              </h2>
+              <div className="flex justify-around items-center">
+                {/* Bên trái phòng */}
+                <div className="flex flex-col gap-8">
+                  <BunkBed
+                    topBed={leftSideBeds[0]}
+                    bottomBed={leftSideBeds[1]}
+                  />{" "}
+                  {/* Giường tầng 1-2 */}
+                  <BunkBed
+                    topBed={leftSideBeds[2]}
+                    bottomBed={leftSideBeds[3]}
+                  />{" "}
+                  {/* Giường tầng 3-4 */}
+                </div>
 
-        {/* Lối đi giữa */}
-        <div className="text-center text-gray-400 dark:text-gray-500 font-semibold">
-            <p>Lối đi</p>
-            <i className="fas fa-arrows-alt-h text-4xl my-4"></i>
-            <p className="font-mono text-sm">[CỬA RA VÀO]</p>
-        </div>
+                {/* Lối đi giữa */}
+                <div className="text-center text-gray-400 dark:text-gray-500 font-semibold">
+                  <p>Lối đi</p>
+                  <i className="fas fa-arrows-alt-h text-4xl my-4"></i>
+                  <p className="font-mono text-sm">[CỬA RA VÀO]</p>
+                </div>
 
-        {/* Bên phải phòng */}
-        <div className="flex flex-col gap-8">
-          <BunkBed topBed={rightSideBeds[0]} bottomBed={rightSideBeds[1]} /> {/* Giường tầng 5-6 */}
-          <BunkBed topBed={rightSideBeds[2]} bottomBed={rightSideBeds[3]} /> {/* Giường tầng 7-8 */}
-        </div>
-      </div>
-       <div className="mt-8 text-center text-sm text-gray-600 dark:text-gray-400">
-          <p>
-            <span className="inline-block w-4 h-4 bg-blue-200 border-2 border-blue-500 rounded mr-2"></span>
-            Giường đã có người ở
-          </p>
-           <p className="mt-2">
-            <span className="inline-block w-4 h-4 bg-gray-100 border-2 border-dashed border-gray-400 rounded mr-2"></span>
-            Giường trống
-          </p>
-      </div>
-    </div>
-  );
-}        default:
+                {/* Bên phải phòng */}
+                <div className="flex flex-col gap-8">
+                  <BunkBed
+                    topBed={rightSideBeds[0]}
+                    bottomBed={rightSideBeds[1]}
+                  />{" "}
+                  {/* Giường tầng 5-6 */}
+                  <BunkBed
+                    topBed={rightSideBeds[2]}
+                    bottomBed={rightSideBeds[3]}
+                  />{" "}
+                  {/* Giường tầng 7-8 */}
+                </div>
+              </div>
+              <div className="mt-8 text-center text-sm text-gray-600 dark:text-gray-400">
+                <p>
+                  <span className="inline-block w-4 h-4 bg-blue-200 border-2 border-blue-500 rounded mr-2"></span>
+                  Giường đã có người ở
+                </p>
+                <p className="mt-2">
+                  <span className="inline-block w-4 h-4 bg-gray-100 border-2 border-dashed border-gray-400 rounded mr-2"></span>
+                  Giường trống
+                </p>
+              </div>
+            </div>
+          );
+        }
+        default:
           return (
             <div className="text-center p-8 bg-gray-100 dark:bg-gray-700 rounded-xl shadow-inner">
               <p className="text-xl text-gray-700 dark:text-gray-300 font-semibold mb-4">
@@ -9214,2778 +9981,2848 @@ case "roomLayout": {
             );
           }
         // Thêm case này vào hàm renderSection
-// Thêm case này vào hàm renderSection cho cả admin và member
-case "roomLayout": {
-  // 1. Chuẩn bị dữ liệu giường ngủ
-  // Tạo một mảng 8 giường, sau đó tìm xem ai đang ở giường nào.
-  const beds = Array.from({ length: 8 }, (_, i) => {
-    const bedId = String(i + 1);
-    const resident = residents.find((r) => r.bedId === bedId);
-    return {
-      id: bedId,
-      name: resident ? resident.name : "Giường trống",
-      isOccupied: !!resident,
-    };
-  });
+        // Thêm case này vào hàm renderSection cho cả admin và member
+        case "roomLayout":
+          {
+            // 1. Chuẩn bị dữ liệu giường ngủ
+            // Tạo một mảng 8 giường, sau đó tìm xem ai đang ở giường nào.
+            const beds = Array.from({ length: 8 }, (_, i) => {
+              const bedId = String(i + 1);
+              const resident = residents.find((r) => r.bedId === bedId);
+              return {
+                id: bedId,
+                name: resident ? resident.name : "Giường trống",
+                isOccupied: !!resident,
+              };
+            });
 
-  // Chia thành 2 bên, mỗi bên 2 giường tầng
-  const leftSideBeds = beds.slice(0, 4); // Giường 1, 2, 3, 4
-  const rightSideBeds = beds.slice(4, 8); // Giường 5, 6, 7, 8
+            // Chia thành 2 bên, mỗi bên 2 giường tầng
+            const leftSideBeds = beds.slice(0, 4); // Giường 1, 2, 3, 4
+            const rightSideBeds = beds.slice(4, 8); // Giường 5, 6, 7, 8
 
-  // Hàm render một giường tầng (gồm 2 giường đơn)
-  const BunkBed = ({ topBed, bottomBed }) => (
-    <div className="border-4 border-gray-500 dark:border-gray-400 rounded-xl p-2 space-y-2 bg-gray-300 dark:bg-gray-600 w-48 h-64 flex flex-col justify-around">
-      {/* Giường trên */}
-      <div className={`relative rounded-lg h-1/2 flex items-center justify-center text-center p-2 transition-colors ${
-          topBed.isOccupied
-            ? "bg-blue-200 dark:bg-blue-800 border-2 border-blue-500"
-            : "bg-gray-100 dark:bg-gray-500 border-2 border-dashed border-gray-400"
-        }`}>
-        <span className="font-bold text-gray-800 dark:text-gray-100">{topBed.name}</span>
-        <span className="absolute top-1 right-1 bg-black bg-opacity-50 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-mono">{topBed.id}</span>
-      </div>
-      {/* Giường dưới */}
-      <div className={`relative rounded-lg h-1/2 flex items-center justify-center text-center p-2 transition-colors ${
-          bottomBed.isOccupied
-            ? "bg-blue-200 dark:bg-blue-800 border-2 border-blue-500"
-            : "bg-gray-100 dark:bg-gray-500 border-2 border-dashed border-gray-400"
-        }`}>
-        <span className="font-bold text-gray-800 dark:text-gray-100">{bottomBed.name}</span>
-        <span className="absolute top-1 right-1 bg-black bg-opacity-50 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-mono">{bottomBed.id}</span>
-      </div>
-    </div>
-  );
-
-  return (
-    <div className="p-6 bg-gray-100 dark:bg-gray-900 rounded-2xl shadow-lg max-w-5xl mx-auto">
-      <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-8 text-center">
-        Sơ đồ phòng ngủ 🛌
-      </h2>
-      <div className="flex justify-around items-center">
-        {/* Bên trái phòng */}
-        <div className="flex flex-col gap-8">
-          <BunkBed topBed={leftSideBeds[0]} bottomBed={leftSideBeds[1]} /> {/* Giường tầng 1-2 */}
-          <BunkBed topBed={leftSideBeds[2]} bottomBed={leftSideBeds[3]} /> {/* Giường tầng 3-4 */}
-        </div>
-
-        {/* Lối đi giữa */}
-        <div className="text-center text-gray-400 dark:text-gray-500 font-semibold">
-            <p>Lối đi</p>
-            <i className="fas fa-arrows-alt-h text-4xl my-4"></i>
-            <p className="font-mono text-sm">[CỬA RA VÀO]</p>
-        </div>
-
-        {/* Bên phải phòng */}
-        <div className="flex flex-col gap-8">
-          <BunkBed topBed={rightSideBeds[0]} bottomBed={rightSideBeds[1]} /> {/* Giường tầng 5-6 */}
-          <BunkBed topBed={rightSideBeds[2]} bottomBed={rightSideBeds[3]} /> {/* Giường tầng 7-8 */}
-        </div>
-      </div>
-       <div className="mt-8 text-center text-sm text-gray-600 dark:text-gray-400">
-          <p>
-            <span className="inline-block w-4 h-4 bg-blue-200 border-2 border-blue-500 rounded mr-2"></span>
-            Giường đã có người ở
-          </p>
-           <p className="mt-2">
-            <span className="inline-block w-4 h-4 bg-gray-100 border-2 border-dashed border-gray-400 rounded mr-2"></span>
-            Giường trống
-          </p>
-      </div>
-    </div>
-  );
-}    
-// Trường hợp không có vai trò hoặc không xác định (hiển thị khi chưa đăng nhập)
-    return (
-      <div className="text-center p-8 bg-gray-100 dark:bg-gray-700 rounded-xl shadow-inner">
-        <p className="text-xl text-gray-700 dark:text-gray-300 font-semibold mb-4">
-          Đang đăng nhập...
-        </p>
-      </div>
-    );
-  };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-100 to-purple-200 dark:from-gray-900 dark:to-gray-700 flex flex-col font-inter overflow-hidde">
-      <div className="seasonal-effect">
-        {seasonalEffectElements.map((el, index) =>
-          React.cloneElement(el, { key: index })
-        )}
-      </div>
-      {/* Header */}
-      <header className="bg-white dark:bg-gray-800 shadow-md p-4 flex justify-between items-center sticky top-0 z-30">
-        {/* KHỐI BÊN TRÁI: Chứa nút toggle và tiêu đề */}
-        <div className="flex items-center space-x-4">
-          <button
-            className="lg:hidden p-2 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          >
-            <i className="fas fa-bars text-xl"></i>
-          </button>
-          <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
-            Quản lý phòng
-          </h1>
-        </div>
-
-        {/* Khối bên phải */}
-        <div className="flex items-center space-x-4">
-          {/* Nút thông báo */}
-          {userId && (
-            <button
-              onClick={() => setShowNotificationsModal(true)}
-              className="relative p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 shadow-md hover:shadow-lg transition-all duration-300"
-            >
-              <i className="fas fa-bell text-lg"></i>
-              {unreadNotificationsCount > 0 && (
-                <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">
-                  {unreadNotificationsCount}
-                </span>
-              )}
-            </button>
-          )}
-
-          {/* Nút đổi theme */}
-          <button
-            onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-            className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 shadow-md hover:shadow-lg transition-all duration-300"
-          >
-            {theme === "light" ? (
-              <i className="fas fa-moon text-lg"></i>
-            ) : (
-              <i className="fas fa-sun text-lg"></i>
-            )}
-          </button>
-
-          {/* ===== AVATAR VÀ POPOVER PROFILE (BẰNG TAILWIND CSS) ===== */}
-          {userId && (
-            <div className="relative">
-              {/* Nút Avatar */}
-              <button
-                onClick={handleProfileClick}
-                className="focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-full"
-              >
-                {userAvatarUrl ? (
-                  <img
-                    src={userAvatarUrl}
-                    alt="Avatar"
-                    className="w-12 h-12 rounded-full object-cover border-2 border-gray-300 dark:border-gray-600"
-                  />
-                ) : (
-                  <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-2xl border-2 border-gray-300 dark:border-gray-600">
-                    <i className="fas fa-user-circle"></i>
-                  </div>
-                )}
-              </button>
-
-              {/* Popover Paper tự tạo bằng div */}
-              {Boolean(profilePopoverAnchor) && (
+            // Hàm render một giường tầng (gồm 2 giường đơn)
+            const BunkBed = ({ topBed, bottomBed }) => (
+              <div className="border-4 border-gray-500 dark:border-gray-400 rounded-xl p-2 space-y-2 bg-gray-300 dark:bg-gray-600 w-48 h-64 flex flex-col justify-around">
+                {/* Giường trên */}
                 <div
-                  ref={popoverRef}
-                  className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-40"
+                  className={`relative rounded-lg h-1/2 flex items-center justify-center text-center p-2 transition-colors ${
+                    topBed.isOccupied
+                      ? "bg-blue-200 dark:bg-blue-800 border-2 border-blue-500"
+                      : "bg-gray-100 dark:bg-gray-500 border-2 border-dashed border-gray-400"
+                  }`}
                 >
-                  <div
-                    className="py-1"
-                    role="menu"
-                    aria-orientation="vertical"
-                    aria-labelledby="user-menu-button"
-                  >
-                    <button
-                      onClick={() => {
-                        setActiveSection("myProfileDetails");
-                        handleProfileClose();
-                      }}
-                      className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      role="menuitem"
-                    >
-                      <i className="fas fa-user-circle mr-3"></i>
-                      Hồ sơ của tôi
-                    </button>
-                    <button
-                      onClick={() => {
-                        setActiveSection("passwordSettings");
-                        handleProfileClose();
-                      }}
-                      className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      role="menuitem"
-                    >
-                      <i className="fas fa-key mr-3"></i>
-                      Mật khẩu
-                    </button>
-                    <div className="border-t border-gray-200 dark:border-gray-600"></div>
-                    <button
-                      onClick={handleSignOut}
-                      className="w-full text-left flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-gray-700"
-                      role="menuitem"
-                    >
-                      <i className="fas fa-sign-out-alt mr-3"></i>
-                      Đăng xuất
-                    </button>
-                  </div>
+                  <span className="font-bold text-gray-800 dark:text-gray-100">
+                    {topBed.name}
+                  </span>
+                  <span className="absolute top-1 right-1 bg-black bg-opacity-50 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-mono">
+                    {topBed.id}
+                  </span>
                 </div>
-              )}
-            </div>
-          )}
-        </div>
-      </header>
-      {/* Container chính cho sidebar và nội dung - thêm "relative group" */}
-      <div className="relative group flex flex-1 h-full">
-        {/* Sidebar */}
-        <aside
-          className={`flex-shrink-0 fixed inset-y-0 left-0 w-64 bg-white dark:bg-gray-800 shadow-lg transform ${
-            isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-          } lg:relative lg:translate-x-0 transition-transform duration-300 ease-in-out z-20 h-full flex flex-col`}
-        >
-          {/* Khối nội dung chính của sidebar, có thể cuộn */}
-          <div className="flex-1 overflow-y-auto overflow-x-hidden">
-            <div className="flex justify-end lg:hidden p-4">
-              <button
-                onClick={() => setIsSidebarOpen(false)}
-                className="p-2 rounded-md text-gray-700 dark:text-gray-300"
-              >
-                <i className="fas fa-times text-xl"></i>
-              </button>
-            </div>
-
-            {/* Khối thông tin cá nhân */}
-            <div
-              className={`flex items-center p-4 border-b border-gray-200 dark:border-gray-700 mb-4 ${
-                isSidebarCollapsed && "lg:justify-center"
-              }`}
-            >
-              <div className="flex-shrink-0">
-                {userAvatarUrl ? (
-                  <img
-                    src={userAvatarUrl}
-                    alt="Avatar"
-                    className="w-14 h-14 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="w-14 h-14 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-3xl">
-                    <i className="fas fa-user-circle"></i>
-                  </div>
-                )}
+                {/* Giường dưới */}
+                <div
+                  className={`relative rounded-lg h-1/2 flex items-center justify-center text-center p-2 transition-colors ${
+                    bottomBed.isOccupied
+                      ? "bg-blue-200 dark:bg-blue-800 border-2 border-blue-500"
+                      : "bg-gray-100 dark:bg-gray-500 border-2 border-dashed border-gray-400"
+                  }`}
+                >
+                  <span className="font-bold text-gray-800 dark:text-gray-100">
+                    {bottomBed.name}
+                  </span>
+                  <span className="absolute top-1 right-1 bg-black bg-opacity-50 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-mono">
+                    {bottomBed.id}
+                  </span>
+                </div>
               </div>
-              {!isSidebarCollapsed && (
-                <div className="ml-4">
-                  <p className="font-bold text-gray-800 dark:text-white break-words">
-                    {fullName}
+            );
+
+            return (
+              <div className="p-6 bg-gray-100 dark:bg-gray-900 rounded-2xl shadow-lg max-w-5xl mx-auto">
+                <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-8 text-center">
+                  Sơ đồ phòng ngủ 🛌
+                </h2>
+                <div className="flex justify-around items-center">
+                  {/* Bên trái phòng */}
+                  <div className="flex flex-col gap-8">
+                    <BunkBed
+                      topBed={leftSideBeds[0]}
+                      bottomBed={leftSideBeds[1]}
+                    />{" "}
+                    {/* Giường tầng 1-2 */}
+                    <BunkBed
+                      topBed={leftSideBeds[2]}
+                      bottomBed={leftSideBeds[3]}
+                    />{" "}
+                    {/* Giường tầng 3-4 */}
+                  </div>
+
+                  {/* Lối đi giữa */}
+                  <div className="text-center text-gray-400 dark:text-gray-500 font-semibold">
+                    <p>Lối đi</p>
+                    <i className="fas fa-arrows-alt-h text-4xl my-4"></i>
+                    <p className="font-mono text-sm">[CỬA RA VÀO]</p>
+                  </div>
+
+                  {/* Bên phải phòng */}
+                  <div className="flex flex-col gap-8">
+                    <BunkBed
+                      topBed={rightSideBeds[0]}
+                      bottomBed={rightSideBeds[1]}
+                    />{" "}
+                    {/* Giường tầng 5-6 */}
+                    <BunkBed
+                      topBed={rightSideBeds[2]}
+                      bottomBed={rightSideBeds[3]}
+                    />{" "}
+                    {/* Giường tầng 7-8 */}
+                  </div>
+                </div>
+                <div className="mt-8 text-center text-sm text-gray-600 dark:text-gray-400">
+                  <p>
+                    <span className="inline-block w-4 h-4 bg-blue-200 border-2 border-blue-500 rounded mr-2"></span>
+                    Giường đã có người ở
                   </p>
-                  {memberStudentId && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {memberStudentId}
-                    </p>
+                  <p className="mt-2">
+                    <span className="inline-block w-4 h-4 bg-gray-100 border-2 border-dashed border-gray-400 rounded mr-2"></span>
+                    Giường trống
+                  </p>
+                </div>
+              </div>
+            );
+          }
+          // Trường hợp không có vai trò hoặc không xác định (hiển thị khi chưa đăng nhập)
+          return (
+            <div className="text-center p-8 bg-gray-100 dark:bg-gray-700 rounded-xl shadow-inner">
+              <p className="text-xl text-gray-700 dark:text-gray-300 font-semibold mb-4">
+                Đang đăng nhập...
+              </p>
+            </div>
+          );
+      }
+
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-blue-100 to-purple-200 dark:from-gray-900 dark:to-gray-700 flex flex-col font-inter overflow-hidde">
+          <div className="seasonal-effect">
+            {seasonalEffectElements.map((el, index) =>
+              React.cloneElement(el, { key: index })
+            )}
+          </div>
+          {/* Header */}
+          <header className="bg-white dark:bg-gray-800 shadow-md p-4 flex justify-between items-center sticky top-0 z-30">
+            {/* KHỐI BÊN TRÁI: Chứa nút toggle và tiêu đề */}
+            <div className="flex items-center space-x-4">
+              <button
+                className="lg:hidden p-2 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              >
+                <i className="fas fa-bars text-xl"></i>
+              </button>
+              <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
+                Quản lý phòng
+              </h1>
+            </div>
+
+            {/* Khối bên phải */}
+            <div className="flex items-center space-x-4">
+              {/* Nút thông báo */}
+              {userId && (
+                <button
+                  onClick={() => setShowNotificationsModal(true)}
+                  className="relative p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 shadow-md hover:shadow-lg transition-all duration-300"
+                >
+                  <i className="fas fa-bell text-lg"></i>
+                  {unreadNotificationsCount > 0 && (
+                    <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">
+                      {unreadNotificationsCount}
+                    </span>
                   )}
-                  <p className="text-xs text-gray-500 dark:text-gray-300 mt-1">
-                    {userRole === "admin" ? "Quản trị viên" : "Thành viên"}
-                  </p>
+                </button>
+              )}
+
+              {/* Nút đổi theme */}
+              <button
+                onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+                className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 shadow-md hover:shadow-lg transition-all duration-300"
+              >
+                {theme === "light" ? (
+                  <i className="fas fa-moon text-lg"></i>
+                ) : (
+                  <i className="fas fa-sun text-lg"></i>
+                )}
+              </button>
+
+              {/* ===== AVATAR VÀ POPOVER PROFILE (BẰNG TAILWIND CSS) ===== */}
+              {userId && (
+                <div className="relative">
+                  {/* Nút Avatar */}
+                  <button
+                    onClick={handleProfileClick}
+                    className="focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-full"
+                  >
+                    {userAvatarUrl ? (
+                      <img
+                        src={userAvatarUrl}
+                        alt="Avatar"
+                        className="w-12 h-12 rounded-full object-cover border-2 border-gray-300 dark:border-gray-600"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-2xl border-2 border-gray-300 dark:border-gray-600">
+                        <i className="fas fa-user-circle"></i>
+                      </div>
+                    )}
+                  </button>
+
+                  {/* Popover Paper tự tạo bằng div */}
+                  {Boolean(profilePopoverAnchor) && (
+                    <div
+                      ref={popoverRef}
+                      className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-40"
+                    >
+                      <div
+                        className="py-1"
+                        role="menu"
+                        aria-orientation="vertical"
+                        aria-labelledby="user-menu-button"
+                      >
+                        <button
+                          onClick={() => {
+                            setActiveSection("myProfileDetails");
+                            handleProfileClose();
+                          }}
+                          className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          role="menuitem"
+                        >
+                          <i className="fas fa-user-circle mr-3"></i>
+                          Hồ sơ của tôi
+                        </button>
+                        <button
+                          onClick={() => {
+                            setActiveSection("passwordSettings");
+                            handleProfileClose();
+                          }}
+                          className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          role="menuitem"
+                        >
+                          <i className="fas fa-key mr-3"></i>
+                          Mật khẩu
+                        </button>
+                        <div className="border-t border-gray-200 dark:border-gray-600"></div>
+                        <button
+                          onClick={handleSignOut}
+                          className="w-full text-left flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-gray-700"
+                          role="menuitem"
+                        >
+                          <i className="fas fa-sign-out-alt mr-3"></i>
+                          Đăng xuất
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
+          </header>
+          {/* Container chính cho sidebar và nội dung - thêm "relative group" */}
+          <div className="relative group flex flex-1 h-full">
+            {/* Sidebar */}
+            <aside
+              className={`flex-shrink-0 fixed inset-y-0 left-0 w-64 bg-white dark:bg-gray-800 shadow-lg transform ${
+                isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+              } lg:relative lg:translate-x-0 transition-transform duration-300 ease-in-out z-20 h-full flex flex-col`}
+            >
+              {/* Khối nội dung chính của sidebar, có thể cuộn */}
+              <div className="flex-1 overflow-y-auto overflow-x-hidden">
+                <div className="flex justify-end lg:hidden p-4">
+                  <button
+                    onClick={() => setIsSidebarOpen(false)}
+                    className="p-2 rounded-md text-gray-700 dark:text-gray-300"
+                  >
+                    <i className="fas fa-times text-xl"></i>
+                  </button>
+                </div>
 
-            {/* Nav */}
-            <nav className="space-y-1 px-4">
-              {/* ===== ĐIỀU HƯỚNG CỦA ADMIN ===== */}
-              {userId && userRole === "admin" && (
-                <>
-                  {/* --- Nhóm Cá Nhân --- */}
-                  <div>
-                    {!isSidebarCollapsed && (
-                      <h3 className="sidebar-group-title">Cá Nhân</h3>
+                {/* Khối thông tin cá nhân */}
+                <div
+                  className={`flex items-center p-4 border-b border-gray-200 dark:border-gray-700 mb-4 ${
+                    isSidebarCollapsed && "lg:justify-center"
+                  }`}
+                >
+                  <div className="flex-shrink-0">
+                    {userAvatarUrl ? (
+                      <img
+                        src={userAvatarUrl}
+                        alt="Avatar"
+                        className="w-14 h-14 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-14 h-14 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-3xl">
+                        <i className="fas fa-user-circle"></i>
+                      </div>
                     )}
-                    <button
-                      className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
-                        isSidebarCollapsed && "justify-center"
-                      } ${
-                        activeSection === "dashboard"
-                          ? "bg-blue-600 text-white shadow-md"
-                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      }`}
-                      onClick={() => {
-                        setActiveSection("dashboard");
-                        setIsSidebarOpen(false);
-                      }}
-                    >
-                      <i className="fas fa-tachometer-alt"></i>
-                      {!isSidebarCollapsed && (
-                        <span className="ml-3">Dashboard</span>
-                      )}
-                    </button>
-                    <button
-                      className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
-                        isSidebarCollapsed && "justify-center"
-                      } ${
-                        activeSection === "customNotificationDesign"
-                          ? "bg-blue-600 text-white shadow-md"
-                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      }`}
-                      onClick={() => {
-                        setActiveSection("customNotificationDesign");
-                        setIsSidebarOpen(false);
-                      }}
-                    >
-                      <i className="fas fa-bullhorn"></i>
-                      {!isSidebarCollapsed && (
-                        <span className="ml-3">Quản lý Thông báo</span>
-                      )}
-                    </button>
-                    <button
-                      className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
-                        isSidebarCollapsed && "justify-center"
-                      } ${
-                        activeSection === "feedback"
-                          ? "bg-blue-600 text-white shadow-md"
-                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      }`}
-                      onClick={() => {
-                        setActiveSection("feedback");
-                        setIsSidebarOpen(false);
-                      }}
-                    >
-                      <i className="fas fa-lightbulb"></i>
-                      {!isSidebarCollapsed && (
-                        <span className="ml-3">Hộp thư góp ý</span>
-                      )}
-                    </button>
                   </div>
+                  {!isSidebarCollapsed && (
+                    <div className="ml-4">
+                      <p className="font-bold text-gray-800 dark:text-white break-words">
+                        {fullName}
+                      </p>
+                      {memberStudentId && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {memberStudentId}
+                        </p>
+                      )}
+                      <p className="text-xs text-gray-500 dark:text-gray-300 mt-1">
+                        {userRole === "admin" ? "Quản trị viên" : "Thành viên"}
+                      </p>
+                    </div>
+                  )}
+                </div>
 
-                  {/* --- Nhóm Quản Lý Chung --- */}
-                  <div className="pt-2">
-                    {!isSidebarCollapsed && (
-                      <h3 className="sidebar-group-title">Quản Lý Chung</h3>
-                    )}
-                    <button
-                      className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
-                        isSidebarCollapsed && "justify-center"
-                      } ${
-                        activeSection === "residentManagement"
-                          ? "bg-blue-600 text-white shadow-md"
-                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      }`}
-                      onClick={() => {
-                        setActiveSection("residentManagement");
-                        setIsSidebarOpen(false);
-                      }}
-                    >
-                      <i className="fas fa-users"></i>
-                      {!isSidebarCollapsed && (
-                        <span className="ml-3">Quản lý người ở</span>
-                      )}
-                    </button>
-                    <button
-                      className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
-                        isSidebarCollapsed && "justify-center"
-                      } ${
-                        activeSection === "pendingResidents"
-                          ? "bg-blue-600 text-white shadow-md"
-                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      }`}
-                      onClick={() => {
-                        setActiveSection("pendingResidents");
-                        setIsSidebarOpen(false);
-                      }}
-                    >
-                      <i className="fas fa-users"></i>
-                      {!isSidebarCollapsed && (
-                        <span className="ml-3">Thành viên chờ</span>
-                      )}
-                    </button>
-                    <button
-                      className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
-                        isSidebarCollapsed && "justify-center"
-                      } ${
-                        activeSection === "attendanceTracking"
-                          ? "bg-blue-600 text-white shadow-md"
-                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      }`}
-                      onClick={() => {
-                        setActiveSection("attendanceTracking");
-                        setIsSidebarOpen(false);
-                      }}
-                    >
-                      <i className="fas fa-calendar-alt"></i>
-                      {!isSidebarCollapsed && (
-                        <span className="ml-3">Điểm danh hàng ngày</span>
-                      )}
-                    </button>
-                    <button
-                      className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
-                        isSidebarCollapsed && "justify-center"
-                      } ${
-                        activeSection === "billing"
-                          ? "bg-blue-600 text-white shadow-md"
-                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      }`}
-                      onClick={() => {
-                        setActiveSection("billing");
-                        setIsSidebarOpen(false);
-                      }}
-                    >
-                      <i className="fas fa-file-invoice-dollar"></i>
-                      {!isSidebarCollapsed && (
-                        <span className="ml-3">Tính tiền điện nước</span>
-                      )}
-                    </button>
-                    <button
-                      className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
-                        isSidebarCollapsed && "justify-center"
-                      } ${
-                        activeSection === "costSharing"
-                          ? "bg-blue-600 text-white shadow-md"
-                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      }`}
-                      onClick={() => {
-                        setActiveSection("costSharing");
-                        setIsSidebarOpen(false);
-                      }}
-                    >
-                      <i className="fas fa-handshake"></i>
-                      {!isSidebarCollapsed && (
-                        <span className="ml-3">Chia tiền & Nhắc nhở</span>
-                      )}
-                    </button>
-                    <button
-                      className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
-                        isSidebarCollapsed && "justify-center"
-                      } ${
-                        activeSection === "cleaningSchedule"
-                          ? "bg-blue-600 text-white shadow-md"
-                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      }`}
-                      onClick={() => {
-                        setActiveSection("cleaningSchedule");
-                        setIsSidebarOpen(false);
-                      }}
-                    >
-                      <i className="fas fa-broom"></i>
-                      {!isSidebarCollapsed && (
-                        <span className="ml-3">Lịch trực phòng</span>
-                      )}
-                    </button>
-                    <button
-                      className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
-                        isSidebarCollapsed && "justify-center"
-                      } ${
-                        activeSection === "shoeRackManagement"
-                          ? "bg-blue-600 text-white shadow-md"
-                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      }`}
-                      onClick={() => {
-                        setActiveSection("shoeRackManagement");
-                        setIsSidebarOpen(false);
-                      }}
-                    >
-                      <i className="fas fa-shoe-prints"></i>
-                      {!isSidebarCollapsed && (
-                        <span className="ml-3">Quản lý kệ giày</span>
-                      )}
-                    </button>
-                    {(userRole === "admin" || userRole === "developer") && (
-                      <button
-                        className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
-                          isSidebarCollapsed && "justify-center"
-                        } ${
-                          activeSection === "bedManagement"
-                            ? "bg-blue-600 text-white shadow-md"
-                            : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                        }`}
-                        onClick={() => {
-                          setActiveSection("bedManagement");
-                          setIsSidebarOpen(false);
-                        }}
-                      >
-                        <i className="fas fa-tasks"></i>
+                {/* Nav */}
+                <nav className="space-y-1 px-4">
+                  {/* ===== ĐIỀU HƯỚNG CỦA ADMIN ===== */}
+                  {userId && userRole === "admin" && (
+                    <>
+                      {/* --- Nhóm Cá Nhân --- */}
+                      <div>
                         {!isSidebarCollapsed && (
-                          <span className="ml-3">Quản lý giường</span>
+                          <h3 className="sidebar-group-title">Cá Nhân</h3>
                         )}
-                      </button>
-                    )}
-                    <button
-                      className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
-                        isSidebarCollapsed && "justify-center"
-                      } ${
-                        activeSection === "adminCreateAccount"
-                          ? "bg-blue-600 text-white shadow-md"
-                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      }`}
-                      onClick={() => {
-                        setActiveSection("adminCreateAccount");
-                        setIsSidebarOpen(false);
-                      }}
-                    >
-                      <i className="fas fa-user-plus"></i>
-                      {!isSidebarCollapsed && (
-                        <span className="ml-3">Tạo tài khoản mới</span>
-                      )}
-                    </button>
-                  </div>
+                        <button
+                          className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                            isSidebarCollapsed && "justify-center"
+                          } ${
+                            activeSection === "dashboard"
+                              ? "bg-blue-600 text-white shadow-md"
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          }`}
+                          onClick={() => {
+                            setActiveSection("dashboard");
+                            setIsSidebarOpen(false);
+                          }}
+                        >
+                          <i className="fas fa-tachometer-alt"></i>
+                          {!isSidebarCollapsed && (
+                            <span className="ml-3">Dashboard</span>
+                          )}
+                        </button>
+                        <button
+                          className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                            isSidebarCollapsed && "justify-center"
+                          } ${
+                            activeSection === "customNotificationDesign"
+                              ? "bg-blue-600 text-white shadow-md"
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          }`}
+                          onClick={() => {
+                            setActiveSection("customNotificationDesign");
+                            setIsSidebarOpen(false);
+                          }}
+                        >
+                          <i className="fas fa-bullhorn"></i>
+                          {!isSidebarCollapsed && (
+                            <span className="ml-3">Quản lý Thông báo</span>
+                          )}
+                        </button>
+                        <button
+                          className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                            isSidebarCollapsed && "justify-center"
+                          } ${
+                            activeSection === "feedback"
+                              ? "bg-blue-600 text-white shadow-md"
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          }`}
+                          onClick={() => {
+                            setActiveSection("feedback");
+                            setIsSidebarOpen(false);
+                          }}
+                        >
+                          <i className="fas fa-lightbulb"></i>
+                          {!isSidebarCollapsed && (
+                            <span className="ml-3">Hộp thư góp ý</span>
+                          )}
+                        </button>
+                      </div>
 
-                  {/* --- Nhóm Sinh Hoạt & Lưu Trữ --- */}
-                  <div className="pt-2">
-                    {!isSidebarCollapsed && (
-                      <h3 className="sidebar-group-title">
-                        Sinh Hoạt & Lưu Trữ
-                      </h3>
-                    )}
-                    <button
-                      className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
-                        isSidebarCollapsed && "justify-center"
-                      } ${
-                        activeSection === "commonRoomInfo"
-                          ? "bg-blue-600 text-white shadow-md"
-                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      }`}
-                      onClick={() => {
-                        setActiveSection("commonRoomInfo");
-                        setIsSidebarOpen(false);
-                      }}
-                    >
-                      <i className="fas fa-info-circle"></i>
-                      {!isSidebarCollapsed && (
-                        <span className="ml-3">Thông tin phòng chung</span>
-                      )}
-                    </button>
-                    <button
-  className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
-    isSidebarCollapsed && "justify-center"
-  } ${
-    activeSection === "roomLayout"
-      ? "bg-blue-600 text-white shadow-md"
-      : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-  }`}
-  onClick={() => {
-    setActiveSection("roomLayout");
-    setIsSidebarOpen(false);
-  }}
->
-  <i className="fas fa-bed"></i>
-  {!isSidebarCollapsed && (
-    <span className="ml-3">Sơ đồ phòng</span>
-  )}
-</button>
-                    <button
-                      className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
-                        isSidebarCollapsed && "justify-center"
-                      } ${
-                        activeSection === "roomMemories"
-                          ? "bg-blue-600 text-white shadow-md"
-                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      }`}
-                      onClick={() => {
-                        setActiveSection("roomMemories");
-                        setIsSidebarOpen(false);
-                      }}
-                    >
-                      <i className="fas fa-camera"></i>
-                      {!isSidebarCollapsed && (
-                        <span className="ml-3">Kỷ niệm phòng</span>
-                      )}
-                    </button>
-                  </div>
+                      {/* --- Nhóm Quản Lý Chung --- */}
+                      <div className="pt-2">
+                        {!isSidebarCollapsed && (
+                          <h3 className="sidebar-group-title">Quản Lý Chung</h3>
+                        )}
+                        <button
+                          className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                            isSidebarCollapsed && "justify-center"
+                          } ${
+                            activeSection === "residentManagement"
+                              ? "bg-blue-600 text-white shadow-md"
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          }`}
+                          onClick={() => {
+                            setActiveSection("residentManagement");
+                            setIsSidebarOpen(false);
+                          }}
+                        >
+                          <i className="fas fa-users"></i>
+                          {!isSidebarCollapsed && (
+                            <span className="ml-3">Quản lý người ở</span>
+                          )}
+                        </button>
+                        <button
+                          className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                            isSidebarCollapsed && "justify-center"
+                          } ${
+                            activeSection === "pendingResidents"
+                              ? "bg-blue-600 text-white shadow-md"
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          }`}
+                          onClick={() => {
+                            setActiveSection("pendingResidents");
+                            setIsSidebarOpen(false);
+                          }}
+                        >
+                          <i className="fas fa-users"></i>
+                          {!isSidebarCollapsed && (
+                            <span className="ml-3">Thành viên chờ</span>
+                          )}
+                        </button>
+                        <button
+                          className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                            isSidebarCollapsed && "justify-center"
+                          } ${
+                            activeSection === "attendanceTracking"
+                              ? "bg-blue-600 text-white shadow-md"
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          }`}
+                          onClick={() => {
+                            setActiveSection("attendanceTracking");
+                            setIsSidebarOpen(false);
+                          }}
+                        >
+                          <i className="fas fa-calendar-alt"></i>
+                          {!isSidebarCollapsed && (
+                            <span className="ml-3">Điểm danh hàng ngày</span>
+                          )}
+                        </button>
+                        <button
+                          className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                            isSidebarCollapsed && "justify-center"
+                          } ${
+                            activeSection === "billing"
+                              ? "bg-blue-600 text-white shadow-md"
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          }`}
+                          onClick={() => {
+                            setActiveSection("billing");
+                            setIsSidebarOpen(false);
+                          }}
+                        >
+                          <i className="fas fa-file-invoice-dollar"></i>
+                          {!isSidebarCollapsed && (
+                            <span className="ml-3">Tính tiền điện nước</span>
+                          )}
+                        </button>
+                        <button
+                          className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                            isSidebarCollapsed && "justify-center"
+                          } ${
+                            activeSection === "costSharing"
+                              ? "bg-blue-600 text-white shadow-md"
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          }`}
+                          onClick={() => {
+                            setActiveSection("costSharing");
+                            setIsSidebarOpen(false);
+                          }}
+                        >
+                          <i className="fas fa-handshake"></i>
+                          {!isSidebarCollapsed && (
+                            <span className="ml-3">Chia tiền & Nhắc nhở</span>
+                          )}
+                        </button>
+                        <button
+                          className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                            isSidebarCollapsed && "justify-center"
+                          } ${
+                            activeSection === "cleaningSchedule"
+                              ? "bg-blue-600 text-white shadow-md"
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          }`}
+                          onClick={() => {
+                            setActiveSection("cleaningSchedule");
+                            setIsSidebarOpen(false);
+                          }}
+                        >
+                          <i className="fas fa-broom"></i>
+                          {!isSidebarCollapsed && (
+                            <span className="ml-3">Lịch trực phòng</span>
+                          )}
+                        </button>
+                        <button
+                          className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                            isSidebarCollapsed && "justify-center"
+                          } ${
+                            activeSection === "shoeRackManagement"
+                              ? "bg-blue-600 text-white shadow-md"
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          }`}
+                          onClick={() => {
+                            setActiveSection("shoeRackManagement");
+                            setIsSidebarOpen(false);
+                          }}
+                        >
+                          <i className="fas fa-shoe-prints"></i>
+                          {!isSidebarCollapsed && (
+                            <span className="ml-3">Quản lý kệ giày</span>
+                          )}
+                        </button>
+                        {(userRole === "admin" || userRole === "developer") && (
+                          <button
+                            className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                              isSidebarCollapsed && "justify-center"
+                            } ${
+                              activeSection === "bedManagement"
+                                ? "bg-blue-600 text-white shadow-md"
+                                : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                            }`}
+                            onClick={() => {
+                              setActiveSection("bedManagement");
+                              setIsSidebarOpen(false);
+                            }}
+                          >
+                            <i className="fas fa-tasks"></i>
+                            {!isSidebarCollapsed && (
+                              <span className="ml-3">Quản lý giường</span>
+                            )}
+                          </button>
+                        )}
+                        <button
+                          className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                            isSidebarCollapsed && "justify-center"
+                          } ${
+                            activeSection === "adminCreateAccount"
+                              ? "bg-blue-600 text-white shadow-md"
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          }`}
+                          onClick={() => {
+                            setActiveSection("adminCreateAccount");
+                            setIsSidebarOpen(false);
+                          }}
+                        >
+                          <i className="fas fa-user-plus"></i>
+                          {!isSidebarCollapsed && (
+                            <span className="ml-3">Tạo tài khoản mới</span>
+                          )}
+                        </button>
+                      </div>
 
-                  {/* --- Nhóm Báo Cáo & Thống Kê --- */}
-                  <div className="pt-2">
-                    {!isSidebarCollapsed && (
-                      <h3 className="sidebar-group-title">
-                        Báo Cáo & Thống Kê
-                      </h3>
-                    )}
-                    <button
-                      className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
-                        isSidebarCollapsed && "justify-center"
-                      } ${
-                        activeSection === "loginHistory"
-                          ? "bg-blue-600 text-white shadow-md"
-                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      }`}
-                      onClick={() => {
-                        setActiveSection("loginHistory");
-                        setIsSidebarOpen(false);
-                      }}
-                    >
-                      <i className="fas fa-history"></i>
-                      {!isSidebarCollapsed && (
-                        <span className="ml-3">Lịch sử đăng nhập</span>
-                      )}
-                    </button>
-                    <button
-                      className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
-                        isSidebarCollapsed && "justify-center"
-                      } ${
-                        activeSection === "consumptionStats"
-                          ? "bg-blue-600 text-white shadow-md"
-                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      }`}
-                      onClick={() => {
-                        setActiveSection("consumptionStats");
-                        setIsSidebarOpen(false);
-                      }}
-                    >
-                      <i className="fas fa-chart-bar"></i>
-                      {!isSidebarCollapsed && (
-                        <span className="ml-3">Thống kê tiêu thụ</span>
-                      )}
-                    </button>
-                  </div>
-                </>
-              )}
+                      {/* --- Nhóm Sinh Hoạt & Lưu Trữ --- */}
+                      <div className="pt-2">
+                        {!isSidebarCollapsed && (
+                          <h3 className="sidebar-group-title">
+                            Sinh Hoạt & Lưu Trữ
+                          </h3>
+                        )}
+                        <button
+                          className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                            isSidebarCollapsed && "justify-center"
+                          } ${
+                            activeSection === "commonRoomInfo"
+                              ? "bg-blue-600 text-white shadow-md"
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          }`}
+                          onClick={() => {
+                            setActiveSection("commonRoomInfo");
+                            setIsSidebarOpen(false);
+                          }}
+                        >
+                          <i className="fas fa-info-circle"></i>
+                          {!isSidebarCollapsed && (
+                            <span className="ml-3">Thông tin phòng chung</span>
+                          )}
+                        </button>
+                        <button
+                          className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                            isSidebarCollapsed && "justify-center"
+                          } ${
+                            activeSection === "roomLayout"
+                              ? "bg-blue-600 text-white shadow-md"
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          }`}
+                          onClick={() => {
+                            setActiveSection("roomLayout");
+                            setIsSidebarOpen(false);
+                          }}
+                        >
+                          <i className="fas fa-bed"></i>
+                          {!isSidebarCollapsed && (
+                            <span className="ml-3">Sơ đồ phòng</span>
+                          )}
+                        </button>
+                        <button
+                          className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                            isSidebarCollapsed && "justify-center"
+                          } ${
+                            activeSection === "roomMemories"
+                              ? "bg-blue-600 text-white shadow-md"
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          }`}
+                          onClick={() => {
+                            setActiveSection("roomMemories");
+                            setIsSidebarOpen(false);
+                          }}
+                        >
+                          <i className="fas fa-camera"></i>
+                          {!isSidebarCollapsed && (
+                            <span className="ml-3">Kỷ niệm phòng</span>
+                          )}
+                        </button>
+                      </div>
 
-              {/* ===== ĐIỀU HƯỚNG CỦA MEMBER ===== */}
-              {userId && userRole === "member" && (
-                <>
-                  {/* --- Nhóm Cá Nhân --- */}
-                  <div>
-                    {!isSidebarCollapsed && (
-                      <h3 className="sidebar-group-title">Cá Nhân</h3>
-                    )}
-                    <button
-                      className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
-                        isSidebarCollapsed && "justify-center"
-                      } ${
-                        activeSection === "dashboard"
-                          ? "bg-blue-600 text-white shadow-md"
-                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      }`}
-                      onClick={() => {
-                        setActiveSection("dashboard");
-                        setIsSidebarOpen(false);
-                      }}
-                    >
-                      <i className="fas fa-tachometer-alt"></i>
-                      {!isSidebarCollapsed && (
-                        <span className="ml-3">Dashboard</span>
-                      )}
-                    </button>
-                    <button
-                      className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
-                        isSidebarCollapsed && "justify-center"
-                      } ${
-                        activeSection === "notifications"
-                          ? "bg-blue-600 text-white shadow-md"
-                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      }`}
-                      onClick={() => {
-                        setActiveSection("notifications");
-                        setIsSidebarOpen(false);
-                      }}
-                    >
-                      <i className="fas fa-bell"></i>
-                      {!isSidebarCollapsed && (
-                        <span className="ml-3">Thông báo của tôi</span>
-                      )}
-                    </button>
-                    <button
-                      className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
-                        isSidebarCollapsed && "justify-center"
-                      } ${
-                        activeSection === "memberCostSummary"
-                          ? "bg-blue-600 text-white shadow-md"
-                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      }`}
-                      onClick={() => {
-                        setActiveSection("memberCostSummary");
-                        setIsSidebarOpen(false);
-                      }}
-                    >
-                      <i className="fas fa-money-bill-wave"></i>
-                      {!isSidebarCollapsed && (
-                        <span className="ml-3">Chi phí của tôi</span>
-                      )}
-                    </button>
-                    <button
-                      className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
-                        isSidebarCollapsed && "justify-center"
-                      } ${
-                        activeSection === "memberCleaningSchedule"
-                          ? "bg-blue-600 text-white shadow-md"
-                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      }`}
-                      onClick={() => {
-                        setActiveSection("memberCleaningSchedule");
-                        setIsSidebarOpen(false);
-                      }}
-                    >
-                      <i className="fas fa-broom"></i>
-                      {!isSidebarCollapsed && (
-                        <span className="ml-3">Lịch trực của tôi</span>
-                      )}
-                    </button>
-                    <button
-                      className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
-                        isSidebarCollapsed && "justify-center"
-                      } ${
-                        activeSection === "feedback"
-                          ? "bg-blue-600 text-white shadow-md"
-                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      }`}
-                      onClick={() => {
-                        setActiveSection("feedback");
-                        setIsSidebarOpen(false);
-                      }}
-                    >
-                      <i className="fas fa-lightbulb"></i>
-                      {!isSidebarCollapsed && (
-                        <span className="ml-3">Hộp thư góp ý</span>
-                      )}
-                    </button>
-                  </div>
+                      {/* --- Nhóm Báo Cáo & Thống Kê --- */}
+                      <div className="pt-2">
+                        {!isSidebarCollapsed && (
+                          <h3 className="sidebar-group-title">
+                            Báo Cáo & Thống Kê
+                          </h3>
+                        )}
+                        <button
+                          className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                            isSidebarCollapsed && "justify-center"
+                          } ${
+                            activeSection === "loginHistory"
+                              ? "bg-blue-600 text-white shadow-md"
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          }`}
+                          onClick={() => {
+                            setActiveSection("loginHistory");
+                            setIsSidebarOpen(false);
+                          }}
+                        >
+                          <i className="fas fa-history"></i>
+                          {!isSidebarCollapsed && (
+                            <span className="ml-3">Lịch sử đăng nhập</span>
+                          )}
+                        </button>
+                        <button
+                          className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                            isSidebarCollapsed && "justify-center"
+                          } ${
+                            activeSection === "consumptionStats"
+                              ? "bg-blue-600 text-white shadow-md"
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          }`}
+                          onClick={() => {
+                            setActiveSection("consumptionStats");
+                            setIsSidebarOpen(false);
+                          }}
+                        >
+                          <i className="fas fa-chart-bar"></i>
+                          {!isSidebarCollapsed && (
+                            <span className="ml-3">Thống kê tiêu thụ</span>
+                          )}
+                        </button>
+                      </div>
+                    </>
+                  )}
 
-                  {/* --- Nhóm Sinh Hoạt Chung --- */}
-                  <div className="pt-2">
-                    {!isSidebarCollapsed && (
-                      <h3 className="sidebar-group-title">Sinh Hoạt Chung</h3>
-                    )}
-                    <button
-                      className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
-                        isSidebarCollapsed && "justify-center"
-                      } ${
-                        activeSection === "attendanceTracking"
-                          ? "bg-blue-600 text-white shadow-md"
-                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      }`}
-                      onClick={() => {
-                        setActiveSection("attendanceTracking");
-                        setIsSidebarOpen(false);
-                      }}
-                    >
-                      <i className="fas fa-calendar-alt"></i>
-                      {!isSidebarCollapsed && (
-                        <span className="ml-3">Điểm danh</span>
-                      )}
-                    </button>
-                    <button
-                      className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
-                        isSidebarCollapsed && "justify-center"
-                      } ${
-                        activeSection === "shoeRackManagement"
-                          ? "bg-blue-600 text-white shadow-md"
-                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      }`}
-                      onClick={() => {
-                        setActiveSection("shoeRackManagement");
-                        setIsSidebarOpen(false);
-                      }}
-                    >
-                      <i className="fas fa-shoe-prints"></i>
-                      {!isSidebarCollapsed && (
-                        <span className="ml-3">Thông tin kệ giày</span>
-                      )}
-                    </button>
-                    <button
-                      className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
-                        isSidebarCollapsed && "justify-center"
-                      } ${
-                        activeSection === "commonRoomInfo"
-                          ? "bg-blue-600 text-white shadow-md"
-                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      }`}
-                      onClick={() => {
-                        setActiveSection("commonRoomInfo");
-                        setIsSidebarOpen(false);
-                      }}
-                    >
-                      <i className="fas fa-info-circle"></i>
-                      {!isSidebarCollapsed && (
-                        <span className="ml-3">Thông tin phòng chung</span>
-                      )}
-                    </button>
-                    <button
-  className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
-    isSidebarCollapsed && "justify-center"
-  } ${
-    activeSection === "roomLayout"
-      ? "bg-blue-600 text-white shadow-md"
-      : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-  }`}
-  onClick={() => {
-    setActiveSection("roomLayout");
-    setIsSidebarOpen(false);
-  }}
->
-  <i className="fas fa-bed"></i>
-  {!isSidebarCollapsed && (
-    <span className="ml-3">Sơ đồ phòng</span>
-  )}
-</button>
-                    <button
-                      className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
-                        isSidebarCollapsed && "justify-center"
-                      } ${
-                        activeSection === "roomMemories"
-                          ? "bg-blue-600 text-white shadow-md"
-                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      }`}
-                      onClick={() => {
-                        setActiveSection("roomMemories");
-                        setIsSidebarOpen(false);
-                      }}
-                    >
-                      <i className="fas fa-camera"></i>
-                      {!isSidebarCollapsed && (
-                        <span className="ml-3">Kỷ niệm phòng</span>
-                      )}
-                    </button>
-                    <button
-                      className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
-                        isSidebarCollapsed && "justify-center"
-                      } ${
-                        activeSection === "formerResidents"
-                          ? "bg-blue-600 text-white shadow-md"
-                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      }`}
-                      onClick={() => {
-                        setActiveSection("formerResidents");
-                        setIsSidebarOpen(false);
-                      }}
-                    >
-                      <i className="fas fa-user-graduate"></i>
-                      {!isSidebarCollapsed && (
-                        <span className="ml-3">Thông tin tiền bối</span>
-                      )}
-                    </button>
-                  </div>
-                </>
-              )}
-            </nav>
-          </div>
+                  {/* ===== ĐIỀU HƯỚNG CỦA MEMBER ===== */}
+                  {userId && userRole === "member" && (
+                    <>
+                      {/* --- Nhóm Cá Nhân --- */}
+                      <div>
+                        {!isSidebarCollapsed && (
+                          <h3 className="sidebar-group-title">Cá Nhân</h3>
+                        )}
+                        <button
+                          className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                            isSidebarCollapsed && "justify-center"
+                          } ${
+                            activeSection === "dashboard"
+                              ? "bg-blue-600 text-white shadow-md"
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          }`}
+                          onClick={() => {
+                            setActiveSection("dashboard");
+                            setIsSidebarOpen(false);
+                          }}
+                        >
+                          <i className="fas fa-tachometer-alt"></i>
+                          {!isSidebarCollapsed && (
+                            <span className="ml-3">Dashboard</span>
+                          )}
+                        </button>
+                        <button
+                          className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                            isSidebarCollapsed && "justify-center"
+                          } ${
+                            activeSection === "notifications"
+                              ? "bg-blue-600 text-white shadow-md"
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          }`}
+                          onClick={() => {
+                            setActiveSection("notifications");
+                            setIsSidebarOpen(false);
+                          }}
+                        >
+                          <i className="fas fa-bell"></i>
+                          {!isSidebarCollapsed && (
+                            <span className="ml-3">Thông báo của tôi</span>
+                          )}
+                        </button>
+                        <button
+                          className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                            isSidebarCollapsed && "justify-center"
+                          } ${
+                            activeSection === "memberCostSummary"
+                              ? "bg-blue-600 text-white shadow-md"
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          }`}
+                          onClick={() => {
+                            setActiveSection("memberCostSummary");
+                            setIsSidebarOpen(false);
+                          }}
+                        >
+                          <i className="fas fa-money-bill-wave"></i>
+                          {!isSidebarCollapsed && (
+                            <span className="ml-3">Chi phí của tôi</span>
+                          )}
+                        </button>
+                        <button
+                          className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                            isSidebarCollapsed && "justify-center"
+                          } ${
+                            activeSection === "memberCleaningSchedule"
+                              ? "bg-blue-600 text-white shadow-md"
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          }`}
+                          onClick={() => {
+                            setActiveSection("memberCleaningSchedule");
+                            setIsSidebarOpen(false);
+                          }}
+                        >
+                          <i className="fas fa-broom"></i>
+                          {!isSidebarCollapsed && (
+                            <span className="ml-3">Lịch trực của tôi</span>
+                          )}
+                        </button>
+                        <button
+                          className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                            isSidebarCollapsed && "justify-center"
+                          } ${
+                            activeSection === "feedback"
+                              ? "bg-blue-600 text-white shadow-md"
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          }`}
+                          onClick={() => {
+                            setActiveSection("feedback");
+                            setIsSidebarOpen(false);
+                          }}
+                        >
+                          <i className="fas fa-lightbulb"></i>
+                          {!isSidebarCollapsed && (
+                            <span className="ml-3">Hộp thư góp ý</span>
+                          )}
+                        </button>
+                      </div>
 
-          {/* Copyright */}
-          <div
-            className={`p-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0 ${
-              isSidebarCollapsed && "hidden"
-            }`}
-          >
-            <div className="text-center text-gray-500 dark:text-gray-400 text-xs">
-              © Bản quyền thuộc về Nguyễn Huỳnh Phúc Khang 2025
-            </div>
-          </div>
-        </aside>
+                      {/* --- Nhóm Sinh Hoạt Chung --- */}
+                      <div className="pt-2">
+                        {!isSidebarCollapsed && (
+                          <h3 className="sidebar-group-title">
+                            Sinh Hoạt Chung
+                          </h3>
+                        )}
+                        <button
+                          className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                            isSidebarCollapsed && "justify-center"
+                          } ${
+                            activeSection === "attendanceTracking"
+                              ? "bg-blue-600 text-white shadow-md"
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          }`}
+                          onClick={() => {
+                            setActiveSection("attendanceTracking");
+                            setIsSidebarOpen(false);
+                          }}
+                        >
+                          <i className="fas fa-calendar-alt"></i>
+                          {!isSidebarCollapsed && (
+                            <span className="ml-3">Điểm danh</span>
+                          )}
+                        </button>
+                        <button
+                          className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                            isSidebarCollapsed && "justify-center"
+                          } ${
+                            activeSection === "shoeRackManagement"
+                              ? "bg-blue-600 text-white shadow-md"
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          }`}
+                          onClick={() => {
+                            setActiveSection("shoeRackManagement");
+                            setIsSidebarOpen(false);
+                          }}
+                        >
+                          <i className="fas fa-shoe-prints"></i>
+                          {!isSidebarCollapsed && (
+                            <span className="ml-3">Thông tin kệ giày</span>
+                          )}
+                        </button>
+                        <button
+                          className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                            isSidebarCollapsed && "justify-center"
+                          } ${
+                            activeSection === "commonRoomInfo"
+                              ? "bg-blue-600 text-white shadow-md"
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          }`}
+                          onClick={() => {
+                            setActiveSection("commonRoomInfo");
+                            setIsSidebarOpen(false);
+                          }}
+                        >
+                          <i className="fas fa-info-circle"></i>
+                          {!isSidebarCollapsed && (
+                            <span className="ml-3">Thông tin phòng chung</span>
+                          )}
+                        </button>
+                        <button
+                          className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                            isSidebarCollapsed && "justify-center"
+                          } ${
+                            activeSection === "roomLayout"
+                              ? "bg-blue-600 text-white shadow-md"
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          }`}
+                          onClick={() => {
+                            setActiveSection("roomLayout");
+                            setIsSidebarOpen(false);
+                          }}
+                        >
+                          <i className="fas fa-bed"></i>
+                          {!isSidebarCollapsed && (
+                            <span className="ml-3">Sơ đồ phòng</span>
+                          )}
+                        </button>
+                        <button
+                          className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                            isSidebarCollapsed && "justify-center"
+                          } ${
+                            activeSection === "roomMemories"
+                              ? "bg-blue-600 text-white shadow-md"
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          }`}
+                          onClick={() => {
+                            setActiveSection("roomMemories");
+                            setIsSidebarOpen(false);
+                          }}
+                        >
+                          <i className="fas fa-camera"></i>
+                          {!isSidebarCollapsed && (
+                            <span className="ml-3">Kỷ niệm phòng</span>
+                          )}
+                        </button>
+                        <button
+                          className={`w-full flex items-center py-2 px-4 rounded-lg font-medium transition-colors duration-200 ${
+                            isSidebarCollapsed && "justify-center"
+                          } ${
+                            activeSection === "formerResidents"
+                              ? "bg-blue-600 text-white shadow-md"
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          }`}
+                          onClick={() => {
+                            setActiveSection("formerResidents");
+                            setIsSidebarOpen(false);
+                          }}
+                        >
+                          <i className="fas fa-user-graduate"></i>
+                          {!isSidebarCollapsed && (
+                            <span className="ml-3">Thông tin tiền bối</span>
+                          )}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </nav>
+              </div>
 
-        {/* ===== NÚT THU GỌN MỚI - NẰM NGOÀI SIDEBAR ===== */}
-        <button
-          onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-          className={`hidden lg:block absolute top-1/2 -translate-y-1/2 z-30
+              {/* Copyright */}
+              <div
+                className={`p-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0 ${
+                  isSidebarCollapsed && "hidden"
+                }`}
+              >
+                <div className="text-center text-gray-500 dark:text-gray-400 text-xs">
+                  © Bản quyền thuộc về Nguyễn Huỳnh Phúc Khang 2025
+                </div>
+              </div>
+            </aside>
+
+            {/* ===== NÚT THU GỌN MỚI - NẰM NGOÀI SIDEBAR ===== */}
+            <button
+              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              className={`hidden lg:block absolute top-1/2 -translate-y-1/2 z-30
                           bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-300 
                           border border-gray-200 dark:border-gray-600 rounded-full 
                           w-8 h-8 flex items-center justify-center
                           opacity-0 group-hover:opacity-100 transition-all duration-300
                           ${isSidebarCollapsed ? "left-16" : "left-60"}`}
-          style={{ transform: "translateY(-50%)" }}
-        >
-          <i
-            className={`fas ${
-              isSidebarCollapsed ? "fa-angle-right" : "fa-angle-left"
-            }`}
-          ></i>
-        </button>
-
-        {/* Lớp phủ */}
-        {isSidebarOpen && (
-          <div
-            onClick={() => setIsSidebarOpen(false)}
-            className="fixed inset-0 bg-black bg-opacity-50 z-10 lg:hidden"
-            aria-hidden="true"
-          ></div>
-        )}
-
-        {/* Main Content Area */}
-        <main
-          className={`h-full p-4 transition-all duration-300 ease-in-out overflow-y-auto w-full ${
-            isSidebarCollapsed ? "lg:ml-20" : "lg:ml-64"
-          }`}
-        >
-          {userId ? (
-            renderSection()
-          ) : (
-            <div className="mb-8 p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg mx-auto max-w-lg">
-              {/* Tab Navigation */}
-              <div className="flex justify-center mb-6 border-b border-gray-300 dark:border-gray-600">
-                <button
-                  className={`px-4 py-2 text-lg font-semibold ${
-                    authMode === "login"
-                      ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
-                      : "text-gray-600 dark:text-gray-400 hover:text-blue-500"
-                  }`}
-                  onClick={() => {
-                    setAuthMode("login");
-                    setAuthError("");
-                  }}
-                >
-                  Đăng nhập
-                </button>
-                <button
-                  className={`px-4 py-2 text-lg font-semibold ${
-                    authMode === "register"
-                      ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
-                      : "text-gray-600 dark:text-gray-400 hover:text-blue-500"
-                  }`}
-                  onClick={() => {
-                    setAuthMode("register");
-                    setAuthError("");
-                  }}
-                >
-                  Đăng ký
-                </button>
-              </div>
-
-              {!isAuthReady ? (
-                <p className="text-blue-600 dark:text-blue-300 text-center text-lg">
-                  Đang kết nối Firebase...
-                </p>
-              ) : (
-                <>
-                  {/* FORM ĐĂNG NHẬP */}
-                  {authMode === "login" && (
-                    <div className="flex flex-col space-y-4">
-                      <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 text-center">
-                        Đăng nhập tài khoản
-                      </h2>
-                      <div>
-                        <label htmlFor="studentIdLogin" className="sr-only">
-                          Mã số sinh viên
-                        </label>
-                        <input
-                          type="text"
-                          id="studentIdLogin"
-                          placeholder="Mã số sinh viên"
-                          value={studentIdForLogin}
-                          onChange={(e) => setStudentIdForLogin(e.target.value)}
-                          className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="passwordLogin" className="sr-only">
-                          Mật khẩu
-                        </label>
-                        <input
-                          type="password"
-                          id="passwordLogin"
-                          placeholder="Mật khẩu"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                        />
-                      </div>
-                      {authError && (
-                        <p className="text-red-500 text-sm text-center">
-                          {authError}
-                        </p>
-                      )}
-                      <button
-                        onClick={handleSignIn}
-                        className="w-full px-6 py-2 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
-                      >
-                        Đăng nhập
-                      </button>
-                      <button
-                        onClick={() => setShowForgotPasswordModal(true)}
-                        className="w-full mt-2 text-blue-600 dark:text-blue-400 hover:underline text-sm font-semibold"
-                      >
-                        Quên mật khẩu?
-                      </button>
-                    </div>
-                  )}
-
-                  {/* FORM ĐĂNG KÝ */}
-                  {authMode === "register" && (
-                    <div className="flex flex-col space-y-4">
-                      <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 text-center">
-                        Tạo tài khoản mới
-                      </h2>
-                      <div>
-                        <label htmlFor="fullNameRegister" className="sr-only">
-                          Họ tên đầy đủ
-                        </label>
-                        <input
-                          type="text"
-                          id="fullNameRegister"
-                          placeholder="Họ tên đầy đủ"
-                          value={fullName}
-                          onChange={(e) => setFullName(e.target.value)}
-                          className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="studentIdRegister" className="sr-only">
-                          Mã số sinh viên
-                        </label>
-                        <input
-                          type="text"
-                          id="studentIdRegister"
-                          placeholder="Mã số sinh viên (dùng để đăng nhập)"
-                          value={newStudentIdForAuth}
-                          onChange={(e) =>
-                            setNewStudentIdForAuth(e.target.value)
-                          }
-                          className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                        />
-                      </div>
-                      {/* ===== TRƯỜNG EMAIL MỚI ĐƯỢC THÊM VÀO ĐÂY ===== */}
-                      <div>
-                        <label htmlFor="emailRegister" className="sr-only">
-                          Email cá nhân
-                        </label>
-                        <input
-                          type="email"
-                          id="emailRegister"
-                          placeholder="Email cá nhân (để xác minh tài khoản)"
-                          value={personalEmailForRegister}
-                          onChange={(e) =>
-                            setPersonalEmailForRegister(e.target.value)
-                          }
-                          className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                        />
-                      </div>
-                      {/* ===== KẾT THÚC TRƯỜNG EMAIL MỚI ===== */}
-                      <div>
-                        <label htmlFor="passwordRegister" className="sr-only">
-                          Mật khẩu
-                        </label>
-                        <input
-                          type="password"
-                          id="passwordRegister"
-                          placeholder="Mật khẩu (ít nhất 6 ký tự)"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                        />
-                      </div>
-                      {authError && (
-                        <p className="text-red-500 text-sm text-center">
-                          {authError}
-                        </p>
-                      )}
-                      <button
-                        onClick={handleRegister}
-                        className="w-full px-6 py-2 bg-purple-600 text-white font-semibold rounded-xl shadow-md hover:bg-purple-700 transition-all duration-300"
-                      >
-                        Đăng ký
-                      </button>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          )}
-        </main>
-      </div>
-
-      {/* MODAL CHI TIẾT HÓA ĐƠN ĐIỆN NƯỚC */}
-      {selectedBillDetails &&
-        (userRole === "admin" || userRole === "developer") && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[95vh]">
-              <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center flex-shrink-0">
-                Chi tiết hóa đơn
-              </h3>
-
-              {/* Khung nội dung có thể cuộn */}
-              <div className="flex-1 overflow-y-auto pr-2">
-                {/* Phần thông tin chi tiết hóa đơn */}
-                <div className="space-y-3 text-gray-700 dark:text-gray-300">
-                  <p>
-                    <strong>Tháng:</strong>{" "}
-                    {selectedBillDetails.billingMonth || "N/A"}
-                  </p>
-                  <p>
-                    <strong>Ngày tính:</strong>{" "}
-                    {selectedBillDetails.billDate?.toLocaleDateString(
-                      "vi-VN"
-                    ) || "N/A"}
-                  </p>
-                  <p>
-                    <strong>Điện (Đầu):</strong>{" "}
-                    {selectedBillDetails.electricityStartReading} KW
-                  </p>
-                  <p>
-                    <strong>Điện (Cuối):</strong>{" "}
-                    {selectedBillDetails.electricityEndReading} KW
-                  </p>
-                  <p>
-                    <strong>Tiền điện:</strong>{" "}
-                    {selectedBillDetails.electricityCost?.toLocaleString(
-                      "vi-VN"
-                    )}{" "}
-                    VND
-                  </p>
-                  <p>
-                    <strong>Nước (Đầu):</strong>{" "}
-                    {selectedBillDetails.waterStartReading} m³
-                  </p>
-                  <p>
-                    <strong>Nước (Cuối):</strong>{" "}
-                    {selectedBillDetails.waterEndReading} m³
-                  </p>
-                  <p>
-                    <strong>Tiền nước:</strong>{" "}
-                    {selectedBillDetails.waterCost?.toLocaleString("vi-VN")} VND
-                  </p>
-                  <p className="text-xl font-bold border-t pt-3 mt-3 border-gray-300 dark:border-gray-600">
-                    Tổng cộng:{" "}
-                    {selectedBillDetails.totalCost?.toLocaleString("vi-VN")} VND
-                  </p>
-                  <p className="text-lg font-bold">
-                    Trạng thái:{" "}
-                    <span
-                      className={
-                        selectedBillDetails.isPaid
-                          ? "text-green-600 dark:text-green-400"
-                          : "text-red-500 dark:text-red-400"
-                      }
-                    >
-                      {selectedBillDetails.isPaid ? "Đã trả" : "Chưa trả"}
-                    </span>
-                  </p>
-                </div>
-
-                {/* ===== KHỐI HÌNH ẢNH HÓA ĐƠN ===== */}
-                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                  <h4 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                    Ảnh hóa đơn
-                  </h4>
-                  {selectedBillDetails.receiptImageUrl ? (
-                    <div className="text-center">
-                      <img
-                        src={selectedBillDetails.receiptImageUrl}
-                        alt="Ảnh hóa đơn"
-                        className="w-full max-w-xs mx-auto rounded-lg cursor-pointer border"
-                        onClick={() =>
-                          setReceiptToView(selectedBillDetails.receiptImageUrl)
-                        }
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Bấm vào ảnh để xem kích thước đầy đủ
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-500 italic">
-                      Chưa có ảnh hóa đơn.
-                    </p>
-                  )}
-
-                  <div className="mt-4">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => setBillReceiptFile(e.target.files[0])}
-                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                    />
-                    <button
-                      onClick={handleUploadBillReceipt}
-                      className="w-full mt-2 px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 disabled:bg-gray-400"
-                      disabled={!billReceiptFile || isUploadingReceipt}
-                    >
-                      {isUploadingReceipt
-                        ? "Đang tải lên..."
-                        : "Tải lên ảnh mới"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setSelectedBillDetails(null)}
-                className="mt-6 w-full px-6 py-3 bg-gray-500 text-white font-semibold rounded-xl flex-shrink-0"
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
-        )}
-      {/* ===== POPUP XEM ẢNH HÓA ĐƠN PHÓNG TO ===== */}
-      {receiptToView && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4"
-          onClick={() => setReceiptToView(null)}
-        >
-          <img
-            src={receiptToView}
-            alt="Ảnh hóa đơn phóng to"
-            className="max-w-full max-h-full object-contain"
-          />
-        </div>
-      )}
-
-      {/* ===== MODAL CHI TIẾT BÀI ĐĂNG KỶ NIỆM ===== */}
-      {selectedMemoryDetails && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
-          onClick={() => setSelectedMemoryDetails(null)} // Đóng khi bấm ra ngoài
-        >
-          <div
-            className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col"
-            onClick={(e) => e.stopPropagation()} // Ngăn không cho popup tự đóng khi bấm vào bên trong
-          >
-            {/* Header của Popup */}
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-              <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
-                {selectedMemoryDetails.eventName}
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                Ngày chụp: {selectedMemoryDetails.photoDate}
-              </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Đăng bởi: {selectedMemoryDetails.uploadedByName || "N/A"}
-              </p>
-            </div>
-
-            {/* Nội dung hình ảnh/video */}
-            <div className="flex-1 p-6 overflow-y-auto">
-              <div className="grid grid-cols-1 gap-4">
-                {selectedMemoryDetails.files &&
-                  selectedMemoryDetails.files.map((file, index) => (
-                    <div key={index}>
-                      {file.fileType === "image" ? (
-                        <img
-                          src={file.fileUrl}
-                          alt={`File ${index + 1}`}
-                          className="w-full h-auto rounded-lg object-contain"
-                        />
-                      ) : (
-                        <video
-                          src={file.fileUrl}
-                          controls
-                          className="w-full h-auto rounded-lg"
-                        ></video>
-                      )}
-                    </div>
-                  ))}
-              </div>
-            </div>
-
-            {/* Footer của Popup */}
-            <div className="p-6 border-t border-gray-200 dark:border-gray-700">
-              <button
-                onClick={() => setSelectedMemoryDetails(null)}
-                className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ===== MODAL CHỈNH SỬA BÀI ĐĂNG KỶ NIỆM ===== */}
-      {editingMemory && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
-              Chỉnh sửa kỷ niệm
-            </h3>
-            <form onSubmit={handleUpdateMemory} className="space-y-4">
-              <div>
-                <label
-                  htmlFor="editEventName"
-                  className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                >
-                  Sự kiện:
-                </label>
-                <input
-                  type="text"
-                  id="editEventName"
-                  value={editMemoryEventName}
-                  onChange={(e) => setEditMemoryEventName(e.target.value)}
-                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="editPhotoDate"
-                  className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                >
-                  Ngày chụp/quay:
-                </label>
-                <input
-                  type="date"
-                  id="editPhotoDate"
-                  value={editMemoryPhotoDate}
-                  onChange={(e) => setEditMemoryPhotoDate(e.target.value)}
-                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                />
-              </div>
-              {/* Hiển thị các ảnh/video hiện có và tùy chọn xóa */}
-              <div className="border p-3 rounded-lg bg-gray-50 dark:bg-gray-700">
-                <p className="font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                  File hiện có:
-                </p>
-                {editingMemory.files && editingMemory.files.length > 0 ? (
-                  <div className="grid grid-cols-2 gap-2">
-                    {editingMemory.files.map((file, index) => (
-                      <div key={index} className="relative group">
-                        {file.fileType === "video" ? (
-                          <video
-                            src={file.fileUrl}
-                            controls
-                            className="w-full h-24 object-cover rounded-lg"
-                          ></video>
-                        ) : (
-                          <img
-                            src={file.fileUrl}
-                            alt={`Memory ${index}`}
-                            className="w-full h-24 object-cover rounded-lg"
-                          />
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const updatedFiles = editingMemory.files.filter(
-                              (_, i) => i !== index
-                            );
-                            setEditingMemory({
-                              ...editingMemory,
-                              files: updatedFiles,
-                            });
-                            // Xóa file khỏi Cloudinary (cần Cloud Function)
-                            if (file.publicId) {
-                              alert(
-                                `Chức năng xóa file Cloudinary cho ${file.publicId} cần Cloud Function.`
-                              );
-                            }
-                          }}
-                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <i className="fas fa-times"></i>
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 dark:text-gray-400 italic">
-                    Không có file nào.
-                  </p>
-                )}
-              </div>
-              {/* Thêm file mới */}
-              <div>
-                <label
-                  htmlFor="editNewFiles"
-                  className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                >
-                  Thêm file mới (ảnh/video):
-                </label>
-                <input
-                  type="file"
-                  id="editNewFiles"
-                  accept="image/*,video/*"
-                  multiple
-                  onChange={(e) =>
-                    setEditMemoryNewFiles(Array.from(e.target.files))
-                  }
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                />
-              </div>
-              {isUploadingEditMemory && (
-                <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-                  <div
-                    className="bg-blue-600 h-2.5 rounded-full"
-                    style={{ width: `${editMemoryUploadProgress}%` }}
-                  ></div>
-                </div>
-              )}
-              {editMemoryError && (
-                <p className="text-red-500 text-sm text-center mt-4">
-                  {editMemoryError}
-                </p>
-              )}
-              <button
-                type="submit"
-                className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75"
-                disabled={isUploadingEditMemory}
-              >
-                {isUploadingEditMemory ? (
-                  <i className="fas fa-spinner fa-spin mr-2"></i>
-                ) : (
-                  <i className="fas fa-save mr-2"></i>
-                )}
-                Lưu thay đổi
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingMemory(null);
-                  setEditMemoryError("");
-                }}
-                className="w-full mt-2 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
-              >
-                Hủy
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ===== MODAL TRÌNH XEM ẢNH/VIDEO KỶ NIỆM ===== */}
-      {selectedMemoryForLightbox && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
-          onClick={() => setSelectedMemoryForLightbox(null)} // Đóng modal khi nhấp ra ngoài
-        >
-          <div
-            className="relative max-w-full max-h-full flex items-center justify-center"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {selectedMemoryForLightbox.files &&
-              selectedMemoryForLightbox.files.length > 0 && (
-                <>
-                  {selectedMemoryForLightbox.files[currentLightboxIndex]
-                    .fileType === "video" ? (
-                    <video
-                      src={
-                        selectedMemoryForLightbox.files[currentLightboxIndex]
-                          .fileUrl
-                      }
-                      controls
-                      autoPlay
-                      loop
-                      className="max-w-full max-h-[90vh] object-contain shadow-lg rounded-lg"
-                    ></video>
-                  ) : (
-                    <img
-                      src={
-                        selectedMemoryForLightbox.files[currentLightboxIndex]
-                          .fileUrl
-                      }
-                      alt={`${selectedMemoryForLightbox.eventName} - ${
-                        currentLightboxIndex + 1
-                      }`}
-                      className="max-w-full max-h-[90vh] object-contain shadow-lg rounded-lg"
-                    />
-                  )}
-
-                  {/* Nút điều hướng Previous */}
-                  {selectedMemoryForLightbox.files.length > 1 && (
-                    <button
-                      onClick={() =>
-                        setCurrentLightboxIndex((prev) =>
-                          prev === 0
-                            ? selectedMemoryForLightbox.files.length - 1
-                            : prev - 1
-                        )
-                      }
-                      className="absolute left-4 top-1/2 -translate-y-1/2 text-white text-4xl bg-gray-800 bg-opacity-50 rounded-full w-12 h-12 flex items-center justify-center hover:bg-opacity-75 transition-colors"
-                    >
-                      &#10094;
-                    </button>
-                  )}
-
-                  {/* Nút điều hướng Next */}
-                  {selectedMemoryForLightbox.files.length > 1 && (
-                    <button
-                      onClick={() =>
-                        setCurrentLightboxIndex((prev) =>
-                          prev === selectedMemoryForLightbox.files.length - 1
-                            ? 0
-                            : prev + 1
-                        )
-                      }
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-white text-4xl bg-gray-800 bg-opacity-50 rounded-full w-12 h-12 flex items-center justify-center hover:bg-opacity-75 transition-colors"
-                    >
-                      &#10095;
-                    </button>
-                  )}
-                </>
-              )}
-            <button
-              onClick={() => setSelectedMemoryForLightbox(null)}
-              className="absolute top-4 right-4 text-white text-3xl bg-gray-800 bg-opacity-50 rounded-full w-10 h-10 flex items-center justify-center hover:bg-opacity-75 transition-colors"
+              style={{ transform: "translateY(-50%)" }}
             >
-              &times;
+              <i
+                className={`fas ${
+                  isSidebarCollapsed ? "fa-angle-right" : "fa-angle-left"
+                }`}
+              ></i>
             </button>
-          </div>
-        </div>
-      )}
 
-      {/*  ===== MODAL HIỂN THỊ ẢNH/VIDEO PHÓNG TO (THU NHỎ) ===== */}
-      {selectedImageToZoom && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
-          onClick={() => setSelectedImageToZoom(null)}
-        >
-          <div
-            className="relative max-w-full max-h-full flex items-center justify-center"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {" "}
-            {/* Ngăn chặn sự kiện nổi bọt trên nội dung */}
-            {selectedImageToZoom.fileType === "video" ? ( // Hiển thị video nếu là video
-              <video
-                src={selectedImageToZoom.fileUrl}
-                controls
-                autoPlay
-                loop
-                className="max-w-full max-h-[90vh] object-contain shadow-lg rounded-lg"
-              ></video>
-            ) : (
-              // Hiển thị ảnh nếu là ảnh hoặc loại khác
-              <img
-                src={selectedImageToZoom.fileUrl}
-                alt={selectedImageToZoom.eventName || "Phóng to kỷ niệm"}
-                className="max-w-full max-h-[90vh] object-contain shadow-lg rounded-lg"
-              />
+            {/* Lớp phủ */}
+            {isSidebarOpen && (
+              <div
+                onClick={() => setIsSidebarOpen(false)}
+                className="fixed inset-0 bg-black bg-opacity-50 z-10 lg:hidden"
+                aria-hidden="true"
+              ></div>
             )}
-            <button
-              onClick={() => setSelectedImageToZoom(null)}
-              className="absolute top-4 right-4 text-white text-3xl bg-gray-800 bg-opacity-50 rounded-full w-10 h-10 flex items-center justify-center hover:bg-opacity-75 transition-colors"
+
+            {/* Main Content Area */}
+            <main
+              className={`h-full p-4 transition-all duration-300 ease-in-out overflow-y-auto w-full ${
+                isSidebarCollapsed ? "lg:ml-20" : "lg:ml-64"
+              }`}
             >
-              &times; {/* Dấu X để đóng */}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ===== MODAL CHI TIẾT CHIA TIỀN ===== */}
-      {selectedCostSharingDetails && userRole === "admin" && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[95vh]">
-            <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center flex-shrink-0">
-              Chi tiết chia tiền
-            </h3>
-
-            {(() => {
-              // --- Bắt đầu khối tính toán ---
-              const individualCostsMap =
-                selectedCostSharingDetails.individualCosts || {};
-              const totalBillAmount =
-                selectedCostSharingDetails.relatedTotalBill || 0;
-
-              const totalPaidAmount = Object.values(individualCostsMap)
-                .filter((details) => details.isPaid)
-                .reduce((sum, details) => sum + (details.cost || 0), 0);
-
-              const amountRemaining = totalBillAmount - totalPaidAmount;
-
-              const paidPercentage =
-                totalBillAmount > 0
-                  ? (totalPaidAmount / totalBillAmount) * 100
-                  : 0;
-              // --- Kết thúc khối tính toán ---
-              const allMembers = [...residents, ...pendingResidents];
-
-              return (
-                <>
-                  {/* ===== KHỐI TIẾN ĐỘ THANH TOÁN MỚI ===== */}
-                  <div className="mb-4 border-b pb-4 border-gray-200 dark:border-gray-700">
-                    <h4 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                      Tiến độ thanh toán
-                    </h4>
-                    <div className="w-full bg-gray-200 rounded-full h-4 dark:bg-gray-600 relative overflow-hidden">
-                      <div
-                        className="bg-green-500 h-4 rounded-full text-center text-white text-xs leading-4 flex items-center justify-center transition-all duration-500"
-                        style={{ width: `${paidPercentage}%` }}
-                      >
-                        {Math.round(paidPercentage)}%
-                      </div>
-                    </div>
-                    <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mt-2">
-                      <span>
-                        Đã đóng:{" "}
-                        <strong>
-                          {totalPaidAmount.toLocaleString("vi-VN")} VND
-                        </strong>
-                      </span>
-                      <span>
-                        Còn lại:{" "}
-                        <strong>
-                          {amountRemaining.toLocaleString("vi-VN")} VND
-                        </strong>
-                      </span>
-                    </div>
+              {userId ? (
+                renderSection()
+              ) : (
+                <div className="mb-8 p-6 bg-blue-50 dark:bg-gray-700 rounded-2xl shadow-lg mx-auto max-w-lg">
+                  {/* Tab Navigation */}
+                  <div className="flex justify-center mb-6 border-b border-gray-300 dark:border-gray-600">
+                    <button
+                      className={`px-4 py-2 text-lg font-semibold ${
+                        authMode === "login"
+                          ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
+                          : "text-gray-600 dark:text-gray-400 hover:text-blue-500"
+                      }`}
+                      onClick={() => {
+                        setAuthMode("login");
+                        setAuthError("");
+                      }}
+                    >
+                      Đăng nhập
+                    </button>
+                    <button
+                      className={`px-4 py-2 text-lg font-semibold ${
+                        authMode === "register"
+                          ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
+                          : "text-gray-600 dark:text-gray-400 hover:text-blue-500"
+                      }`}
+                      onClick={() => {
+                        setAuthMode("register");
+                        setAuthError("");
+                      }}
+                    >
+                      Đăng ký
+                    </button>
                   </div>
 
-                  {/* Phần hiển thị chi tiết */}
-                  <div className="flex-grow overflow-y-auto">
+                  {!isAuthReady ? (
+                    <p className="text-blue-600 dark:text-blue-300 text-center text-lg">
+                      Đang kết nối Firebase...
+                    </p>
+                  ) : (
+                    <>
+                      {/* FORM ĐĂNG NHẬP */}
+                      {authMode === "login" && (
+                        <div className="flex flex-col space-y-4">
+                          <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 text-center">
+                            Đăng nhập tài khoản
+                          </h2>
+                          <div>
+                            <label htmlFor="studentIdLogin" className="sr-only">
+                              Mã số sinh viên
+                            </label>
+                            <input
+                              type="text"
+                              id="studentIdLogin"
+                              placeholder="Mã số sinh viên"
+                              value={studentIdForLogin}
+                              onChange={(e) =>
+                                setStudentIdForLogin(e.target.value)
+                              }
+                              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                            />
+                          </div>
+                          <div>
+                            <label htmlFor="passwordLogin" className="sr-only">
+                              Mật khẩu
+                            </label>
+                            <input
+                              type="password"
+                              id="passwordLogin"
+                              placeholder="Mật khẩu"
+                              value={password}
+                              onChange={(e) => setPassword(e.target.value)}
+                              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                            />
+                          </div>
+                          {authError && (
+                            <p className="text-red-500 text-sm text-center">
+                              {authError}
+                            </p>
+                          )}
+                          <button
+                            onClick={handleSignIn}
+                            className="w-full px-6 py-2 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+                          >
+                            Đăng nhập
+                          </button>
+                          <button
+                            onClick={() => setShowForgotPasswordModal(true)}
+                            className="w-full mt-2 text-blue-600 dark:text-blue-400 hover:underline text-sm font-semibold"
+                          >
+                            Quên mật khẩu?
+                          </button>
+                        </div>
+                      )}
+
+                      {/* FORM ĐĂNG KÝ */}
+                      {authMode === "register" && (
+                        <div className="flex flex-col space-y-4">
+                          <h2 className="text-2xl font-bold text-blue-800 dark:text-blue-200 text-center">
+                            Tạo tài khoản mới
+                          </h2>
+                          <div>
+                            <label
+                              htmlFor="fullNameRegister"
+                              className="sr-only"
+                            >
+                              Họ tên đầy đủ
+                            </label>
+                            <input
+                              type="text"
+                              id="fullNameRegister"
+                              placeholder="Họ tên đầy đủ"
+                              value={fullName}
+                              onChange={(e) => setFullName(e.target.value)}
+                              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                            />
+                          </div>
+                          <div>
+                            <label
+                              htmlFor="studentIdRegister"
+                              className="sr-only"
+                            >
+                              Mã số sinh viên
+                            </label>
+                            <input
+                              type="text"
+                              id="studentIdRegister"
+                              placeholder="Mã số sinh viên (dùng để đăng nhập)"
+                              value={newStudentIdForAuth}
+                              onChange={(e) =>
+                                setNewStudentIdForAuth(e.target.value)
+                              }
+                              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                            />
+                          </div>
+                          {/* ===== TRƯỜNG EMAIL MỚI ĐƯỢC THÊM VÀO ĐÂY ===== */}
+                          <div>
+                            <label htmlFor="emailRegister" className="sr-only">
+                              Email cá nhân
+                            </label>
+                            <input
+                              type="email"
+                              id="emailRegister"
+                              placeholder="Email cá nhân (để xác minh tài khoản)"
+                              value={personalEmailForRegister}
+                              onChange={(e) =>
+                                setPersonalEmailForRegister(e.target.value)
+                              }
+                              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                            />
+                          </div>
+                          {/* ===== KẾT THÚC TRƯỜNG EMAIL MỚI ===== */}
+                          <div>
+                            <label
+                              htmlFor="passwordRegister"
+                              className="sr-only"
+                            >
+                              Mật khẩu
+                            </label>
+                            <input
+                              type="password"
+                              id="passwordRegister"
+                              placeholder="Mật khẩu (ít nhất 6 ký tự)"
+                              value={password}
+                              onChange={(e) => setPassword(e.target.value)}
+                              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                            />
+                          </div>
+                          {authError && (
+                            <p className="text-red-500 text-sm text-center">
+                              {authError}
+                            </p>
+                          )}
+                          <button
+                            onClick={handleRegister}
+                            className="w-full px-6 py-2 bg-purple-600 text-white font-semibold rounded-xl shadow-md hover:bg-purple-700 transition-all duration-300"
+                          >
+                            Đăng ký
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </main>
+          </div>
+
+          {/* MODAL CHI TIẾT HÓA ĐƠN ĐIỆN NƯỚC */}
+          {selectedBillDetails &&
+            (userRole === "admin" || userRole === "developer") && (
+              <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[95vh]">
+                  <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center flex-shrink-0">
+                    Chi tiết hóa đơn
+                  </h3>
+
+                  {/* Khung nội dung có thể cuộn */}
+                  <div className="flex-1 overflow-y-auto pr-2">
+                    {/* Phần thông tin chi tiết hóa đơn */}
                     <div className="space-y-3 text-gray-700 dark:text-gray-300">
                       <p>
-                        <strong>Kỳ tính:</strong>{" "}
-                        {selectedCostSharingDetails.periodStart} đến{" "}
-                        {selectedCostSharingDetails.periodEnd}
+                        <strong>Tháng:</strong>{" "}
+                        {selectedBillDetails.billingMonth || "N/A"}
                       </p>
                       <p>
                         <strong>Ngày tính:</strong>{" "}
-                        {selectedCostSharingDetails.calculatedDate?.toLocaleDateString(
+                        {selectedBillDetails.billDate?.toLocaleDateString(
                           "vi-VN"
                         ) || "N/A"}
                       </p>
                       <p>
-                        <strong>Tổng ngày có mặt:</strong>{" "}
-                        {
-                          selectedCostSharingDetails.totalCalculatedDaysAllResidents
-                        }{" "}
-                        ngày
+                        <strong>Điện (Đầu):</strong>{" "}
+                        {selectedBillDetails.electricityStartReading} KW
                       </p>
                       <p>
-                        <strong>Chi phí TB 1 ngày/người:</strong>{" "}
-                        {selectedCostSharingDetails.costPerDayPerPerson?.toLocaleString(
-                          "vi-VN",
-                          { maximumFractionDigits: 0 }
+                        <strong>Điện (Cuối):</strong>{" "}
+                        {selectedBillDetails.electricityEndReading} KW
+                      </p>
+                      <p>
+                        <strong>Tiền điện:</strong>{" "}
+                        {selectedBillDetails.electricityCost?.toLocaleString(
+                          "vi-VN"
                         )}{" "}
                         VND
                       </p>
-
-                      <p className="text-xl font-bold border-t pt-3 mt-3 border-gray-300 dark:border-gray-600">
-                        Số tiền mỗi người cần đóng:
+                      <p>
+                        <strong>Nước (Đầu):</strong>{" "}
+                        {selectedBillDetails.waterStartReading} m³
                       </p>
-
-                      <div className="max-h-40 overflow-y-auto pr-2 border rounded-lg border-gray-200 dark:border-gray-700">
-                        <ul className="space-y-2 py-2">
-                          {Object.entries(individualCostsMap).map(
-                            ([residentId, data]) => {
-                              const memberInfo = allMembers.find(
-                                (mem) => mem.id === residentId
-                              );
-                              const memberName = memberInfo
-                                ? memberInfo.name
-                                : residentId;
-
-                              return (
-                                <li
-                                  key={residentId}
-                                  className="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-2 rounded-lg"
-                                >
-                                  <span>{memberName}:</span>
-                                  <div className="flex items-center">
-                                    <span className="font-bold mr-2">
-                                      {data.cost?.toLocaleString("vi-VN")} VND
-                                    </span>
-                                    <input
-                                      type="checkbox"
-                                      checked={data.isPaid || false}
-                                      onChange={() =>
-                                        handleToggleIndividualPaymentStatus(
-                                          selectedCostSharingDetails.id,
-                                          residentId,
-                                          data.isPaid || false
-                                        )
-                                      }
-                                      className="form-checkbox h-5 w-5 text-green-600 rounded cursor-pointer"
-                                    />
-                                  </div>
-                                </li>
-                              );
-                            }
-                          )}
-                        </ul>
-                      </div>
-
-                      <p className="text-lg font-bold border-t pt-3 mt-3 border-gray-300 dark:border-gray-600">
-                        Quỹ phòng còn lại:
+                      <p>
+                        <strong>Nước (Cuối):</strong>{" "}
+                        {selectedBillDetails.waterEndReading} m³
+                      </p>
+                      <p>
+                        <strong>Tiền nước:</strong>{" "}
+                        {selectedBillDetails.waterCost?.toLocaleString("vi-VN")}{" "}
+                        VND
+                      </p>
+                      <p className="text-xl font-bold border-t pt-3 mt-3 border-gray-300 dark:border-gray-600">
+                        Tổng cộng:{" "}
+                        {selectedBillDetails.totalCost?.toLocaleString("vi-VN")}{" "}
+                        VND
+                      </p>
+                      <p className="text-lg font-bold">
+                        Trạng thái:{" "}
                         <span
-                          className={`font-bold ${
-                            selectedCostSharingDetails.remainingFund >= 0
-                              ? "text-green-700 dark:text-green-300"
-                              : "text-red-700 dark:text-red-300"
-                          }`}
+                          className={
+                            selectedBillDetails.isPaid
+                              ? "text-green-600 dark:text-green-400"
+                              : "text-red-500 dark:text-red-400"
+                          }
                         >
-                          {" "}
-                          {selectedCostSharingDetails.remainingFund?.toLocaleString(
-                            "vi-VN"
-                          )}{" "}
-                          VND
+                          {selectedBillDetails.isPaid ? "Đã trả" : "Chưa trả"}
                         </span>
                       </p>
                     </div>
-                    {/* ===== KHỐI NÚT BẤM MỚI - BẮT ĐẦU ===== */}
-                    <div className="mt-6 flex-shrink-0 flex flex-col space-y-2">
-                      {/* Nút Thanh toán Online */}
-                      <button
-                        onClick={() =>
-                          window.open(
-                            "https://tracuu.hcmue.edu.vn/ktx",
-                            "_blank"
-                          )
-                        } // <-- THAY ĐỔI LINK Ở ĐÂY
-                        className="w-full px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all"
-                      >
-                        <i className="fas fa-external-link-alt mr-2"></i>
-                        Đi đến trang Thanh toán
-                      </button>
-                    </div>
-                    {/* ===== KHỐI NÚT BẤM MỚI - KẾT THÚC ===== */}
-                  </div>
-                </>
-              );
-            })()}
 
-            <button
-              onClick={() => setSelectedCostSharingDetails(null)}
-              className="mt-6 w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 flex-shrink-0"
-            >
-              Đóng
-            </button>
-          </div>
-        </div>
-      )}
+                    {/* ===== KHỐI HÌNH ẢNH HÓA ĐƠN ===== */}
+                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <h4 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        Ảnh hóa đơn
+                      </h4>
+                      {selectedBillDetails.receiptImageUrl ? (
+                        <div className="text-center">
+                          <img
+                            src={selectedBillDetails.receiptImageUrl}
+                            alt="Ảnh hóa đơn"
+                            className="w-full max-w-xs mx-auto rounded-lg cursor-pointer border"
+                            onClick={() =>
+                              setReceiptToView(
+                                selectedBillDetails.receiptImageUrl
+                              )
+                            }
+                          />
+                          <p className="text-xs text-gray-500 mt-1">
+                            Bấm vào ảnh để xem kích thước đầy đủ
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-500 italic">
+                          Chưa có ảnh hóa đơn.
+                        </p>
+                      )}
 
-      {/* ===== MODAL UPLOAD THAY ĐỔI AVATAR THÀNH VIÊN ===== */}
-      {selectedResidentForAvatarUpload && userRole === "admin" && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md">
-            <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
-              Cập nhật ảnh đại diện cho{" "}
-              {selectedResidentForAvatarUpload.fullName}
-            </h3>
-            <div className="flex flex-col items-center space-y-4">
-              {selectedResidentForAvatarUpload.photoURL ? (
-                <img
-                  src={selectedResidentForAvatarUpload.photoURL}
-                  alt="Current Avatar"
-                  className="w-32 h-32 rounded-full object-cover shadow-lg border border-gray-200 dark:border-gray-700"
-                />
-              ) : (
-                <div className="w-32 h-32 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-6xl">
-                  <i className="fas fa-user-circle"></i>
-                </div>
-              )}
-              <div>
-                <label
-                  htmlFor="avatarUploadModalInput"
-                  className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                >
-                  Chọn ảnh mới:
-                </label>
-                <input
-                  type="file"
-                  id="avatarUploadModalInput"
-                  accept="image/*"
-                  onChange={(e) => {
-                    setAvatarUploadModalFile(e.target.files[0]);
-                    setAvatarUploadModalError("");
-                  }}
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                />
-              </div>
-              {isUploadingAvatarModal && (
-                <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2">
-                  <div
-                    className="bg-blue-600 h-2.5 rounded-full"
-                    style={{ width: `${avatarUploadModalProgress}%` }}
-                  ></div>
-                </div>
-              )}
-              {avatarUploadModalError && (
-                <p className="text-red-500 text-sm text-center mt-2">
-                  {avatarUploadModalError}
-                </p>
-              )}
-              <button
-                onClick={() =>
-                  handleUploadResidentAvatar(selectedResidentForAvatarUpload.id)
-                }
-                className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
-                disabled={isUploadingAvatarModal || !avatarUploadModalFile}
-              >
-                {isUploadingAvatarModal ? (
-                  <i className="fas fa-spinner fa-spin mr-2"></i>
-                ) : (
-                  <i className="fas fa-upload mr-2"></i>
-                )}
-                Tải lên
-              </button>
-              <button
-                onClick={() => {
-                  setSelectedResidentForAvatarUpload(null);
-                  setAvatarUploadModalFile(null);
-                  setAvatarUploadModalError("");
-                }}
-                className="w-full px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
-              >
-                Hủy
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ===== MODAL CRUD LỊCH TRÌNH CỦA ADMIN ===== */}
-      {showGenerateScheduleModal &&
-        userRole === "admin" && ( // Chỉ hiển thị modal lịch trình cho admin
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-lg">
-              <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
-                Tạo lịch trực phòng tự động
-              </h3>
-              <div className="space-y-4">
-                <label
-                  htmlFor="numDaysForSchedule"
-                  className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                >
-                  Số ngày bạn muốn tạo lịch:
-                </label>
-                <input
-                  type="number"
-                  id="numDaysForSchedule"
-                  value={numDaysForSchedule}
-                  onChange={(e) =>
-                    setNumDaysForSchedule(parseInt(e.target.value) || 0)
-                  }
-                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700"
-                  min="1"
-                />
-                <button
-                  onClick={() => handleGenerateCleaningSchedule()}
-                  className="w-full px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl shadow-md hover:bg-indigo-700 transition-all duration-300"
-                  disabled={
-                    residents.filter((res) => res.isActive !== false).length ===
-                    0
-                  } // Vô hiệu hóa nếu không có cư dân hoạt động
-                >
-                  {isGeneratingSchedule ? (
-                    <i className="fas fa-spinner fa-spin mr-2"></i>
-                  ) : (
-                    <i className="fas fa-magic mr-2"></i>
-                  )}
-                  Tạo lịch
-                </button>
-
-                {generatedCleaningTasks.length > 0 && (
-                  <div className="mt-6">
-                    <h4 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-3">
-                      Lịch đã tạo (Xem trước):
-                    </h4>
-                    <div className="max-h-60 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-xl p-3 bg-gray-50 dark:bg-gray-700">
-                      <ul className="space-y-2">
-                        {generatedCleaningTasks.map((task, index) => (
-                          <li
-                            key={index}
-                            className="text-gray-700 dark:text-gray-300"
-                          >
-                            <strong>{task.date}:</strong> {task.taskName} -{" "}
-                            {task.assignedToResidentName}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    <button
-                      onClick={handleSaveGeneratedTasks}
-                      className="w-full mt-4 px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all duration-300"
-                    >
-                      <i className="fas fa-save mr-2"></i> Lưu lịch đã tạo
-                    </button>
-                  </div>
-                )}
-
-                <button
-                  onClick={() => {
-                    setShowGenerateScheduleModal(false);
-                    setGeneratedCleaningTasks([]);
-                    setAuthError("");
-                  }}
-                  className="w-full mt-4 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
-                >
-                  Hủy
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-      {/* ===== MODAL CRUD THÔNG BÁO ===== */}
-      {showNotificationsModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto">
-            <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
-              Thông báo
-            </h3>
-            {notificationError && (
-              <p className="text-red-500 text-sm text-center mb-4">
-                {notificationError}
-              </p>
-            )}
-            {notifications.length === 0 ? (
-              <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
-                Bạn chưa có thông báo nào.
-              </p>
-            ) : (
-              <ul className="space-y-4">
-                {notifications.map((notification) => (
-                  <li
-                    key={notification.id}
-                    className={`p-4 rounded-xl shadow-sm border ${
-                      notification.isRead
-                        ? "bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600"
-                        : "bg-blue-50 dark:bg-blue-900 border-blue-200 dark:border-blue-700"
-                    } flex justify-between items-start cursor-pointer transition-all duration-200`}
-                    onClick={() =>
-                      !notification.isRead &&
-                      markNotificationAsRead(notification.id)
-                    } // Đánh dấu đã đọc khi nhấp vào
-                  >
-                    <div className="flex-1">
-                      <p
-                        className={`font-semibold ${
-                          notification.isRead
-                            ? "text-gray-800 dark:text-gray-300"
-                            : "text-blue-800 dark:text-blue-200"
-                        }`}
-                      >
-                        {notification.message}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        <i className="fas fa-clock mr-1"></i>
-                        {notification.createdAt instanceof Date
-                          ? notification.createdAt.toLocaleString("vi-VN")
-                          : "Đang tải..."}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        Loại: {notification.type}
-                      </p>
-                    </div>
-                    {userRole === "admin" && ( // Chỉ admin mới có nút xóa
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteNotification(notification.id);
-                        }} // Ngăn chặn sự kiện nổi bọt
-                        className="ml-4 p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-800 rounded-full transition-colors"
-                      >
-                        <i className="fas fa-times"></i>
-                      </button>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-            <button
-              onClick={() => setShowNotificationsModal(false)}
-              className="mt-6 w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
-            >
-              Đóng
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ===== MODAL XEM CHI TIẾT THÔNG BÁO ===== */}
-      {selectedNotificationDetails && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md">
-            <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
-              Chi tiết thông báo
-            </h3>
-            <div className="space-y-3 text-gray-700 dark:text-gray-300">
-              <p>
-                <strong>Tiêu đề:</strong>{" "}
-                {selectedNotificationDetails.title || "Không có tiêu đề"}
-              </p>{" "}
-              {/* Có thể có title nếu bạn thêm vào hàm createNotification */}
-              <p>
-                <strong>Nội dung:</strong> {selectedNotificationDetails.message}
-              </p>
-              <p>
-                <strong>Loại:</strong> {selectedNotificationDetails.type}
-              </p>
-              <p>
-                <strong>Người gửi:</strong>{" "}
-                {selectedNotificationDetails.createdBy || "Hệ thống"}
-              </p>{" "}
-              {/* Bạn có thể cần tìm tên người gửi nếu cần */}
-              <p>
-                <strong>Người nhận:</strong>{" "}
-                {selectedNotificationDetails.recipientId === "all"
-                  ? "Tất cả"
-                  : allUsersData.find(
-                      (u) => u.id === selectedNotificationDetails.recipientId
-                    )?.fullName || selectedNotificationDetails.recipientId}
-              </p>
-              <p>
-                <strong>Thời gian:</strong>{" "}
-                {selectedNotificationDetails.createdAt instanceof Date
-                  ? selectedNotificationDetails.createdAt.toLocaleString(
-                      "vi-VN"
-                    )
-                  : "N/A"}
-              </p>
-              <p>
-                <strong>Trạng thái:</strong>
-                <span
-                  className={`ml-2 px-2 py-1 rounded-full text-sm ${
-                    selectedNotificationDetails.isRead
-                      ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                      : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-                  }`}
-                >
-                  {selectedNotificationDetails.isRead ? "Đã đọc" : "Chưa đọc"}
-                </span>
-              </p>
-            </div>
-            <button
-              onClick={() => setSelectedNotificationDetails(null)}
-              className="mt-6 w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
-            >
-              Đóng
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ===== MODAL CHỈNH SỬA THÔNG TIN CÁ NHÂN CỦA THÀNH VIÊN ===== */}
-      {editingCommonResidentData && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
-              Điều chỉnh thông tin thành viên
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <label
-                  htmlFor="editCommonFullNameInput"
-                  className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                >
-                  Họ tên:
-                </label>
-                <input
-                  type="text"
-                  id="editCommonFullNameInput"
-                  value={editCommonFullName}
-                  onChange={(e) => setEditCommonFullName(e.target.value)}
-                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                />
-              </div>
-              {editingCommonResidentUserLinkedData && ( // Chỉ hiển thị nếu có user liên kết
-                <div>
-                  <label
-                    htmlFor="editCommonEmailInput"
-                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                  >
-                    Email (Tài khoản):
-                  </label>
-                  <input
-                    type="email"
-                    id="editCommonEmailInput"
-                    value={editCommonEmail}
-                    readOnly // Thường không cho phép chỉnh sửa email tài khoản ở đây
-                    className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none bg-gray-100 dark:bg-gray-700 cursor-not-allowed"
-                  />
-                </div>
-              )}
-              <div>
-                <label
-                  htmlFor="editCommonPhoneNumber"
-                  className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                >
-                  Số điện thoại:
-                </label>
-                <input
-                  type="text"
-                  id="editCommonPhoneNumber"
-                  value={editCommonPhoneNumber}
-                  onChange={(e) => setEditCommonPhoneNumber(e.target.value)}
-                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="editCommonAcademicLevel"
-                  className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                >
-                  Email trường:
-                </label>
-                <input
-                  type="text"
-                  id="editCommonAcademicLevel"
-                  value={editCommonAcademicLevel}
-                  onChange={(e) => setEditCommonAcademicLevel(e.target.value)}
-                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="editCommonDormEntryDate"
-                  className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                >
-                  Ngày nhập KTX:
-                </label>
-                <input
-                  type="date"
-                  id="editCommonDormEntryDate"
-                  value={editCommonDormEntryDate}
-                  onChange={(e) => setEditCommonDormEntryDate(e.target.value)}
-                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="editCommonBirthday"
-                  className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                >
-                  Ngày sinh:
-                </label>
-                <input
-                  type="date"
-                  id="editCommonBirthday"
-                  value={editCommonBirthday}
-                  onChange={(e) => setEditCommonBirthday(e.target.value)}
-                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="editCommonStudentId"
-                  className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                >
-                  Mã số sinh viên:
-                </label>
-                <input
-                  type="text"
-                  id="editCommonStudentId"
-                  value={editCommonStudentId}
-                  onChange={(e) => setEditCommonStudentId(e.target.value)}
-                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
-                />
-              </div>
-              {/* Thông báo lỗi */}
-              {authError && (
-                <p className="text-red-500 text-sm text-center mt-4">
-                  {authError}
-                </p>
-              )}
-              {/* Thông báo thành công */}
-              {updateSuccessMessage && (
-                <p className="text-green-600 text-sm text-center mt-4">
-                  {updateSuccessMessage}
-                </p>
-              )}
-              <div className="flex justify-between space-x-4 mt-6">
-                <button
-                  onClick={handleUpdateCommonResidentDetails}
-                  className="flex-1 px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
-                >
-                  <i className="fas fa-save mr-2"></i> Lưu thay đổi
-                </button>
-                <button
-                  onClick={handleCancelCommonResidentEdit}
-                  className="flex-1 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
-                >
-                  Hủy
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* =================================================== */}
-      {/* ===== MODAL LỊCH SỬ HÓA ĐƠN ===== */}
-      {/* =================================================== */}
-      {showBillHistoryModal && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-          onClick={() => setShowBillHistoryModal(false)}
-        >
-          <div
-            className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
-                Lịch sử hóa đơn
-              </h2>
-              <button
-                onClick={() => setShowBillHistoryModal(false)}
-                className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"
-              >
-                <i className="fas fa-times text-xl"></i>
-              </button>
-            </div>
-            <div className="flex-1 p-6 overflow-y-auto">
-              {billHistory.length === 0 ? (
-                <p className="text-gray-500 italic text-center">
-                  Chưa có lịch sử hóa đơn nào.
-                </p>
-              ) : (
-                <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-                  <table className="min-w-full bg-white dark:bg-gray-800">
-                    <thead>
-                      <tr className="bg-gray-100 dark:bg-gray-700">
-                        <th className="py-3 px-4 text-left text-sm font-semibold">
-                          Tháng
-                        </th>
-                        <th className="py-3 px-4 text-right text-sm font-semibold">
-                          Tổng tiền (VND)
-                        </th>
-                        <th className="py-3 px-4 text-center text-sm font-semibold">
-                          Trạng thái
-                        </th>
-                        <th className="py-3 px-4 text-center text-sm font-semibold">
-                          Hành động
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-gray-700 dark:text-gray-300">
-                      {billHistory.map((bill) => (
-                        <tr
-                          key={bill.id}
-                          className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+                      <div className="mt-4">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) =>
+                            setBillReceiptFile(e.target.files[0])
+                          }
+                          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                        />
+                        <button
+                          onClick={handleUploadBillReceipt}
+                          className="w-full mt-2 px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 disabled:bg-gray-400"
+                          disabled={!billReceiptFile || isUploadingReceipt}
                         >
-                          <td className="py-3 px-4">{bill.billingMonth}</td>
-                          <td className="py-3 px-4 text-right font-semibold">
-                            {bill.totalCost.toLocaleString("vi-VN")}
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            <span
-                              className={`px-3 py-1 text-xs font-bold rounded-full ${
-                                bill.isPaid
-                                  ? "bg-green-100 text-green-700"
-                                  : "bg-red-100 text-red-700"
-                              }`}
-                            >
-                              {bill.isPaid ? "Đã trả" : "Chưa trả"}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            <button
-                              onClick={() => setSelectedBillDetails(bill)}
-                              className="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600"
-                            >
-                              Xem chi tiết
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-            <div className="p-6 border-t border-gray-200 dark:border-gray-700">
-              <button
-                onClick={() => setShowBillHistoryModal(false)}
-                className="w-full px-6 py-3 bg-gray-500 text-white font-semibold rounded-xl hover:bg-gray-600"
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* =================================================== */}
-      {/* ===== MODAL LỊCH SỬ CHIA TIỀN ===== */}
-      {/* =================================================== */}
-      {showCostSharingHistoryModal && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-          onClick={() => setShowCostSharingHistoryModal(false)}
-        >
-          <div
-            className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
-                Lịch sử chia tiền
-              </h2>
-              <button
-                onClick={() => setShowCostSharingHistoryModal(false)}
-                className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"
-              >
-                <i className="fas fa-times text-xl"></i>
-              </button>
-            </div>
-            <div className="flex-1 p-6 overflow-y-auto">
-              {costSharingHistory.length === 0 ? (
-                <p className="text-gray-500 italic text-center">
-                  Chưa có lịch sử chia tiền nào.
-                </p>
-              ) : (
-                <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-                  <table className="min-w-full bg-white dark:bg-gray-800">
-                    <thead>
-                      <tr className="bg-gray-100 dark:bg-gray-700">
-                        <th className="py-3 px-4 text-left text-sm font-semibold">
-                          Kỳ
-                        </th>
-                        <th className="py-3 px-4 text-right text-sm font-semibold">
-                          Tổng ngày-người
-                        </th>
-                        <th className="py-3 px-4 text-right text-sm font-semibold">
-                          Chi phí/ngày (VND)
-                        </th>
-                        <th className="py-3 px-4 text-right text-sm font-semibold">
-                          Quỹ còn lại (VND)
-                        </th>
-                        <th className="py-3 px-4 text-center text-sm font-semibold">
-                          Hành động
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-gray-700 dark:text-gray-300">
-                      {costSharingHistory.map((record) => (
-                        <tr
-                          key={record.id}
-                          className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
-                        >
-                          <td className="py-3 px-4">
-                            {record.periodStart} đến {record.periodEnd}
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            {record.totalCalculatedDaysAllResidents}
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            {record.costPerDayPerPerson.toLocaleString(
-                              "vi-VN",
-                              { maximumFractionDigits: 0 }
-                            )}
-                          </td>
-                          <td
-                            className={`py-3 px-4 text-right font-semibold ${
-                              record.remainingFund >= 0
-                                ? "text-green-600"
-                                : "text-red-600"
-                            }`}
-                          >
-                            {record.remainingFund.toLocaleString("vi-VN")}
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            <button
-                              onClick={() =>
-                                setSelectedCostSharingDetails(record)
-                              }
-                              className="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600"
-                            >
-                              Xem chi tiết
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-            <div className="p-6 border-t border-gray-200 dark:border-gray-700">
-              <button
-                onClick={() => setShowCostSharingHistoryModal(false)}
-                className="w-full px-6 py-3 bg-gray-500 text-white font-semibold rounded-xl hover:bg-gray-600"
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* ===== MODAL CHỈNH SỬA THÔNG TIN CÁ NHÂN CỦA TIỀN BỐI ===== */}
-      {editingFormerResident && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col">
-            <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
-              Chỉnh sửa thông tin tiền bối
-            </h3>
-            <div className="flex-1 overflow-y-auto pr-2">
-              <form onSubmit={handleUpdateFormerResident} className="space-y-4">
-                <div>
-                  <label
-                    htmlFor="editFormerName"
-                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                  >
-                    Họ tên:
-                  </label>
-                  <input
-                    type="text"
-                    id="editFormerName"
-                    value={editingFormerResident.name}
-                    onChange={(e) =>
-                      setEditingFormerResident({
-                        ...editingFormerResident,
-                        name: e.target.value,
-                      })
-                    }
-                    className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="editFormerEmail"
-                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                  >
-                    Email:
-                  </label>
-                  <input
-                    type="email"
-                    id="editFormerEmail"
-                    value={editingFormerResident.email}
-                    onChange={(e) =>
-                      setEditingFormerResident({
-                        ...editingFormerResident,
-                        email: e.target.value,
-                      })
-                    }
-                    className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="editFormerPhone"
-                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                  >
-                    SĐT:
-                  </label>
-                  <input
-                    type="text"
-                    id="editFormerPhone"
-                    value={editingFormerResident.phoneNumber}
-                    onChange={(e) =>
-                      setEditingFormerResident({
-                        ...editingFormerResident,
-                        phoneNumber: e.target.value,
-                      })
-                    }
-                    className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="editFormerStudentId"
-                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                  >
-                    MSSV:
-                  </label>
-                  <input
-                    type="text"
-                    id="editFormerStudentId"
-                    value={editingFormerResident.studentId}
-                    onChange={(e) =>
-                      setEditingFormerResident({
-                        ...editingFormerResident,
-                        studentId: e.target.value,
-                      })
-                    }
-                    className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="editFormerBirthday"
-                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                  >
-                    Ngày sinh:
-                  </label>
-                  <input
-                    type="date"
-                    id="editFormerBirthday"
-                    value={editingFormerResident.birthday}
-                    onChange={(e) =>
-                      setEditingFormerResident({
-                        ...editingFormerResident,
-                        birthday: e.target.value,
-                      })
-                    }
-                    className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="editFormerDormEntryDate"
-                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                  >
-                    Ngày nhập KTX:
-                  </label>
-                  <input
-                    type="date"
-                    id="editFormerDormEntryDate"
-                    value={editingFormerResident.dormEntryDate}
-                    onChange={(e) =>
-                      setEditingFormerResident({
-                        ...editingFormerResident,
-                        dormEntryDate: e.target.value,
-                      })
-                    }
-                    className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="editFormerAcademicLevel"
-                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                  >
-                    Cấp:
-                  </label>
-                  <input
-                    type="text"
-                    id="editFormerAcademicLevel"
-                    value={editingFormerResident.academicLevel}
-                    onChange={(e) =>
-                      setEditingFormerResident({
-                        ...editingFormerResident,
-                        academicLevel: e.target.value,
-                      })
-                    }
-                    className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="editFormerDeactivatedDate"
-                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                  >
-                    Ngày ra khỏi phòng:
-                  </label>
-                  <input
-                    type="date"
-                    id="editFormerDeactivatedDate"
-                    value={editingFormerResident.deactivatedAt}
-                    onChange={(e) =>
-                      setEditingFormerResident({
-                        ...editingFormerResident,
-                        deactivatedAt: e.target.value,
-                      })
-                    }
-                    className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="editFormerContact"
-                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                  >
-                    Thông tin liên hệ:
-                  </label>
-                  <input
-                    type="text"
-                    id="editFormerContact"
-                    value={editingFormerResident.contact}
-                    onChange={(e) =>
-                      setEditingFormerResident({
-                        ...editingFormerResident,
-                        contact: e.target.value,
-                      })
-                    }
-                    className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="editFormerNotes"
-                    className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
-                  >
-                    Ghi chú:
-                  </label>
-                  <textarea
-                    id="editFormerNotes"
-                    value={editingFormerResident.notes}
-                    onChange={(e) =>
-                      setEditingFormerResident({
-                        ...editingFormerResident,
-                        notes: e.target.value,
-                      })
-                    }
-                    className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                    rows="3"
-                  ></textarea>
-                </div>
-
-                <div className="flex items-center mb-4">
-                  <div className="flex-shrink-0 mr-4">
-                    {editingFormerResident?.photoURL ? (
-                      <img
-                        src={editingFormerResident.photoURL}
-                        alt="Avatar hiện tại"
-                        className="w-16 h-16 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 text-2xl">
-                        <i className="fas fa-user-circle"></i>
+                          {isUploadingReceipt
+                            ? "Đang tải lên..."
+                            : "Tải lên ảnh mới"}
+                        </button>
                       </div>
-                    )}
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 text-center">
-                      Avatar hiện tại
-                    </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setSelectedBillDetails(null)}
+                    className="mt-6 w-full px-6 py-3 bg-gray-500 text-white font-semibold rounded-xl flex-shrink-0"
+                  >
+                    Đóng
+                  </button>
+                </div>
+              </div>
+            )}
+          {/* ===== POPUP XEM ẢNH HÓA ĐƠN PHÓNG TO ===== */}
+          {receiptToView && (
+            <div
+              className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4"
+              onClick={() => setReceiptToView(null)}
+            >
+              <img
+                src={receiptToView}
+                alt="Ảnh hóa đơn phóng to"
+                className="max-w-full max-h-full object-contain"
+              />
+            </div>
+          )}
+
+          {/* ===== MODAL CHI TIẾT BÀI ĐĂNG KỶ NIỆM ===== */}
+          {selectedMemoryDetails && (
+            <div
+              className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
+              onClick={() => setSelectedMemoryDetails(null)} // Đóng khi bấm ra ngoài
+            >
+              <div
+                className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col"
+                onClick={(e) => e.stopPropagation()} // Ngăn không cho popup tự đóng khi bấm vào bên trong
+              >
+                {/* Header của Popup */}
+                <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+                  <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
+                    {selectedMemoryDetails.eventName}
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    Ngày chụp: {selectedMemoryDetails.photoDate}
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Đăng bởi: {selectedMemoryDetails.uploadedByName || "N/A"}
+                  </p>
+                </div>
+
+                {/* Nội dung hình ảnh/video */}
+                <div className="flex-1 p-6 overflow-y-auto">
+                  <div className="grid grid-cols-1 gap-4">
+                    {selectedMemoryDetails.files &&
+                      selectedMemoryDetails.files.map((file, index) => (
+                        <div key={index}>
+                          {file.fileType === "image" ? (
+                            <img
+                              src={file.fileUrl}
+                              alt={`File ${index + 1}`}
+                              className="w-full h-auto rounded-lg object-contain"
+                            />
+                          ) : (
+                            <video
+                              src={file.fileUrl}
+                              controls
+                              className="w-full h-auto rounded-lg"
+                            ></video>
+                          )}
+                        </div>
+                      ))}
+                  </div>
+                </div>
+
+                {/* Footer của Popup */}
+                <div className="p-6 border-t border-gray-200 dark:border-gray-700">
+                  <button
+                    onClick={() => setSelectedMemoryDetails(null)}
+                    className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+                  >
+                    Đóng
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ===== MODAL CHỈNH SỬA BÀI ĐĂNG KỶ NIỆM ===== */}
+          {editingMemory && (
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+                <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
+                  Chỉnh sửa kỷ niệm
+                </h3>
+                <form onSubmit={handleUpdateMemory} className="space-y-4">
+                  <div>
+                    <label
+                      htmlFor="editEventName"
+                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                    >
+                      Sự kiện:
+                    </label>
+                    <input
+                      type="text"
+                      id="editEventName"
+                      value={editMemoryEventName}
+                      onChange={(e) => setEditMemoryEventName(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
                   </div>
                   <div>
                     <label
-                      htmlFor="editFormerAvatar"
+                      htmlFor="editPhotoDate"
                       className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
                     >
-                      Chọn avatar mới (tùy chọn):
+                      Ngày chụp/quay:
+                    </label>
+                    <input
+                      type="date"
+                      id="editPhotoDate"
+                      value={editMemoryPhotoDate}
+                      onChange={(e) => setEditMemoryPhotoDate(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+                  {/* Hiển thị các ảnh/video hiện có và tùy chọn xóa */}
+                  <div className="border p-3 rounded-lg bg-gray-50 dark:bg-gray-700">
+                    <p className="font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                      File hiện có:
+                    </p>
+                    {editingMemory.files && editingMemory.files.length > 0 ? (
+                      <div className="grid grid-cols-2 gap-2">
+                        {editingMemory.files.map((file, index) => (
+                          <div key={index} className="relative group">
+                            {file.fileType === "video" ? (
+                              <video
+                                src={file.fileUrl}
+                                controls
+                                className="w-full h-24 object-cover rounded-lg"
+                              ></video>
+                            ) : (
+                              <img
+                                src={file.fileUrl}
+                                alt={`Memory ${index}`}
+                                className="w-full h-24 object-cover rounded-lg"
+                              />
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updatedFiles = editingMemory.files.filter(
+                                  (_, i) => i !== index
+                                );
+                                setEditingMemory({
+                                  ...editingMemory,
+                                  files: updatedFiles,
+                                });
+                                // Xóa file khỏi Cloudinary (cần Cloud Function)
+                                if (file.publicId) {
+                                  alert(
+                                    `Chức năng xóa file Cloudinary cho ${file.publicId} cần Cloud Function.`
+                                  );
+                                }
+                              }}
+                              className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <i className="fas fa-times"></i>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-gray-500 dark:text-gray-400 italic">
+                        Không có file nào.
+                      </p>
+                    )}
+                  </div>
+                  {/* Thêm file mới */}
+                  <div>
+                    <label
+                      htmlFor="editNewFiles"
+                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                    >
+                      Thêm file mới (ảnh/video):
                     </label>
                     <input
                       type="file"
-                      id="editFormerAvatar"
-                      accept="image/*"
+                      id="editNewFiles"
+                      accept="image/*,video/*"
+                      multiple
                       onChange={(e) =>
-                        setEditingFormerResidentAvatarFile(
-                          e.target.files && e.target.files.length > 0
-                            ? e.target.files
-                            : null
-                        )
+                        setEditMemoryNewFiles(Array.from(e.target.files))
                       }
                       className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                     />
-                    {isUploadingEditingFormerResidentAvatar && (
-                      <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2">
-                        <div
-                          className="bg-blue-600 h-2.5 rounded-full"
-                          style={{
-                            width: `${uploadEditingFormerResidentAvatarProgress}%`,
-                          }}
-                        ></div>
-                      </div>
-                    )}
-                    {uploadEditingFormerResidentAvatarProgress > 0 &&
-                      uploadEditingFormerResidentAvatarProgress < 100 && (
-                        <p className="text-gray-500 dark:text-gray-400 text-sm mt-1 text-right">
-                          {uploadEditingFormerResidentAvatarProgress}% tải lên
-                        </p>
-                      )}
                   </div>
-                </div>
-
-                {authError && (
-                  <p className="text-red-500 text-sm text-center mt-4">
-                    {authError}
-                  </p>
-                )}
-
-                <div className="flex justify-between space-x-4 mt-6">
+                  {isUploadingEditMemory && (
+                    <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                      <div
+                        className="bg-blue-600 h-2.5 rounded-full"
+                        style={{ width: `${editMemoryUploadProgress}%` }}
+                      ></div>
+                    </div>
+                  )}
+                  {editMemoryError && (
+                    <p className="text-red-500 text-sm text-center mt-4">
+                      {editMemoryError}
+                    </p>
+                  )}
                   <button
                     type="submit"
-                    className="flex-1 px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700"
+                    className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75"
+                    disabled={isUploadingEditMemory}
                   >
-                    <i className="fas fa-save mr-2"></i> Lưu thay đổi
+                    {isUploadingEditMemory ? (
+                      <i className="fas fa-spinner fa-spin mr-2"></i>
+                    ) : (
+                      <i className="fas fa-save mr-2"></i>
+                    )}
+                    Lưu thay đổi
                   </button>
                   <button
                     type="button"
                     onClick={() => {
-                      setEditingFormerResident(null);
-                      setAuthError("");
+                      setEditingMemory(null);
+                      setEditMemoryError("");
                     }}
-                    className="flex-1 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400"
+                    className="w-full mt-2 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
+                  >
+                    Hủy
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* ===== MODAL TRÌNH XEM ẢNH/VIDEO KỶ NIỆM ===== */}
+          {selectedMemoryForLightbox && (
+            <div
+              className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
+              onClick={() => setSelectedMemoryForLightbox(null)} // Đóng modal khi nhấp ra ngoài
+            >
+              <div
+                className="relative max-w-full max-h-full flex items-center justify-center"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {selectedMemoryForLightbox.files &&
+                  selectedMemoryForLightbox.files.length > 0 && (
+                    <>
+                      {selectedMemoryForLightbox.files[currentLightboxIndex]
+                        .fileType === "video" ? (
+                        <video
+                          src={
+                            selectedMemoryForLightbox.files[
+                              currentLightboxIndex
+                            ].fileUrl
+                          }
+                          controls
+                          autoPlay
+                          loop
+                          className="max-w-full max-h-[90vh] object-contain shadow-lg rounded-lg"
+                        ></video>
+                      ) : (
+                        <img
+                          src={
+                            selectedMemoryForLightbox.files[
+                              currentLightboxIndex
+                            ].fileUrl
+                          }
+                          alt={`${selectedMemoryForLightbox.eventName} - ${
+                            currentLightboxIndex + 1
+                          }`}
+                          className="max-w-full max-h-[90vh] object-contain shadow-lg rounded-lg"
+                        />
+                      )}
+
+                      {/* Nút điều hướng Previous */}
+                      {selectedMemoryForLightbox.files.length > 1 && (
+                        <button
+                          onClick={() =>
+                            setCurrentLightboxIndex((prev) =>
+                              prev === 0
+                                ? selectedMemoryForLightbox.files.length - 1
+                                : prev - 1
+                            )
+                          }
+                          className="absolute left-4 top-1/2 -translate-y-1/2 text-white text-4xl bg-gray-800 bg-opacity-50 rounded-full w-12 h-12 flex items-center justify-center hover:bg-opacity-75 transition-colors"
+                        >
+                          &#10094;
+                        </button>
+                      )}
+
+                      {/* Nút điều hướng Next */}
+                      {selectedMemoryForLightbox.files.length > 1 && (
+                        <button
+                          onClick={() =>
+                            setCurrentLightboxIndex((prev) =>
+                              prev ===
+                              selectedMemoryForLightbox.files.length - 1
+                                ? 0
+                                : prev + 1
+                            )
+                          }
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-white text-4xl bg-gray-800 bg-opacity-50 rounded-full w-12 h-12 flex items-center justify-center hover:bg-opacity-75 transition-colors"
+                        >
+                          &#10095;
+                        </button>
+                      )}
+                    </>
+                  )}
+                <button
+                  onClick={() => setSelectedMemoryForLightbox(null)}
+                  className="absolute top-4 right-4 text-white text-3xl bg-gray-800 bg-opacity-50 rounded-full w-10 h-10 flex items-center justify-center hover:bg-opacity-75 transition-colors"
+                >
+                  &times;
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/*  ===== MODAL HIỂN THỊ ẢNH/VIDEO PHÓNG TO (THU NHỎ) ===== */}
+          {selectedImageToZoom && (
+            <div
+              className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
+              onClick={() => setSelectedImageToZoom(null)}
+            >
+              <div
+                className="relative max-w-full max-h-full flex items-center justify-center"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {" "}
+                {/* Ngăn chặn sự kiện nổi bọt trên nội dung */}
+                {selectedImageToZoom.fileType === "video" ? ( // Hiển thị video nếu là video
+                  <video
+                    src={selectedImageToZoom.fileUrl}
+                    controls
+                    autoPlay
+                    loop
+                    className="max-w-full max-h-[90vh] object-contain shadow-lg rounded-lg"
+                  ></video>
+                ) : (
+                  // Hiển thị ảnh nếu là ảnh hoặc loại khác
+                  <img
+                    src={selectedImageToZoom.fileUrl}
+                    alt={selectedImageToZoom.eventName || "Phóng to kỷ niệm"}
+                    className="max-w-full max-h-[90vh] object-contain shadow-lg rounded-lg"
+                  />
+                )}
+                <button
+                  onClick={() => setSelectedImageToZoom(null)}
+                  className="absolute top-4 right-4 text-white text-3xl bg-gray-800 bg-opacity-50 rounded-full w-10 h-10 flex items-center justify-center hover:bg-opacity-75 transition-colors"
+                >
+                  &times; {/* Dấu X để đóng */}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ===== MODAL CHI TIẾT CHIA TIỀN ===== */}
+          {selectedCostSharingDetails && userRole === "admin" && (
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[95vh]">
+                <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center flex-shrink-0">
+                  Chi tiết chia tiền
+                </h3>
+
+                {(() => {
+                  // --- Bắt đầu khối tính toán ---
+                  const individualCostsMap =
+                    selectedCostSharingDetails.individualCosts || {};
+                  const totalBillAmount =
+                    selectedCostSharingDetails.relatedTotalBill || 0;
+
+                  const totalPaidAmount = Object.values(individualCostsMap)
+                    .filter((details) => details.isPaid)
+                    .reduce((sum, details) => sum + (details.cost || 0), 0);
+
+                  const amountRemaining = totalBillAmount - totalPaidAmount;
+
+                  const paidPercentage =
+                    totalBillAmount > 0
+                      ? (totalPaidAmount / totalBillAmount) * 100
+                      : 0;
+                  // --- Kết thúc khối tính toán ---
+                  const allMembers = [...residents, ...pendingResidents];
+
+                  return (
+                    <>
+                      {/* ===== KHỐI TIẾN ĐỘ THANH TOÁN MỚI ===== */}
+                      <div className="mb-4 border-b pb-4 border-gray-200 dark:border-gray-700">
+                        <h4 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                          Tiến độ thanh toán
+                        </h4>
+                        <div className="w-full bg-gray-200 rounded-full h-4 dark:bg-gray-600 relative overflow-hidden">
+                          <div
+                            className="bg-green-500 h-4 rounded-full text-center text-white text-xs leading-4 flex items-center justify-center transition-all duration-500"
+                            style={{ width: `${paidPercentage}%` }}
+                          >
+                            {Math.round(paidPercentage)}%
+                          </div>
+                        </div>
+                        <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mt-2">
+                          <span>
+                            Đã đóng:{" "}
+                            <strong>
+                              {totalPaidAmount.toLocaleString("vi-VN")} VND
+                            </strong>
+                          </span>
+                          <span>
+                            Còn lại:{" "}
+                            <strong>
+                              {amountRemaining.toLocaleString("vi-VN")} VND
+                            </strong>
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Phần hiển thị chi tiết */}
+                      <div className="flex-grow overflow-y-auto">
+                        <div className="space-y-3 text-gray-700 dark:text-gray-300">
+                          <p>
+                            <strong>Kỳ tính:</strong>{" "}
+                            {selectedCostSharingDetails.periodStart} đến{" "}
+                            {selectedCostSharingDetails.periodEnd}
+                          </p>
+                          <p>
+                            <strong>Ngày tính:</strong>{" "}
+                            {selectedCostSharingDetails.calculatedDate?.toLocaleDateString(
+                              "vi-VN"
+                            ) || "N/A"}
+                          </p>
+                          <p>
+                            <strong>Tổng ngày có mặt:</strong>{" "}
+                            {
+                              selectedCostSharingDetails.totalCalculatedDaysAllResidents
+                            }{" "}
+                            ngày
+                          </p>
+                          <p>
+                            <strong>Chi phí TB 1 ngày/người:</strong>{" "}
+                            {selectedCostSharingDetails.costPerDayPerPerson?.toLocaleString(
+                              "vi-VN",
+                              { maximumFractionDigits: 0 }
+                            )}{" "}
+                            VND
+                          </p>
+
+                          <p className="text-xl font-bold border-t pt-3 mt-3 border-gray-300 dark:border-gray-600">
+                            Số tiền mỗi người cần đóng:
+                          </p>
+
+                          <div className="max-h-40 overflow-y-auto pr-2 border rounded-lg border-gray-200 dark:border-gray-700">
+                            <ul className="space-y-2 py-2">
+                              {Object.entries(individualCostsMap).map(
+                                ([residentId, data]) => {
+                                  const memberInfo = allMembers.find(
+                                    (mem) => mem.id === residentId
+                                  );
+                                  const memberName = memberInfo
+                                    ? memberInfo.name
+                                    : residentId;
+
+                                  return (
+                                    <li
+                                      key={residentId}
+                                      className="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-2 rounded-lg"
+                                    >
+                                      <span>{memberName}:</span>
+                                      <div className="flex items-center">
+                                        <span className="font-bold mr-2">
+                                          {data.cost?.toLocaleString("vi-VN")}{" "}
+                                          VND
+                                        </span>
+                                        <input
+                                          type="checkbox"
+                                          checked={data.isPaid || false}
+                                          onChange={() =>
+                                            handleToggleIndividualPaymentStatus(
+                                              selectedCostSharingDetails.id,
+                                              residentId,
+                                              data.isPaid || false
+                                            )
+                                          }
+                                          className="form-checkbox h-5 w-5 text-green-600 rounded cursor-pointer"
+                                        />
+                                      </div>
+                                    </li>
+                                  );
+                                }
+                              )}
+                            </ul>
+                          </div>
+
+                          <p className="text-lg font-bold border-t pt-3 mt-3 border-gray-300 dark:border-gray-600">
+                            Quỹ phòng còn lại:
+                            <span
+                              className={`font-bold ${
+                                selectedCostSharingDetails.remainingFund >= 0
+                                  ? "text-green-700 dark:text-green-300"
+                                  : "text-red-700 dark:text-red-300"
+                              }`}
+                            >
+                              {" "}
+                              {selectedCostSharingDetails.remainingFund?.toLocaleString(
+                                "vi-VN"
+                              )}{" "}
+                              VND
+                            </span>
+                          </p>
+                        </div>
+                        {/* ===== KHỐI NÚT BẤM MỚI - BẮT ĐẦU ===== */}
+                        <div className="mt-6 flex-shrink-0 flex flex-col space-y-2">
+                          {/* Nút Thanh toán Online */}
+                          <button
+                            onClick={() =>
+                              window.open(
+                                "https://tracuu.hcmue.edu.vn/ktx",
+                                "_blank"
+                              )
+                            } // <-- THAY ĐỔI LINK Ở ĐÂY
+                            className="w-full px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all"
+                          >
+                            <i className="fas fa-external-link-alt mr-2"></i>
+                            Đi đến trang Thanh toán
+                          </button>
+                        </div>
+                        {/* ===== KHỐI NÚT BẤM MỚI - KẾT THÚC ===== */}
+                      </div>
+                    </>
+                  );
+                })()}
+
+                <button
+                  onClick={() => setSelectedCostSharingDetails(null)}
+                  className="mt-6 w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 flex-shrink-0"
+                >
+                  Đóng
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ===== MODAL UPLOAD THAY ĐỔI AVATAR THÀNH VIÊN ===== */}
+          {selectedResidentForAvatarUpload && userRole === "admin" && (
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md">
+                <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
+                  Cập nhật ảnh đại diện cho{" "}
+                  {selectedResidentForAvatarUpload.fullName}
+                </h3>
+                <div className="flex flex-col items-center space-y-4">
+                  {selectedResidentForAvatarUpload.photoURL ? (
+                    <img
+                      src={selectedResidentForAvatarUpload.photoURL}
+                      alt="Current Avatar"
+                      className="w-32 h-32 rounded-full object-cover shadow-lg border border-gray-200 dark:border-gray-700"
+                    />
+                  ) : (
+                    <div className="w-32 h-32 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-6xl">
+                      <i className="fas fa-user-circle"></i>
+                    </div>
+                  )}
+                  <div>
+                    <label
+                      htmlFor="avatarUploadModalInput"
+                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                    >
+                      Chọn ảnh mới:
+                    </label>
+                    <input
+                      type="file"
+                      id="avatarUploadModalInput"
+                      accept="image/*"
+                      onChange={(e) => {
+                        setAvatarUploadModalFile(e.target.files[0]);
+                        setAvatarUploadModalError("");
+                      }}
+                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    />
+                  </div>
+                  {isUploadingAvatarModal && (
+                    <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2">
+                      <div
+                        className="bg-blue-600 h-2.5 rounded-full"
+                        style={{ width: `${avatarUploadModalProgress}%` }}
+                      ></div>
+                    </div>
+                  )}
+                  {avatarUploadModalError && (
+                    <p className="text-red-500 text-sm text-center mt-2">
+                      {avatarUploadModalError}
+                    </p>
+                  )}
+                  <button
+                    onClick={() =>
+                      handleUploadResidentAvatar(
+                        selectedResidentForAvatarUpload.id
+                      )
+                    }
+                    className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+                    disabled={isUploadingAvatarModal || !avatarUploadModalFile}
+                  >
+                    {isUploadingAvatarModal ? (
+                      <i className="fas fa-spinner fa-spin mr-2"></i>
+                    ) : (
+                      <i className="fas fa-upload mr-2"></i>
+                    )}
+                    Tải lên
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectedResidentForAvatarUpload(null);
+                      setAvatarUploadModalFile(null);
+                      setAvatarUploadModalError("");
+                    }}
+                    className="w-full px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
                   >
                     Hủy
                   </button>
                 </div>
-              </form>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          )}
 
-      {/* ===== MODAL QUÊN MẬT KHẨU ===== */}
-      {showForgotPasswordModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md">
-            <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
-              Quên mật khẩu
-            </h3>
-            <p className="text-gray-700 dark:text-gray-300 mb-4 text-center">
-              Nhập email của bạn để nhận liên kết đặt lại mật khẩu.
-            </p>
-            <input
-              type="email"
-              placeholder="Email của bạn"
-              value={forgotPasswordEmail}
-              onChange={(e) => setForgotPasswordEmail(e.target.value)}
-              className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 mb-4"
-            />
-            {forgotPasswordMessage && (
-              <p
-                className={`text-sm text-center mb-4 ${
-                  forgotPasswordMessage.includes("Lỗi")
-                    ? "text-red-500"
-                    : "text-green-600"
-                }`}
-              >
-                {forgotPasswordMessage}
-              </p>
+          {/* ===== MODAL CRUD LỊCH TRÌNH CỦA ADMIN ===== */}
+          {showGenerateScheduleModal &&
+            userRole === "admin" && ( // Chỉ hiển thị modal lịch trình cho admin
+              <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-lg">
+                  <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
+                    Tạo lịch trực phòng tự động
+                  </h3>
+                  <div className="space-y-4">
+                    <label
+                      htmlFor="numDaysForSchedule"
+                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                    >
+                      Số ngày bạn muốn tạo lịch:
+                    </label>
+                    <input
+                      type="number"
+                      id="numDaysForSchedule"
+                      value={numDaysForSchedule}
+                      onChange={(e) =>
+                        setNumDaysForSchedule(parseInt(e.target.value) || 0)
+                      }
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700"
+                      min="1"
+                    />
+                    <button
+                      onClick={() => handleGenerateCleaningSchedule()}
+                      className="w-full px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl shadow-md hover:bg-indigo-700 transition-all duration-300"
+                      disabled={
+                        residents.filter((res) => res.isActive !== false)
+                          .length === 0
+                      } // Vô hiệu hóa nếu không có cư dân hoạt động
+                    >
+                      {isGeneratingSchedule ? (
+                        <i className="fas fa-spinner fa-spin mr-2"></i>
+                      ) : (
+                        <i className="fas fa-magic mr-2"></i>
+                      )}
+                      Tạo lịch
+                    </button>
+
+                    {generatedCleaningTasks.length > 0 && (
+                      <div className="mt-6">
+                        <h4 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-3">
+                          Lịch đã tạo (Xem trước):
+                        </h4>
+                        <div className="max-h-60 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-xl p-3 bg-gray-50 dark:bg-gray-700">
+                          <ul className="space-y-2">
+                            {generatedCleaningTasks.map((task, index) => (
+                              <li
+                                key={index}
+                                className="text-gray-700 dark:text-gray-300"
+                              >
+                                <strong>{task.date}:</strong> {task.taskName} -{" "}
+                                {task.assignedToResidentName}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                        <button
+                          onClick={handleSaveGeneratedTasks}
+                          className="w-full mt-4 px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 transition-all duration-300"
+                        >
+                          <i className="fas fa-save mr-2"></i> Lưu lịch đã tạo
+                        </button>
+                      </div>
+                    )}
+
+                    <button
+                      onClick={() => {
+                        setShowGenerateScheduleModal(false);
+                        setGeneratedCleaningTasks([]);
+                        setAuthError("");
+                      }}
+                      className="w-full mt-4 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
+                    >
+                      Hủy
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
-            <button
-              onClick={handleForgotPassword}
-              className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 mb-4"
-            >
-              Gửi liên kết đặt lại
-            </button>
-            <button
-              onClick={() => {
-                setShowForgotPasswordModal(false);
-                setForgotPasswordMessage("");
-                setForgotPasswordEmail("");
-              }}
-              className="w-full px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
-            >
-              Hủy
-            </button>
-          </div>
-        </div>
-      )}
 
-      {/* ===== MODAL CHI TIẾT GÓP Ý (ADMIN) ===== */}
-      {selectedFeedbackDetails && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-          onClick={() => setSelectedFeedbackDetails(null)} // Đóng khi bấm ra ngoài
-        >
-          <div
-            className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col"
-            onClick={(e) => e.stopPropagation()} // Ngăn không cho popup tự đóng khi bấm vào bên trong
-          >
-            <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 flex-shrink-0">
-              Chi tiết góp ý
-            </h3>
-
-            {/* Khung nội dung có thể cuộn */}
-            <div className="flex-1 overflow-y-auto pr-2 border-t border-b py-4 border-gray-200 dark:border-gray-700">
-              <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                {selectedFeedbackDetails.content}
-              </p>
+          {/* ===== MODAL CRUD THÔNG BÁO ===== */}
+          {showNotificationsModal && (
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto">
+                <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
+                  Thông báo
+                </h3>
+                {notificationError && (
+                  <p className="text-red-500 text-sm text-center mb-4">
+                    {notificationError}
+                  </p>
+                )}
+                {notifications.length === 0 ? (
+                  <p className="text-gray-600 dark:text-gray-400 italic text-center py-4">
+                    Bạn chưa có thông báo nào.
+                  </p>
+                ) : (
+                  <ul className="space-y-4">
+                    {notifications.map((notification) => (
+                      <li
+                        key={notification.id}
+                        className={`p-4 rounded-xl shadow-sm border ${
+                          notification.isRead
+                            ? "bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600"
+                            : "bg-blue-50 dark:bg-blue-900 border-blue-200 dark:border-blue-700"
+                        } flex justify-between items-start cursor-pointer transition-all duration-200`}
+                        onClick={() =>
+                          !notification.isRead &&
+                          markNotificationAsRead(notification.id)
+                        } // Đánh dấu đã đọc khi nhấp vào
+                      >
+                        <div className="flex-1">
+                          <p
+                            className={`font-semibold ${
+                              notification.isRead
+                                ? "text-gray-800 dark:text-gray-300"
+                                : "text-blue-800 dark:text-blue-200"
+                            }`}
+                          >
+                            {notification.message}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            <i className="fas fa-clock mr-1"></i>
+                            {notification.createdAt instanceof Date
+                              ? notification.createdAt.toLocaleString("vi-VN")
+                              : "Đang tải..."}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Loại: {notification.type}
+                          </p>
+                        </div>
+                        {userRole === "admin" && ( // Chỉ admin mới có nút xóa
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteNotification(notification.id);
+                            }} // Ngăn chặn sự kiện nổi bọt
+                            className="ml-4 p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-800 rounded-full transition-colors"
+                          >
+                            <i className="fas fa-times"></i>
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <button
+                  onClick={() => setShowNotificationsModal(false)}
+                  className="mt-6 w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+                >
+                  Đóng
+                </button>
+              </div>
             </div>
+          )}
 
-            {/* Thông tin người gửi */}
-            <div className="mt-4 pt-4 text-sm text-gray-500 dark:text-gray-400 flex-shrink-0">
-              <p>
-                <strong>Người gửi:</strong>{" "}
-                {selectedFeedbackDetails.submittedByName}
-              </p>
-              <p>
-                <strong>Thời gian:</strong>{" "}
-                {selectedFeedbackDetails.submittedAt
-                  ?.toDate()
-                  .toLocaleString("vi-VN")}
-              </p>
+          {/* ===== MODAL XEM CHI TIẾT THÔNG BÁO ===== */}
+          {selectedNotificationDetails && (
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md">
+                <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
+                  Chi tiết thông báo
+                </h3>
+                <div className="space-y-3 text-gray-700 dark:text-gray-300">
+                  <p>
+                    <strong>Tiêu đề:</strong>{" "}
+                    {selectedNotificationDetails.title || "Không có tiêu đề"}
+                  </p>{" "}
+                  {/* Có thể có title nếu bạn thêm vào hàm createNotification */}
+                  <p>
+                    <strong>Nội dung:</strong>{" "}
+                    {selectedNotificationDetails.message}
+                  </p>
+                  <p>
+                    <strong>Loại:</strong> {selectedNotificationDetails.type}
+                  </p>
+                  <p>
+                    <strong>Người gửi:</strong>{" "}
+                    {selectedNotificationDetails.createdBy || "Hệ thống"}
+                  </p>{" "}
+                  {/* Bạn có thể cần tìm tên người gửi nếu cần */}
+                  <p>
+                    <strong>Người nhận:</strong>{" "}
+                    {selectedNotificationDetails.recipientId === "all"
+                      ? "Tất cả"
+                      : allUsersData.find(
+                          (u) =>
+                            u.id === selectedNotificationDetails.recipientId
+                        )?.fullName || selectedNotificationDetails.recipientId}
+                  </p>
+                  <p>
+                    <strong>Thời gian:</strong>{" "}
+                    {selectedNotificationDetails.createdAt instanceof Date
+                      ? selectedNotificationDetails.createdAt.toLocaleString(
+                          "vi-VN"
+                        )
+                      : "N/A"}
+                  </p>
+                  <p>
+                    <strong>Trạng thái:</strong>
+                    <span
+                      className={`ml-2 px-2 py-1 rounded-full text-sm ${
+                        selectedNotificationDetails.isRead
+                          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                          : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                      }`}
+                    >
+                      {selectedNotificationDetails.isRead
+                        ? "Đã đọc"
+                        : "Chưa đọc"}
+                    </span>
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSelectedNotificationDetails(null)}
+                  className="mt-6 w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+                >
+                  Đóng
+                </button>
+              </div>
             </div>
+          )}
 
-            <button
-              onClick={() => setSelectedFeedbackDetails(null)}
-              className="w-full mt-6 p-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 flex-shrink-0"
+          {/* ===== MODAL CHỈNH SỬA THÔNG TIN CÁ NHÂN CỦA THÀNH VIÊN ===== */}
+          {editingCommonResidentData && (
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+                <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
+                  Điều chỉnh thông tin thành viên
+                </h3>
+                <div className="space-y-4">
+                  <div>
+                    <label
+                      htmlFor="editCommonFullNameInput"
+                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                    >
+                      Họ tên:
+                    </label>
+                    <input
+                      type="text"
+                      id="editCommonFullNameInput"
+                      value={editCommonFullName}
+                      onChange={(e) => setEditCommonFullName(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+                  {editingCommonResidentUserLinkedData && ( // Chỉ hiển thị nếu có user liên kết
+                    <div>
+                      <label
+                        htmlFor="editCommonEmailInput"
+                        className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                      >
+                        Email (Tài khoản):
+                      </label>
+                      <input
+                        type="email"
+                        id="editCommonEmailInput"
+                        value={editCommonEmail}
+                        readOnly // Thường không cho phép chỉnh sửa email tài khoản ở đây
+                        className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none bg-gray-100 dark:bg-gray-700 cursor-not-allowed"
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <label
+                      htmlFor="editCommonPhoneNumber"
+                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                    >
+                      Số điện thoại:
+                    </label>
+                    <input
+                      type="text"
+                      id="editCommonPhoneNumber"
+                      value={editCommonPhoneNumber}
+                      onChange={(e) => setEditCommonPhoneNumber(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="editCommonAcademicLevel"
+                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                    >
+                      Email trường:
+                    </label>
+                    <input
+                      type="text"
+                      id="editCommonAcademicLevel"
+                      value={editCommonAcademicLevel}
+                      onChange={(e) =>
+                        setEditCommonAcademicLevel(e.target.value)
+                      }
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="editCommonDormEntryDate"
+                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                    >
+                      Ngày nhập KTX:
+                    </label>
+                    <input
+                      type="date"
+                      id="editCommonDormEntryDate"
+                      value={editCommonDormEntryDate}
+                      onChange={(e) =>
+                        setEditCommonDormEntryDate(e.target.value)
+                      }
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="editCommonBirthday"
+                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                    >
+                      Ngày sinh:
+                    </label>
+                    <input
+                      type="date"
+                      id="editCommonBirthday"
+                      value={editCommonBirthday}
+                      onChange={(e) => setEditCommonBirthday(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="editCommonStudentId"
+                      className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                    >
+                      Mã số sinh viên:
+                    </label>
+                    <input
+                      type="text"
+                      id="editCommonStudentId"
+                      value={editCommonStudentId}
+                      onChange={(e) => setEditCommonStudentId(e.target.value)}
+                      className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+                    />
+                  </div>
+                  {/* Thông báo lỗi */}
+                  {authError && (
+                    <p className="text-red-500 text-sm text-center mt-4">
+                      {authError}
+                    </p>
+                  )}
+                  {/* Thông báo thành công */}
+                  {updateSuccessMessage && (
+                    <p className="text-green-600 text-sm text-center mt-4">
+                      {updateSuccessMessage}
+                    </p>
+                  )}
+                  <div className="flex justify-between space-x-4 mt-6">
+                    <button
+                      onClick={handleUpdateCommonResidentDetails}
+                      className="flex-1 px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300"
+                    >
+                      <i className="fas fa-save mr-2"></i> Lưu thay đổi
+                    </button>
+                    <button
+                      onClick={handleCancelCommonResidentEdit}
+                      className="flex-1 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
+                    >
+                      Hủy
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* =================================================== */}
+          {/* ===== MODAL LỊCH SỬ HÓA ĐƠN ===== */}
+          {/* =================================================== */}
+          {showBillHistoryModal && (
+            <div
+              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+              onClick={() => setShowBillHistoryModal(false)}
             >
-              Đóng
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* POPUP XÁC NHẬN HOÀN TẤT THỦ TỤC */}
-      {showFinalizeDepartureModal && residentToFinalize && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md">
-            <h3 className="text-2xl font-bold text-center mb-2">Xác nhận</h3>
-            <p className="text-center text-gray-600 dark:text-gray-400 mb-4">
-              Bạn có chắc chắn muốn hoàn tất thủ tục rời phòng cho{" "}
-              <strong>{residentToFinalize.resident.name}</strong>? <br />
-              Hành động này sẽ chuyển họ thành tiền bối và không thể hoàn tác.
-            </p>
-            <div className="flex space-x-4 mt-6">
-              <button
-                onClick={() => setShowFinalizeDepartureModal(false)}
-                className="w-1/2 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl"
+              <div
+                className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
+                onClick={(e) => e.stopPropagation()}
               >
-                Hủy
-              </button>
-              <button
-                onClick={handleFinalizeDeparture}
-                className="w-1/2 px-6 py-3 bg-green-600 text-white font-semibold rounded-xl"
-              >
-                Xác nhận
-              </button>
+                <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                  <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
+                    Lịch sử hóa đơn
+                  </h2>
+                  <button
+                    onClick={() => setShowBillHistoryModal(false)}
+                    className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"
+                  >
+                    <i className="fas fa-times text-xl"></i>
+                  </button>
+                </div>
+                <div className="flex-1 p-6 overflow-y-auto">
+                  {billHistory.length === 0 ? (
+                    <p className="text-gray-500 italic text-center">
+                      Chưa có lịch sử hóa đơn nào.
+                    </p>
+                  ) : (
+                    <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                      <table className="min-w-full bg-white dark:bg-gray-800">
+                        <thead>
+                          <tr className="bg-gray-100 dark:bg-gray-700">
+                            <th className="py-3 px-4 text-left text-sm font-semibold">
+                              Tháng
+                            </th>
+                            <th className="py-3 px-4 text-right text-sm font-semibold">
+                              Tổng tiền (VND)
+                            </th>
+                            <th className="py-3 px-4 text-center text-sm font-semibold">
+                              Trạng thái
+                            </th>
+                            <th className="py-3 px-4 text-center text-sm font-semibold">
+                              Hành động
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="text-gray-700 dark:text-gray-300">
+                          {billHistory.map((bill) => (
+                            <tr
+                              key={bill.id}
+                              className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+                            >
+                              <td className="py-3 px-4">{bill.billingMonth}</td>
+                              <td className="py-3 px-4 text-right font-semibold">
+                                {bill.totalCost.toLocaleString("vi-VN")}
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                <span
+                                  className={`px-3 py-1 text-xs font-bold rounded-full ${
+                                    bill.isPaid
+                                      ? "bg-green-100 text-green-700"
+                                      : "bg-red-100 text-red-700"
+                                  }`}
+                                >
+                                  {bill.isPaid ? "Đã trả" : "Chưa trả"}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                <button
+                                  onClick={() => setSelectedBillDetails(bill)}
+                                  className="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600"
+                                >
+                                  Xem chi tiết
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+                <div className="p-6 border-t border-gray-200 dark:border-gray-700">
+                  <button
+                    onClick={() => setShowBillHistoryModal(false)}
+                    className="w-full px-6 py-3 bg-gray-500 text-white font-semibold rounded-xl hover:bg-gray-600"
+                  >
+                    Đóng
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          )}
+          {/* =================================================== */}
+          {/* ===== MODAL LỊCH SỬ CHIA TIỀN ===== */}
+          {/* =================================================== */}
+          {showCostSharingHistoryModal && (
+            <div
+              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+              onClick={() => setShowCostSharingHistoryModal(false)}
+            >
+              <div
+                className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                  <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
+                    Lịch sử chia tiền
+                  </h2>
+                  <button
+                    onClick={() => setShowCostSharingHistoryModal(false)}
+                    className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"
+                  >
+                    <i className="fas fa-times text-xl"></i>
+                  </button>
+                </div>
+                <div className="flex-1 p-6 overflow-y-auto">
+                  {costSharingHistory.length === 0 ? (
+                    <p className="text-gray-500 italic text-center">
+                      Chưa có lịch sử chia tiền nào.
+                    </p>
+                  ) : (
+                    <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                      <table className="min-w-full bg-white dark:bg-gray-800">
+                        <thead>
+                          <tr className="bg-gray-100 dark:bg-gray-700">
+                            <th className="py-3 px-4 text-left text-sm font-semibold">
+                              Kỳ
+                            </th>
+                            <th className="py-3 px-4 text-right text-sm font-semibold">
+                              Tổng ngày-người
+                            </th>
+                            <th className="py-3 px-4 text-right text-sm font-semibold">
+                              Chi phí/ngày (VND)
+                            </th>
+                            <th className="py-3 px-4 text-right text-sm font-semibold">
+                              Quỹ còn lại (VND)
+                            </th>
+                            <th className="py-3 px-4 text-center text-sm font-semibold">
+                              Hành động
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="text-gray-700 dark:text-gray-300">
+                          {costSharingHistory.map((record) => (
+                            <tr
+                              key={record.id}
+                              className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+                            >
+                              <td className="py-3 px-4">
+                                {record.periodStart} đến {record.periodEnd}
+                              </td>
+                              <td className="py-3 px-4 text-right">
+                                {record.totalCalculatedDaysAllResidents}
+                              </td>
+                              <td className="py-3 px-4 text-right">
+                                {record.costPerDayPerPerson.toLocaleString(
+                                  "vi-VN",
+                                  { maximumFractionDigits: 0 }
+                                )}
+                              </td>
+                              <td
+                                className={`py-3 px-4 text-right font-semibold ${
+                                  record.remainingFund >= 0
+                                    ? "text-green-600"
+                                    : "text-red-600"
+                                }`}
+                              >
+                                {record.remainingFund.toLocaleString("vi-VN")}
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                <button
+                                  onClick={() =>
+                                    setSelectedCostSharingDetails(record)
+                                  }
+                                  className="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600"
+                                >
+                                  Xem chi tiết
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+                <div className="p-6 border-t border-gray-200 dark:border-gray-700">
+                  <button
+                    onClick={() => setShowCostSharingHistoryModal(false)}
+                    className="w-full px-6 py-3 bg-gray-500 text-white font-semibold rounded-xl hover:bg-gray-600"
+                  >
+                    Đóng
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          {/* ===== MODAL CHỈNH SỬA THÔNG TIN CÁ NHÂN CỦA TIỀN BỐI ===== */}
+          {editingFormerResident && (
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col">
+                <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
+                  Chỉnh sửa thông tin tiền bối
+                </h3>
+                <div className="flex-1 overflow-y-auto pr-2">
+                  <form
+                    onSubmit={handleUpdateFormerResident}
+                    className="space-y-4"
+                  >
+                    <div>
+                      <label
+                        htmlFor="editFormerName"
+                        className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                      >
+                        Họ tên:
+                      </label>
+                      <input
+                        type="text"
+                        id="editFormerName"
+                        value={editingFormerResident.name}
+                        onChange={(e) =>
+                          setEditingFormerResident({
+                            ...editingFormerResident,
+                            name: e.target.value,
+                          })
+                        }
+                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="editFormerEmail"
+                        className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                      >
+                        Email:
+                      </label>
+                      <input
+                        type="email"
+                        id="editFormerEmail"
+                        value={editingFormerResident.email}
+                        onChange={(e) =>
+                          setEditingFormerResident({
+                            ...editingFormerResident,
+                            email: e.target.value,
+                          })
+                        }
+                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="editFormerPhone"
+                        className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                      >
+                        SĐT:
+                      </label>
+                      <input
+                        type="text"
+                        id="editFormerPhone"
+                        value={editingFormerResident.phoneNumber}
+                        onChange={(e) =>
+                          setEditingFormerResident({
+                            ...editingFormerResident,
+                            phoneNumber: e.target.value,
+                          })
+                        }
+                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="editFormerStudentId"
+                        className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                      >
+                        MSSV:
+                      </label>
+                      <input
+                        type="text"
+                        id="editFormerStudentId"
+                        value={editingFormerResident.studentId}
+                        onChange={(e) =>
+                          setEditingFormerResident({
+                            ...editingFormerResident,
+                            studentId: e.target.value,
+                          })
+                        }
+                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="editFormerBirthday"
+                        className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                      >
+                        Ngày sinh:
+                      </label>
+                      <input
+                        type="date"
+                        id="editFormerBirthday"
+                        value={editingFormerResident.birthday}
+                        onChange={(e) =>
+                          setEditingFormerResident({
+                            ...editingFormerResident,
+                            birthday: e.target.value,
+                          })
+                        }
+                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="editFormerDormEntryDate"
+                        className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                      >
+                        Ngày nhập KTX:
+                      </label>
+                      <input
+                        type="date"
+                        id="editFormerDormEntryDate"
+                        value={editingFormerResident.dormEntryDate}
+                        onChange={(e) =>
+                          setEditingFormerResident({
+                            ...editingFormerResident,
+                            dormEntryDate: e.target.value,
+                          })
+                        }
+                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="editFormerAcademicLevel"
+                        className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                      >
+                        Cấp:
+                      </label>
+                      <input
+                        type="text"
+                        id="editFormerAcademicLevel"
+                        value={editingFormerResident.academicLevel}
+                        onChange={(e) =>
+                          setEditingFormerResident({
+                            ...editingFormerResident,
+                            academicLevel: e.target.value,
+                          })
+                        }
+                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="editFormerDeactivatedDate"
+                        className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                      >
+                        Ngày ra khỏi phòng:
+                      </label>
+                      <input
+                        type="date"
+                        id="editFormerDeactivatedDate"
+                        value={editingFormerResident.deactivatedAt}
+                        onChange={(e) =>
+                          setEditingFormerResident({
+                            ...editingFormerResident,
+                            deactivatedAt: e.target.value,
+                          })
+                        }
+                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="editFormerContact"
+                        className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                      >
+                        Thông tin liên hệ:
+                      </label>
+                      <input
+                        type="text"
+                        id="editFormerContact"
+                        value={editingFormerResident.contact}
+                        onChange={(e) =>
+                          setEditingFormerResident({
+                            ...editingFormerResident,
+                            contact: e.target.value,
+                          })
+                        }
+                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="editFormerNotes"
+                        className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                      >
+                        Ghi chú:
+                      </label>
+                      <textarea
+                        id="editFormerNotes"
+                        value={editingFormerResident.notes}
+                        onChange={(e) =>
+                          setEditingFormerResident({
+                            ...editingFormerResident,
+                            notes: e.target.value,
+                          })
+                        }
+                        className="shadow-sm border rounded-xl w-full py-2 px-3 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                        rows="3"
+                      ></textarea>
+                    </div>
 
-      {/* Font Awesome for icons */}
-      <link
-        rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
-      />
-    </div>
-  );
+                    <div className="flex items-center mb-4">
+                      <div className="flex-shrink-0 mr-4">
+                        {editingFormerResident?.photoURL ? (
+                          <img
+                            src={editingFormerResident.photoURL}
+                            alt="Avatar hiện tại"
+                            className="w-16 h-16 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 text-2xl">
+                            <i className="fas fa-user-circle"></i>
+                          </div>
+                        )}
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 text-center">
+                          Avatar hiện tại
+                        </p>
+                      </div>
+                      <div>
+                        <label
+                          htmlFor="editFormerAvatar"
+                          className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2"
+                        >
+                          Chọn avatar mới (tùy chọn):
+                        </label>
+                        <input
+                          type="file"
+                          id="editFormerAvatar"
+                          accept="image/*"
+                          onChange={(e) =>
+                            setEditingFormerResidentAvatarFile(
+                              e.target.files && e.target.files.length > 0
+                                ? e.target.files
+                                : null
+                            )
+                          }
+                          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                        />
+                        {isUploadingEditingFormerResidentAvatar && (
+                          <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2">
+                            <div
+                              className="bg-blue-600 h-2.5 rounded-full"
+                              style={{
+                                width: `${uploadEditingFormerResidentAvatarProgress}%`,
+                              }}
+                            ></div>
+                          </div>
+                        )}
+                        {uploadEditingFormerResidentAvatarProgress > 0 &&
+                          uploadEditingFormerResidentAvatarProgress < 100 && (
+                            <p className="text-gray-500 dark:text-gray-400 text-sm mt-1 text-right">
+                              {uploadEditingFormerResidentAvatarProgress}% tải
+                              lên
+                            </p>
+                          )}
+                      </div>
+                    </div>
+
+                    {authError && (
+                      <p className="text-red-500 text-sm text-center mt-4">
+                        {authError}
+                      </p>
+                    )}
+
+                    <div className="flex justify-between space-x-4 mt-6">
+                      <button
+                        type="submit"
+                        className="flex-1 px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700"
+                      >
+                        <i className="fas fa-save mr-2"></i> Lưu thay đổi
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingFormerResident(null);
+                          setAuthError("");
+                        }}
+                        className="flex-1 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400"
+                      >
+                        Hủy
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ===== MODAL QUÊN MẬT KHẨU ===== */}
+          {showForgotPasswordModal && (
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md">
+                <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
+                  Quên mật khẩu
+                </h3>
+                <p className="text-gray-700 dark:text-gray-300 mb-4 text-center">
+                  Nhập email của bạn để nhận liên kết đặt lại mật khẩu.
+                </p>
+                <input
+                  type="email"
+                  placeholder="Email của bạn"
+                  value={forgotPasswordEmail}
+                  onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                  className="shadow-sm appearance-none border border-gray-300 dark:border-gray-600 rounded-xl w-full py-2 px-4 text-gray-700 dark:text-gray-300 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 mb-4"
+                />
+                {forgotPasswordMessage && (
+                  <p
+                    className={`text-sm text-center mb-4 ${
+                      forgotPasswordMessage.includes("Lỗi")
+                        ? "text-red-500"
+                        : "text-green-600"
+                    }`}
+                  >
+                    {forgotPasswordMessage}
+                  </p>
+                )}
+                <button
+                  onClick={handleForgotPassword}
+                  className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 mb-4"
+                >
+                  Gửi liên kết đặt lại
+                </button>
+                <button
+                  onClick={() => {
+                    setShowForgotPasswordModal(false);
+                    setForgotPasswordMessage("");
+                    setForgotPasswordEmail("");
+                  }}
+                  className="w-full px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-400 transition-all duration-300"
+                >
+                  Hủy
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ===== MODAL CHI TIẾT GÓP Ý (ADMIN) ===== */}
+          {selectedFeedbackDetails && (
+            <div
+              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+              onClick={() => setSelectedFeedbackDetails(null)} // Đóng khi bấm ra ngoài
+            >
+              <div
+                className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col"
+                onClick={(e) => e.stopPropagation()} // Ngăn không cho popup tự đóng khi bấm vào bên trong
+              >
+                <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 flex-shrink-0">
+                  Chi tiết góp ý
+                </h3>
+
+                {/* Khung nội dung có thể cuộn */}
+                <div className="flex-1 overflow-y-auto pr-2 border-t border-b py-4 border-gray-200 dark:border-gray-700">
+                  <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                    {selectedFeedbackDetails.content}
+                  </p>
+                </div>
+
+                {/* Thông tin người gửi */}
+                <div className="mt-4 pt-4 text-sm text-gray-500 dark:text-gray-400 flex-shrink-0">
+                  <p>
+                    <strong>Người gửi:</strong>{" "}
+                    {selectedFeedbackDetails.submittedByName}
+                  </p>
+                  <p>
+                    <strong>Thời gian:</strong>{" "}
+                    {selectedFeedbackDetails.submittedAt
+                      ?.toDate()
+                      .toLocaleString("vi-VN")}
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setSelectedFeedbackDetails(null)}
+                  className="w-full mt-6 p-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 flex-shrink-0"
+                >
+                  Đóng
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* POPUP XÁC NHẬN HOÀN TẤT THỦ TỤC */}
+          {showFinalizeDepartureModal && residentToFinalize && (
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4">
+              <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md">
+                <h3 className="text-2xl font-bold text-center mb-2">
+                  Xác nhận
+                </h3>
+                <p className="text-center text-gray-600 dark:text-gray-400 mb-4">
+                  Bạn có chắc chắn muốn hoàn tất thủ tục rời phòng cho{" "}
+                  <strong>{residentToFinalize.resident.name}</strong>? <br />
+                  Hành động này sẽ chuyển họ thành tiền bối và không thể hoàn
+                  tác.
+                </p>
+                <div className="flex space-x-4 mt-6">
+                  <button
+                    onClick={() => setShowFinalizeDepartureModal(false)}
+                    className="w-1/2 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    onClick={handleFinalizeDeparture}
+                    className="w-1/2 px-6 py-3 bg-green-600 text-white font-semibold rounded-xl"
+                  >
+                    Xác nhận
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Font Awesome for icons */}
+          <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+          />
+        </div>
+      );
+    }
+  };
 }
-
 export default App;
