@@ -4707,786 +4707,53 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
           createdAt: serverTimestamp(),
         });
       }
+      for (const task of generatedCleaningTasks) {
+        const assignedResident = residents.find(
+          (res) => res.name === task.assignedToResidentName
+        );
+        const residentId = assignedResident ? assignedResident.id : "unknown";
 
-      setGeneratedCleaningTasks([]); // Clear generated tasks after saving
-      setShowGenerateScheduleModal(false);
-      alert("Đã lưu lịch trực phòng thành công!");
+        const newCleaningTaskDocRef = await addDoc(cleaningTasksCollectionRef, {
+          // Lấy ref của task mới
+          name: task.taskName,
+          date: task.date,
+          assignedToResidentId: residentId,
+          assignedToResidentName: task.assignedToResidentName,
+          isCompleted: false,
+          assignedBy: userId,
+          createdAt: serverTimestamp(),
+        });
+
+        // TẠO THÔNG BÁO LỊCH TRỰC CHO NGƯỜI ĐƯỢC PHÂN CÔNG
+        const userLinkedToResident = allUsersData.find(
+          (user) => user.linkedResidentId === residentId
+        );
+        if (userLinkedToResident) {
+          const message = `Bạn có công việc trực phòng "${task.taskName}" vào ngày ${task.date}.`;
+          await createNotification(
+            userLinkedToResident.id,
+            "cleaning",
+            message,
+            userId,
+            newCleaningTaskDocRef.id
+          );
+        }
+      }
+      // Tạo thông báo chung cho admin
+      await createNotification(
+        "all",
+        "cleaning",
+        `Lịch trực phòng mới đã được tạo và phân công.`,
+        userId
+      );
+
+      setGeneratedCleaningTasks([]); // Xóa các tác vụ đã tạo sau khi lưu
+      setShowGenerateScheduleModal(false); // Đóng modal
+      console.log("Đã lưu lịch trực tự động thành công!");
     } catch (error) {
-      console.error("Lỗi khi lưu lịch trực phòng:", error);
-      setAuthError(`Lỗi khi lưu lịch trực phòng: ${error.message}`);
+      console.error("Lỗi khi lưu lịch trực tự động:", error);
+      setAuthError(`Lỗi khi lưu lịch trực tự động: ${error.message}`);
     }
-  };
-
-  // Hàm để hiển thị tên cư dân từ ID
-  const getResidentNameById = (id) => {
-    const resident = residents.find((res) => res.id === id);
-    return resident ? resident.name : "Không xác định";
-  };
-
-  // Hàm để hiển thị tên người dùng từ ID
-  const getUserFullNameById = (id) => {
-    const user = allUsersData.find((u) => u.id === id);
-    return user ? user.fullName : "Người dùng ẩn danh";
-  };
-
-  // Hàm để định dạng ngày hiển thị
-  const formatDisplayDate = (dateString) => {
-    if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    return date.toLocaleDateString("vi-VN", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    });
-  };
-
-  // Hàm để định dạng ngày giờ hiển thị
-  const formatDisplayDateTime = (dateObject) => {
-    if (!dateObject) return "N/A";
-    return dateObject.toLocaleDateString("vi-VN", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  // Hàm để định dạng số tiền
-  const formatCurrency = (amount) => {
-    if (typeof amount !== "number") return "N/A";
-    return amount.toLocaleString("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    });
-  };
-
-  // Hàm để chuyển đổi trạng thái isSidebarCollapsed
-  const toggleSidebar = () => {
-    setIsSidebarCollapsed(!isSidebarCollapsed);
-  };
-
-  // Hàm để chuyển đổi trạng thái isSidebarOpen (cho mobile)
-  const toggleMobileSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-
-  // Hàm để chuyển đổi theme
-  const toggleTheme = () => {
-    setTheme((prevTheme) => (prevTheme === "light" ? "dark" : "light"));
-  };
-
-  // Hàm để hiển thị chi tiết hóa đơn
-  const handleViewBillDetails = (bill) => {
-    setSelectedBillDetails(bill);
-  };
-
-  // Hàm để hiển thị chi tiết chia sẻ chi phí
-  const handleViewCostSharingDetails = (costSharing) => {
-    setSelectedCostSharingDetails(costSharing);
-  };
-
-  // Hàm để hiển thị chi tiết thông báo
-  const handleViewNotificationDetails = (notification) => {
-    setSelectedNotificationDetails(notification);
-    if (!notification.isRead) {
-      markNotificationAsRead(notification.id);
-    }
-  };
-
-  // Hàm để đóng lightbox ảnh
-  const closeLightbox = () => {
-    setSelectedImageToZoom(null);
-  };
-
-  // Hàm để mở lightbox ảnh
-  const openLightbox = (imageUrl) => {
-    setSelectedImageToZoom(imageUrl);
-  };
-
-  // Hàm để hiển thị chi tiết kỷ niệm
-  const handleViewMemoryDetails = (memory) => {
-    setSelectedMemoryDetails(memory);
-    setCurrentLightboxIndex(0); // Reset index khi mở chi tiết
-  };
-
-  // Hàm để chuyển ảnh trong lightbox
-  const navigateLightbox = (direction) => {
-    if (!selectedMemoryDetails || !selectedMemoryDetails.files) return;
-    const newIndex =
-      (currentLightboxIndex + direction + selectedMemoryDetails.files.length) %
-      selectedMemoryDetails.files.length;
-    setCurrentLightboxIndex(newIndex);
-  };
-
-  // Hàm để hiển thị ảnh/video hiện tại trong lightbox
-  const getCurrentLightboxFile = () => {
-    if (
-      selectedMemoryDetails &&
-      selectedMemoryDetails.files &&
-      selectedMemoryDetails.files.length > 0
-    ) {
-      return selectedMemoryDetails.files[currentLightboxIndex];
-    }
-    return null;
-  };
-
-  // Hàm để đóng modal chi tiết kỷ niệm
-  const closeMemoryDetailsModal = () => {
-    setSelectedMemoryDetails(null);
-  };
-
-  // Hàm để đóng modal chi tiết hóa đơn
-  const closeBillDetailsModal = () => {
-    setSelectedBillDetails(null);
-  };
-
-  // Hàm để đóng modal chi tiết chia sẻ chi phí
-  const closeCostSharingDetailsModal = () => {
-    setSelectedCostSharingDetails(null);
-  };
-
-  // Hàm để đóng modal chi tiết thông báo
-  const closeNotificationDetailsModal = () => {
-    setSelectedNotificationDetails(null);
-  };
-
-  // Hàm để đóng modal thêm kỷ niệm
-  const closeAddMemoryModal = () => {
-    setShowAddMemoryModal(false);
-    setNewMemoryEventName("");
-    setNewMemoryPhotoDate("");
-    setNewMemoryImageFile([]);
-    setMemoryError("");
-    setUploadProgress(0);
-    setIsUploadingMemory(false);
-  };
-
-  // Hàm để đóng modal chỉnh sửa kỷ niệm
-  const closeEditMemoryModal = () => {
-    setEditingMemory(null);
-    setEditMemoryEventName("");
-    setEditMemoryPhotoDate("");
-    setEditMemoryNewFiles([]);
-    setEditMemoryError("");
-    setEditMemoryUploadProgress(0);
-    setIsUploadingEditMemory(false);
-  };
-
-  // Hàm để đóng modal thêm tiền bối
-  const closeAddFormerResidentModal = () => {
-    setShowAddFormerResidentModal(false);
-    setNewFormerResidentName("");
-    setNewFormerResidentEmail("");
-    setNewFormerResidentPhone("");
-    setNewFormerResidentStudentId("");
-    setNewFormerResidentBirthday("");
-    setNewFormerResidentDormEntryDate("");
-    setNewFormerResidentAcademicLevel("");
-    setNewFormerResidentDeactivatedDate("");
-    setNewFormerResidentContact("");
-    setNewFormerResidentNotes("");
-    setNewFormerResidentAvatarFile(null);
-    setFormerResidentAvatarUploadProgress(0);
-    setFormerResidentAvatarError("");
-  };
-
-  // Hàm để đóng modal chỉnh sửa tiền bối
-  const closeEditFormerResidentModal = () => {
-    setEditingFormerResident(null);
-    setEditingFormerResidentAvatarFile(null);
-    setUploadEditingFormerResidentAvatarProgress(0);
-  };
-
-  // Hàm để đóng modal thêm chi tiêu quỹ
-  const closeAddExpenseModal = () => {
-    setShowAddExpenseModal(false);
-    setNewExpenseDescription("");
-    setNewExpenseAmount("");
-    setBillingError("");
-  };
-
-  // Hàm để đóng modal thêm thông báo tùy chỉnh
-  const closeAddNotificationModal = () => {
-    setShowAddNotificationModal(false);
-    setNewNotificationTitle("");
-    setNewNotificationMessage("");
-    setNewNotificationRecipient("all");
-    setNewNotificationType("general");
-    setCustomNotificationError("");
-    setCustomNotificationSuccess("");
-  };
-
-  // Hàm để đóng modal tải avatar cho cư dân
-  const closeAvatarUploadModal = () => {
-    setSelectedResidentForAvatarUpload(null);
-    setAvatarUploadModalFile(null);
-    setAvatarUploadModalProgress(0);
-    setIsUploadingAvatarModal(false);
-    setAvatarUploadModalError("");
-  };
-
-  // Hàm để đóng modal chuyển cư dân sang tiền bối
-  const closeMoveToFormerModal = () => {
-    setShowMoveToFormerModal(false);
-    setSelectedResidentToMove("");
-  };
-
-  // Hàm để đóng modal quên mật khẩu
-  const closeForgotPasswordModal = () => {
-    setShowForgotPasswordModal(false);
-    setForgotPasswordEmail("");
-    setForgotPasswordMessage("");
-  };
-
-  // Hàm để đóng modal QR code
-  const closeQrCodeModal = () => {
-    setShowQrCodeModal(false);
-    setIsQrCodeZoomed(false);
-  };
-
-  // Hàm để đóng modal lịch sử hóa đơn
-  const closeBillHistoryModal = () => {
-    setShowBillHistoryModal(false);
-  };
-
-  // Hàm để đóng modal lịch sử chia sẻ chi phí
-  const closeCostSharingHistoryModal = () => {
-    setShowCostSharingHistoryModal(false);
-  };
-
-  // Hàm để đóng modal tạo lịch vệ sinh
-  const closeGenerateScheduleModal = () => {
-    setShowGenerateScheduleModal(false);
-    setGeneratedCleaningTasks([]);
-    setIsGeneratingSchedule(false);
-    setNumDaysForSchedule(7);
-    setAuthError("");
-  };
-
-  // Hàm để đóng modal chi tiết feedback
-  const closeFeedbackDetailsModal = () => {
-    setSelectedFeedbackDetails(null);
-  };
-
-  // Hàm để đóng modal chi tiết login history
-  const closeLoginHistoryDetailsModal = () => {
-    // Hiện tại không có modal chi tiết cho login history, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết fund expenses
-  const closeFundExpensesDetailsModal = () => {
-    // Hiện tại không có modal chi tiết cho fund expenses, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết cleaning schedule
-  const closeCleaningScheduleDetailsModal = () => {
-    // Hiện tại không có modal chi tiết cho cleaning schedule, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết shoe rack assignments
-  const closeShoeRackAssignmentsDetailsModal = () => {
-    // Hiện tại không có modal chi tiết cho shoe rack assignments, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết pending residents
-  const closePendingResidentsDetailsModal = () => {
-    // Hiện tại không có modal chi tiết cho pending residents, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết monthly consumption stats
-  const closeMonthlyConsumptionStatsDetailsModal = () => {
-    // Hiện tại không có modal chi tiết cho monthly consumption stats, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết all users data
-  const closeAllUsersDataDetailsModal = () => {
-    // Hiện tại không có modal chi tiết cho all users data, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết residents
-  const closeResidentsDetailsModal = () => {
-    // Hiện tại không có modal chi tiết cho residents, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết former residents
-  const closeFormerResidentsDetailsModal = () => {
-    // Hiện tại không có modal chi tiết cho former residents, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết attendance data
-  const closeAttendanceDataDetailsModal = () => {
-    // Hiện tại không có modal chi tiết cho attendance data, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết meter readings
-  const closeMeterReadingsDetailsModal = () => {
-    // Hiện tại không có modal chi tiết cho meter readings, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết pricing config
-  const closePricingConfigDetailsModal = () => {
-    // Hiện tại không có modal chi tiết cho pricing config, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết payment config
-  const closePaymentConfigDetailsModal = () => {
-    // Hiện tại không có modal chi tiết cho payment config, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết seasonal effects
-  const closeSeasonalEffectsDetailsModal = () => {
-    // Hiện tại không có modal chi tiết cho seasonal effects, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết profile popover
-  const closeProfilePopoverDetailsModal = () => {
-    // Hiện tại không có modal chi tiết cho profile popover, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết new account creation
-  const closeNewAccountCreationDetailsModal = () => {
-    // Hiện tại không có modal chi tiết cho new account creation, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết email verification
-  const closeEmailVerificationDetailsModal = () => {
-    // Hiện tại không có modal chi tiết cho email verification, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết auth mode
-  const closeAuthModeDetailsModal = () => {
-    // Hiện tại không có modal chi tiết cho auth mode, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết login form
-  const closeLoginFormDetailsModal = () => {
-    // Hiện tại không có modal chi tiết cho login form, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết register form
-  const closeRegisterFormDetailsModal = () => {
-    // Hiện tại không có modal chi tiết cho register form, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết password reset
-  const closePasswordResetDetailsModal = () => {
-    // Hiện tại không có modal chi tiết cho password reset, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết profile editing
-  const closeProfileEditingDetailsModal = () => {
-    // Hiện tại không có modal chi tiết cho profile editing, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết password change
-  const closePasswordChangeDetailsModal = () => {
-    // Hiện tại không có modal chi tiết cho password change, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết sidebar navigation
-  const closeSidebarNavigationDetailsModal = () => {
-    // Hiện tại không có modal chi tiết cho sidebar navigation, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết image lightbox
-  const closeImageLightboxDetailsModal = () => {
-    // Hiện tại không có modal chi tiết cho image lightbox, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết attendance permission
-  const closeAttendancePermissionDetailsModal = () => {
-    // Hiện tại không có modal chi tiết cho attendance permission, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết memory editing
-  const closeMemoryEditingDetailsModal = () => {
-    // Hiện tại không có modal chi tiết cho memory editing, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết common resident editing
-  const closeCommonResidentEditingDetailsModal = () => {
-    // Hiện tại không có modal chi tiết cho common resident editing, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết avatar upload
-  const closeAvatarUploadDetailsModal = () => {
-    // Hiện tại không có modal chi tiết cho avatar upload, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết former resident avatar upload
-  const closeFormerResidentAvatarUploadDetailsModal = () => {
-    // Hiện tại không có modal chi tiết cho former resident avatar upload, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết custom notification
-  const closeCustomNotificationDetailsModal = () => {
-    // Hiện tại không có modal chi tiết cho custom notification, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết memory lightbox
-  const closeMemoryLightboxDetailsModal = () => {
-    // Hiện tại không có modal chi tiết cho memory lightbox, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết resident avatar upload
-  const closeResidentAvatarUploadDetailsModal = () => {
-    // Hiện tại không có modal chi tiết cho resident avatar upload, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết password change
-  const closePasswordChangeModal = () => {
-    // Hiện tại không có modal chi tiết cho password change, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết pending residents
-  const closePendingResidentsModal = () => {
-    // Hiện tại không có modal chi tiết cho pending residents, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết login history
-  const closeLoginHistoryModal = () => {
-    // Hiện tại không có modal chi tiết cho login history, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết feedback
-  const closeFeedbackModal = () => {
-    // Hiện tại không có modal chi tiết cho feedback, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết qr code
-  const closeQrCodeModalView = () => {
-    // Hiện tại không có modal chi tiết cho qr code, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết room memories
-  const closeRoomMemoriesModal = () => {
-    // Hiện tại không có modal chi tiết cho room memories, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết former residents
-  const closeFormerResidentsModal = () => {
-    // Hiện tại không có modal chi tiết cho former residents, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết notifications
-  const closeNotificationsModal = () => {
-    // Hiện tại không có modal chi tiết cho notifications, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết change password
-  const closeChangePasswordModal = () => {
-    // Hiện tại không có modal chi tiết cho change password, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết sidebar
-  const closeSidebarModal = () => {
-    // Hiện tại không có modal chi tiết cho sidebar, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết selected notification
-  const closeSelectedNotificationModal = () => {
-    // Hiện tại không có modal chi tiết cho selected notification, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết electricity and water rates
-  const closeElectricityWaterRatesModal = () => {
-    // Hiện tại không có modal chi tiết cho electricity and water rates, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết image zoom
-  const closeImageZoomModal = () => {
-    // Hiện tại không có modal chi tiết cho image zoom, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết attendance permission
-  const closeAttendancePermissionModal = () => {
-    // Hiện tại không có modal chi tiết cho attendance permission, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết memory editing
-  const closeMemoryEditingModal = () => {
-    // Hiện tại không có modal chi tiết cho memory editing, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết common resident editing
-  const closeCommonResidentEditingModal = () => {
-    // Hiện tại không có modal chi tiết cho common resident editing, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết avatar upload
-  const closeAvatarUploadModalView = () => {
-    // Hiện tại không có modal chi tiết cho avatar upload, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết former resident avatar upload
-  const closeFormerResidentAvatarUploadModalView = () => {
-    // Hiện tại không có modal chi tiết cho former resident avatar upload, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết custom notification
-  const closeCustomNotificationModal = () => {
-    // Hiện tại không có modal chi tiết cho custom notification, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết memory lightbox
-  const closeMemoryLightboxModal = () => {
-    // Hiện tại không có modal chi tiết cho memory lightbox, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết resident avatar upload
-  const closeResidentAvatarUploadModal = () => {
-    // Hiện tại không có modal chi tiết cho resident avatar upload, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết password change
-  const closePasswordChangeModalView = () => {
-    // Hiện tại không có modal chi tiết cho password change, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết pending residents
-  const closePendingResidentsModalView = () => {
-    // Hiện tại không có modal chi tiết cho pending residents, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết login history
-  const closeLoginHistoryModalView = () => {
-    // Hiện tại không có modal chi tiết cho login history, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết feedback
-  const closeFeedbackModalView = () => {
-    // Hiện tại không có modal chi tiết cho feedback, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết qr code
-  const closeQrCodeModalViewOnly = () => {
-    // Hiện tại không có modal chi tiết cho qr code, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết room memories
-  const closeRoomMemoriesModalView = () => {
-    // Hiện tại không có modal chi tiết cho room memories, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết former residents
-  const closeFormerResidentsModalView = () => {
-    // Hiện tại không có modal chi tiết cho former residents, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết notifications
-  const closeNotificationsModalView = () => {
-    // Hiện tại không có modal chi tiết cho notifications, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết change password
-  const closeChangePasswordModalViewOnly = () => {
-    // Hiện tại không có modal chi tiết cho change password, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết sidebar
-  const closeSidebarModalView = () => {
-    // Hiện tại không có modal chi tiết cho sidebar, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết selected notification
-  const closeSelectedNotificationModalView = () => {
-    // Hiện tại không có modal chi tiết cho selected notification, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết electricity and water rates
-  const closeElectricityWaterRatesModalView = () => {
-    // Hiện tại không có modal chi tiết cho electricity and water rates, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết image zoom
-  const closeImageZoomModalView = () => {
-    // Hiện tại không có modal chi tiết cho image zoom, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết attendance permission
-  const closeAttendancePermissionModalView = () => {
-    // Hiện tại không có modal chi tiết cho attendance permission, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết memory editing
-  const closeMemoryEditingModalView = () => {
-    // Hiện tại không có modal chi tiết cho memory editing, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết common resident editing
-  const closeCommonResidentEditingModalView = () => {
-    // Hiện tại không có modal chi tiết cho common resident editing, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết avatar upload
-  const closeAvatarUploadModalViewOnly = () => {
-    // Hiện tại không có modal chi tiết cho avatar upload, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết former resident avatar upload
-  const closeFormerResidentAvatarUploadModalViewOnly = () => {
-    // Hiện tại không có modal chi tiết cho former resident avatar upload, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết custom notification
-  const closeCustomNotificationModalView = () => {
-    // Hiện tại không có modal chi tiết cho custom notification, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết memory lightbox
-  const closeMemoryLightboxModalView = () => {
-    // Hiện tại không có modal chi tiết cho memory lightbox, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết resident avatar upload
-  const closeResidentAvatarUploadModalViewOnly = () => {
-    // Hiện tại không có modal chi tiết cho resident avatar upload, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết password change
-  const closePasswordChangeModalViewOnlyAgain = () => {
-    // Hiện tại không có modal chi tiết cho password change, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết pending residents
-  const closePendingResidentsModalViewOnly = () => {
-    // Hiện tại không có modal chi tiết cho pending residents, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết login history
-  const closeLoginHistoryModalViewOnly = () => {
-    // Hiện tại không có modal chi tiết cho login history, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết feedback
-  const closeFeedbackModalViewOnly = () => {
-    // Hiện tại không có modal chi tiết cho feedback, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết qr code
-  const closeQrCodeModalViewOnlyAgain = () => {
-    // Hiện tại không có modal chi tiết cho qr code, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết room memories
-  const closeRoomMemoriesModalViewOnly = () => {
-    // Hiện tại không có modal chi tiết cho room memories, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết former residents
-  const closeFormerResidentsModalViewOnly = () => {
-    // Hiện tại không có modal chi tiết cho former residents, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết notifications
-  const closeNotificationsModalViewOnly = () => {
-    // Hiện tại không có modal chi tiết cho notifications, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết change password
-  const closeChangePasswordModalViewOnlyAgainAndAgain = () => {
-    // Hiện tại không có modal chi tiết cho change password, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết sidebar
-  const closeSidebarModalViewOnly = () => {
-    // Hiện tại không có modal chi tiết cho sidebar, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết selected notification
-  const closeSelectedNotificationModalViewOnly = () => {
-    // Hiện tại không có modal chi tiết cho selected notification, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết electricity and water rates
-  const closeElectricityWaterRatesModalViewOnly = () => {
-    // Hiện tại không có modal chi tiết cho electricity and water rates, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết image zoom
-  const closeImageZoomModalViewOnly = () => {
-    // Hiện tại không có modal chi tiết cho image zoom, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết attendance permission
-  const closeAttendancePermissionModalViewOnly = () => {
-    // Hiện tại không có modal chi tiết cho attendance permission, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết memory editing
-  const closeMemoryEditingModalViewOnly = () => {
-    // Hiện tại không có modal chi tiết cho memory editing, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết common resident editing
-  const closeCommonResidentEditingModalViewOnly = () => {
-    // Hiện tại không có modal chi tiết cho common resident editing, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết avatar upload
-  const closeAvatarUploadModalViewOnlyAgainAndAgain = () => {
-    // Hiện tại không có modal chi tiết cho avatar upload, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết former resident avatar upload
-  const closeFormerResidentAvatarUploadModalViewOnlyAgain = () => {
-    // Hiện tại không có modal chi tiết cho former resident avatar upload, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết custom notification
-  const closeCustomNotificationModalViewOnly = () => {
-    // Hiện tại không có modal chi tiết cho custom notification, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết memory lightbox
-  const closeMemoryLightboxModalViewOnly = () => {
-    // Hiện tại không có modal chi tiết cho memory lightbox, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết resident avatar upload
-  const closeResidentAvatarUploadModalViewOnlyAgainAndAgain = () => {
-    // Hiện tại không có modal chi tiết cho resident avatar upload, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết password change
-  const closePasswordChangeModalViewOnlyAgainAndAgainAndAgain = () => {
-    // Hiện tại không có modal chi tiết cho password change, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết pending residents
-  const closePendingResidentsModalViewOnlyAgain = () => {
-    // Hiện tại không có modal chi tiết cho pending residents, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết login history
-  const closeLoginHistoryModalViewOnlyAgain = () => {
-    // Hiện tại không có modal chi tiết cho login history, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết feedback
-  const closeFeedbackModalViewOnlyAgain = () => {
-    // Hiện tại không có modal chi tiết cho feedback, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết qr code
-  const closeQrCodeModalViewOnlyAgainAndAgain = () => {
-    // Hiện tại không có modal chi tiết cho qr code, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết room memories
-  const closeRoomMemoriesModalViewOnlyAgain = () => {
-    // Hiện tại không có modal chi tiết cho room memories, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết former residents
-  const closeFormerResidentsModalViewOnlyAgain = () => {
-    // Hiện tại không có modal chi tiết cho former residents, nhưng nếu có thì sẽ ở đây
-  };
-
-  // Hàm để đóng modal chi tiết notifications
-  const closeNotificationsModalViewOnlyAgain = () => {
-    // Hiện tại không có modal chi tiết cho notifications, nhưng nếu có thì sẽ ở đây
   };
 
   // Hàm để thành viên đánh dấu đã đóng tiền của họ
@@ -7148,25 +6415,29 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
         //Case thông tin của phòng
         case "commonRoomInfo": {
           // Lọc danh sách thành viên hiện tại dựa trên từ khóa tìm kiếm
-          const allCurrentMembers = [
-            ...residents.filter(
+          const filteredCurrentMembers = residents
+            .filter(
               (res) =>
                 res.status === "active" || res.status === "pending_departure"
-            ),
-            ...pendingResidents,
-          ];
+            )
+            .filter((resident) => {
+              const linkedUser = allUsersData.find(
+                (user) => user.linkedResidentId === resident.id
+              );
+              const name = linkedUser?.fullName || resident.name || "";
+              const studentId = linkedUser?.studentId || "";
+              const term = searchTermCurrent.toLowerCase();
+              return (
+                name.toLowerCase().includes(term) ||
+                studentId.toLowerCase().includes(term)
+              );
+            });
 
-          // Lọc danh sách tổng hợp dựa trên từ khóa tìm kiếm
-          const filteredCurrentMembers = allCurrentMembers.filter((member) => {
-            const linkedUser = allUsersData.find(
-              (user) =>
-                user.linkedResidentId === member.id ||
-                ((member.type === "pending" || member.type === "temporary") &&
-                  user.id === member.linkedUserId)
-            );
-            const name = linkedUser?.fullName || member.name || "";
-            const studentId = linkedUser?.studentId || "";
-            const term = searchTermCurrent.toLowerCase();
+          // Lọc danh sách tiền bối dựa trên từ khóa tìm kiếm
+          const filteredFormerResidents = formerResidents.filter((former) => {
+            const name = former.name || "";
+            const studentId = former.studentId || "";
+            const term = searchTermFormer.toLowerCase();
             return (
               name.toLowerCase().includes(term) ||
               studentId.toLowerCase().includes(term)
@@ -7254,15 +6525,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
                                 <div className="ml-4">
                                   <p className="font-bold text-lg text-gray-900 dark:text-white break-words">
                                     {linkedUser?.fullName || resident.name}
-                                    {resident.type && (
-                                      <span className="text-sm font-normal text-cyan-500 ml-2">
-                                        (
-                                        {resident.type === "pending"
-                                          ? "Chờ"
-                                          : "Tạm thời"}
-                                        )
-                                      </span>
-                                    )}
                                   </p>
                                   <p className="text-sm text-gray-500 dark:text-gray-400">
                                     {linkedUser?.role === "admin"
