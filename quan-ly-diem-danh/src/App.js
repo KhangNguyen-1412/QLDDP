@@ -525,7 +525,8 @@ function App() {
   const [isUploadingQrCode, setIsUploadingQrCode] = useState(false);
   //useEffect tải mã qr lên web
   useEffect(() => {
-    if (db) {
+    // THÊM ĐIỀU KIỆN KIỂM TRA userId TẠI ĐÂY
+    if (db && userId) {
       const configDocRef = doc(
         db,
         `artifacts/${currentAppId}/public/data/config`,
@@ -538,7 +539,7 @@ function App() {
       });
       return () => unsubscribe();
     }
-  }, [db]);
+  }, [db, userId]);
   //State zoom mã qr
   const [isQrCodeZoomed, setIsQrCodeZoomed] = useState(false);
 
@@ -4989,7 +4990,6 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
         </div>
       );
     }
-
     // Logic cho Admin
     if (userRole === "admin" || userId === "BJHeKQkyE9VhWCpMfaONEf2N28H2") {
       switch (activeSection) {
@@ -10122,12 +10122,14 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
             {/* ===== NÚT THU GỌN MỚI - NẰM NGOÀI SIDEBAR ===== */}
             <button
               onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-              className={`hidden lg:block absolute top-1/2 -translate-y-1/2 z-30
-                          bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-300 
-                          border border-gray-200 dark:border-gray-600 rounded-full 
-                          w-8 h-8 flex items-center justify-center
-                          opacity-0 group-hover:opacity-100 transition-all duration-300
-                          ${isSidebarCollapsed ? "left-16" : "left-60"}`}
+              className={`hidden lg:flex absolute top-1/2 -translate-y-1/2 z-30
+                                          bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-300 
+                                          border border-gray-200 dark:border-gray-600 rounded-full 
+                                          w-8 h-8 items-center justify-center
+                                          opacity-0 group-hover:opacity-100 transition-all duration-300
+                                          ${
+                  isSidebarCollapsed ? "left-16" : "left-60"
+                }`}
               style={{ transform: "translateY(-50%)" }}
             >
               <i
@@ -12082,6 +12084,24 @@ Tin nhắn nên ngắn gọn, thân thiện và rõ ràng.`;
             rel="stylesheet"
             href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
           />
+        </div>
+      );
+    }
+    if (!isAuthReady) {
+      return (
+        // Bạn có thể tùy chỉnh màn hình chờ này cho đẹp hơn
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: "100vh",
+            backgroundColor: "#f3f4f6",
+          }}
+        >
+          <h2 style={{ fontSize: "1.5rem", color: "#4b5563" }}>
+            Đang khởi tạo ứng dụng...
+          </h2>
         </div>
       );
     }
